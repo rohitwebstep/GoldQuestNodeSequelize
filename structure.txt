@@ -1,0 +1,37 @@
+root/
+│
+├── node_modules/                # Installed dependencies
+│
+├── src/                         # Source code
+│   ├── config/                  # Configuration files
+│   │   └── db.js                # Database configuration
+│   │
+│   ├── controllers/             # Controller logic for routes
+│   │   ├── admin/               # Handles authentication-related actions
+│   │   └── customer/            # Manages user-related logic
+│   │
+│   ├── mailers/                 # Email sending utilities
+│   │   └── emailSender.js       # Logic for sending emails
+│   │
+│   ├── models/                  # Database models
+│   │   ├── userModel.js         # User schema
+│   │   ├── productModel.js      # Product schema
+│   │   └── orderModel.js        # Order schema
+│   │
+│   ├── routes/                  # Route definitions
+│   │   ├── authRoutes.js        # Authentication-related routes
+│   │   ├── userRoutes.js        # User-related routes
+│   │   ├── productRoutes.js     # Routes for product management
+│   │   └── orderRoutes.js       # Routes for order processing
+│   │
+│   ├── utils/                   # Utility functions and helpers
+│   │   ├── validator.js         # Data validation logic
+│   │   └── logger.js            # Logging utility
+│   │
+│   └── index.js                 # Main entry point
+│
+├── .env                         # Environment variables
+├── .gitignore                   # Git ignore rules
+├── package-lock.json            # Locked versions of dependencies
+├── package.json                 # Project metadata and dependencies
+└── readme.txt                   # Project documentation
