@@ -42,7 +42,7 @@ const generateDocs = (docs) => {
 
 // Function to send email
 async function createMail(
-  module,
+  mailModule,
   action,
   name,
   application_id,
@@ -173,8 +173,7 @@ async function createMail(
   } catch (error) {
     console.error("Error sending email:", error);
   } finally {
-    connectionRelease(connection); // Ensure the connection is released
-  }
+}
 }
 
 module.exports = { createMail };

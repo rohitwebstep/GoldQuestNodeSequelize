@@ -45,7 +45,7 @@ const createAttachments = async (attachments_url) => {
 
 // Function to send email
 async function qcReportCheckMail(
-  module,
+  mailModule,
   action,
   gender_title,
   client_name,

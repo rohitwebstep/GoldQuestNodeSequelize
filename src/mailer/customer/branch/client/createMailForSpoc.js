@@ -33,7 +33,7 @@ const generateDocs = (docs) => {
 
 // Function to send email
 async function createMailForSpoc(
-  module,
+  mailModule,
   action,
   name,
   spoc_name,
@@ -158,8 +158,7 @@ async function createMailForSpoc(
   } catch (error) {
     console.error("Error sending email:", error);
   } finally {
-    connectionRelease(connection); // Ensure the connection is released
-  }
+}
 }
 
 module.exports = { createMailForSpoc };

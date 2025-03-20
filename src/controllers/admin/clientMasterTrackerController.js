@@ -1266,10 +1266,10 @@ exports.generateReport = (req, res) => {
                     const annexurePromises = [];
 
                     for (let key in annexure) {
+
                       const db_table = key ?? null;
                       const modifiedDbTable = db_table.replace(/-/g, "_");
                       const subJson = annexure[modifiedDbTable] ?? null;
-
                       const annexurePromise = new Promise((resolve, reject) => {
                         ClientMasterTrackerModel.getCMTAnnexureByApplicationId(
                           application_id,
@@ -1289,9 +1289,10 @@ exports.generateReport = (req, res) => {
                                 ? "update"
                                 : "create";
 
-                            if (logStatus == "update") {
+                            let cmt_id;
+                            if (annexureLogStatus === "update") {
                               cmt_id = currentCMTApplication.id;
-                            } else if (logStatus == "create") {
+                            } else if (annexureLogStatus === "create") {
                               cmt_id = cmtResult.insertId;
                             }
 
@@ -1317,7 +1318,6 @@ exports.generateReport = (req, res) => {
                                         ...changes,
                                       })
                                       : JSON.stringify(mainJson);
-
                                   AdminCommon.adminActivityLog(
                                     admin_id,
                                     "admin/client-master-tracker",
@@ -1358,6 +1358,7 @@ exports.generateReport = (req, res) => {
                           branch_id,
                           (emailError, emailData) => {
                             if (emailError) {
+
                               console.error(
                                 "Error fetching emails:",
                                 emailError
@@ -1387,6 +1388,7 @@ exports.generateReport = (req, res) => {
                               application_id,
                               branch_id,
                               (err, application) => {
+
                                 if (err) {
                                   console.error("Database error:", err);
                                   return res.status(500).json({
@@ -1663,45 +1665,41 @@ exports.generateReport = (req, res) => {
                                                 "completed_orange",
                                               ];
 
-                                              let allMatch = true;
+                                              let allMatch = false; // Initialize as false
 
                                               // Loop through the annexure object
                                               for (let key in annexure) {
+
                                                 const db_table = key ?? null;
-                                                const modifiedDbTable =
-                                                  db_table.replace(/-/g, "_");
-                                                const subJson =
-                                                  annexure[modifiedDbTable] ??
-                                                  null;
+                                                const modifiedDbTable = db_table.replace(/-/g, "_");
+                                                const subJson = annexure[modifiedDbTable] ?? null;
 
                                                 if (subJson) {
+                                                  let subJsonMatches = true; // Assume this subJson meets conditions
+
                                                   for (let prop in subJson) {
+
                                                     if (
-                                                      prop.startsWith(
-                                                        "color_status"
-                                                      )
+                                                      prop.includes("verification_status") ||
+                                                      prop.includes("color_code") ||
+                                                      prop.includes("color_status")
                                                     ) {
+
                                                       const colorStatusValue =
-                                                        typeof subJson[prop] ===
-                                                          "string"
-                                                          ? subJson[
-                                                            prop
-                                                          ].toLowerCase()
+                                                        typeof subJson[prop] === "string"
+                                                          ? subJson[prop].toLowerCase()
                                                           : null;
 
-                                                      if (
-                                                        !completeStatusArr.includes(
-                                                          colorStatusValue
-                                                        )
-                                                      ) {
-                                                        allMatch = false;
+                                                      if (!completeStatusArr.includes(colorStatusValue)) {
+                                                        subJsonMatches = false; // If any fails, mark false
                                                         break;
                                                       }
                                                     }
                                                   }
-                                                } else {
-                                                  allMatch = false;
-                                                  break;
+
+                                                  if (subJsonMatches) {
+                                                    allMatch = true;
+                                                  }
                                                 }
                                               }
 

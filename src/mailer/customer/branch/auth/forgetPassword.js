@@ -3,7 +3,7 @@ const { sequelize } = require("../../../../config/db"); // Import the existing M
 const { QueryTypes } = require("sequelize");
 
 // Function to send password reset email
-async function forgetPassword(module, action, branch_name, reset_link, toArr) {
+async function forgetPassword(mailModule, action, branch_name, reset_link, toArr) {
 
   try {
     // Fetch email template
@@ -71,8 +71,7 @@ async function forgetPassword(module, action, branch_name, reset_link, toArr) {
   } catch (error) {
     console.error("Error sending password reset email:", error);
   } finally {
-    connectionRelease(connection); // Ensure the connection is released
-  }
+}
 }
 
 module.exports = { forgetPassword };

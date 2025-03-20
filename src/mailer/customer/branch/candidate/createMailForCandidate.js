@@ -79,7 +79,7 @@ const generateTable = (services) => {
 
 // Function to send email
 async function createMailForCandidate(
-  module,
+  mailModule,
   action,
   name,
   customerName,
@@ -201,8 +201,7 @@ async function createMailForCandidate(
   } catch (error) {
     console.error("Error sending email:", error);
   } finally {
-    connectionRelease(connection); // Ensure the connection is released
-  }
+}
 }
 
 module.exports = { createMailForCandidate };

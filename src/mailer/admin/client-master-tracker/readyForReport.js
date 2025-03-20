@@ -3,7 +3,7 @@ const { sequelize } = require("../../../config/db");
 const { QueryTypes } = require("sequelize");
 
 // Function to send email
-async function readyForReport(module, action, application_id, toArr, ccArr) {
+async function readyForReport(mailModule, action, application_id, toArr, ccArr) {
   try {
     // Fetch email template
     const [emailRows] = await sequelize.query("SELECT * FROM emails WHERE module = ? AND action = ? AND status = 1", {
@@ -99,7 +99,6 @@ async function readyForReport(module, action, application_id, toArr, ccArr) {
   } catch (error) {
     console.error("Error sending email:", error);
   } finally {
-    connectionRelease(connection); // Ensure the connection is released
   }
 }
 

@@ -45,7 +45,7 @@ const createAttachments = async (attachments_url) => {
 
 // Function to send email
 async function cefSubmitMail(
-  module,
+  mailModule,
   action,
   candidate_applicant_name,
   customer_name,

@@ -34,7 +34,7 @@ const generateTable = (services) => {
 
 // Function to send email
 async function reminderMail(
-  module,
+  mailModule,
   action,
   candidate_name,
   customer_name,
@@ -168,8 +168,7 @@ async function reminderMail(
   } catch (error) {
     console.error("Error sending email:", error);
   } finally {
-    connectionRelease(connection); // Ensure the connection is released
-  }
+}
 }
 
 module.exports = { reminderMail };

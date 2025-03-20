@@ -44,7 +44,7 @@ const createAttachments = async (attachments_url) => {
 
 // Function to send email
 async function finalReportMail(
-  module,
+  mailModule,
   action,
   company_name,
   gender_title,

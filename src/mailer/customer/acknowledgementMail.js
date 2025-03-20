@@ -46,7 +46,7 @@ const generateTable = (applications, clientCode, is_head) => {
 
 // Function to send email
 async function acknowledgementMail(
-  module,
+  mailModule,
   action,
   is_head,
   branchName,

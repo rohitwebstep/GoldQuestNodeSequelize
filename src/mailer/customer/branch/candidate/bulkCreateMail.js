@@ -49,7 +49,7 @@ const generateDocs = (docs) => {
 
 // Function to send email
 async function bulkCreateMail(
-  module,
+  mailModule,
   action,
   applications,
   branchName,
@@ -169,8 +169,7 @@ async function bulkCreateMail(
   } catch (error) {
     console.error("Error sending email (mailer):", error);
   } finally {
-    connectionRelease(connection); // Ensure the connection is released
-  }
+}
 }
 
 module.exports = { bulkCreateMail };

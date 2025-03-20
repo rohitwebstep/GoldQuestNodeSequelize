@@ -298,7 +298,7 @@ const clientApplication = {
       console.log("client_application_id:", client_application_id);
       console.log("db_column:", db_column);
       console.log("savedImagePaths:", savedImagePaths);
-  
+
       // SQL query for updating customer data
       const sqlUpdateCustomer = `
         UPDATE client_applications 
@@ -306,22 +306,22 @@ const clientApplication = {
         WHERE id = ?
       `;
       console.log("SQL Query:", sqlUpdateCustomer);
-  
+
       // Join the saved image paths into a single string
       const joinedPaths = savedImagePaths.join(", ");
       console.log("Joined image paths:", joinedPaths);
-  
+
       // Prepare the query parameters
       const queryParams = [joinedPaths, client_application_id];
       console.log("Query parameters:", queryParams);
-  
+
       // Execute the query
       const [affectedRows] = await sequelize.query(sqlUpdateCustomer, {
         replacements: queryParams, // Positional replacements using ?
         type: QueryTypes.UPDATE,
       });
       console.log("Affected rows:", affectedRows);
-  
+
       // Check if any rows were affected
       if (affectedRows > 0) {
         console.log("Update successful.");
@@ -339,7 +339,7 @@ const clientApplication = {
       console.error("Database update error:", error);
       return callback(false, { error: "Database error", details: error });
     }
-  },  
+  },
 
   update: async (data, client_application_id, callback) => {
     try {
@@ -413,41 +413,27 @@ const clientApplication = {
     }
   },
 
-  updateStatus: (status, client_application_id, callback) => {
-    // If status is empty or null, set it to 'wip'
-    let newStatus = status;
-    if (!status || status === null) {
-      newStatus = "wip";
-    }
-    startConnection((err, connection) => {
-      if (err) {
-        return callback(
-          { message: "Failed to connect to the database", error: err },
-          null
-        );
-      }
+  updateStatus: async (status, client_application_id, callback) => {
+    try {
+      // If status is empty or null, set it to 'wip'
+      const newStatus = status || "wip";
+
       const sql = `
-      UPDATE \`client_applications\`
-      SET
-        \`status\` = ?
-      WHERE
-        \`id\` = ?
-    `;
+        UPDATE \`client_applications\`
+        SET \`status\` = ?
+        WHERE \`id\` = ?
+      `;
 
-      connection.query(
-        sql,
-        [newStatus, client_application_id],
-        (err, results) => {
-          connectionRelease(connection); // Ensure the connection is released
+      const [results] = await sequelize.query(sql, {
+        replacements: [newStatus, client_application_id],
+        type: QueryTypes.UPDATE, // Correct query type for UPDATE statements
+      });
 
-          if (err) {
-            console.error("Database query error: 115", err);
-            return callback(err, null);
-          }
-          callback(null, results);
-        }
-      );
-    });
+      callback(null, { success: true, affectedRows: results });
+    } catch (error) {
+      console.error("Error updating status:", error);
+      callback({ success: false, message: "Failed to update status" }, null);
+    }
   },
 
   delete: (id, callback) => {

@@ -4,7 +4,7 @@ const { QueryTypes } = require("sequelize");
 
 // Function to send email
 async function davMail(
-  module,
+  mailModule,
   action,
   candidate_name,
   company_name,

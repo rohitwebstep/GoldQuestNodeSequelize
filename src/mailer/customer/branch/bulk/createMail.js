@@ -47,7 +47,7 @@ const createAttachments = async (attachments_url) => {
 
 // Function to send email
 async function createMail(
-  module,
+  mailModule,
   action,
   organisation_name,
   client_spoc_name,

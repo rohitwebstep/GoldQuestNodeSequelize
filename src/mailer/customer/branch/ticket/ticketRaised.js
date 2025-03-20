@@ -4,7 +4,7 @@ const { QueryTypes } = require("sequelize");
 
 // Function to send email
 async function ticketRaised(
-  module,
+  mailModule,
   action,
   branch_name,
   customer_name,

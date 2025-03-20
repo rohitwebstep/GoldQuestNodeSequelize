@@ -24,7 +24,7 @@ const generateTable = (branches, password) => {
 
 // Function to send email
 async function createMail(
-  module,
+  mailModule,
   action,
   client_name,
   branches,

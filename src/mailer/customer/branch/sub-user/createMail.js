@@ -4,7 +4,7 @@ const { QueryTypes } = require("sequelize");
 
 // Function to send email
 async function createMail(
-  module,
+  mailModule,
   action,
   sub_user_email,
   sub_user_password,
@@ -120,8 +120,7 @@ async function createMail(
   } catch (error) {
     console.error("Error sending email:", error);
   } finally {
-    connectionRelease(connection); // Ensure the connection is released
-  }
+}
 }
 
 module.exports = { createMail };
