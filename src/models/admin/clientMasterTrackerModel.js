@@ -429,7 +429,7 @@ const Customer = {
         type: QueryTypes.SELECT,
       });
 
-      callback(null, results.length > 0 ? results : null);
+      callback(null, results.length > 0 ? results[0] : null);
     } catch (err) {
       console.error("Error in annexureData function:", err);
       callback(err, null);
@@ -750,7 +750,6 @@ const Customer = {
   ) => {
     try {
       const fields = Object.keys(mainJson);
-
       // Check if the table exists
       const checkTableSql = `
         SELECT COUNT(*) AS count 
@@ -795,6 +794,7 @@ const Customer = {
       // Check if all required columns exist
       const checkColumnsSql = `SHOW COLUMNS FROM \`${db_table}\``;
       const results = await sequelize.query(checkColumnsSql, { type: QueryTypes.SELECT });
+
       const existingColumns = results.map((row) => row.Field);
       const missingColumns = fields.filter((field) => !existingColumns.includes(field));
 
@@ -820,9 +820,9 @@ const Customer = {
           .map((key) => `\`${key}\` = ?`)
           .join(", ")} WHERE client_application_id = ?`;
 
-        await sequelize.query(updateSql, {
+        const updateResult = await sequelize.query(updateSql, {
           replacements: [...Object.values(mainJson), client_application_id],
-          type: QueryTypes.RAW,
+          type: QueryTypes.UPDATE,
         });
 
         callback(null, { message: "Updated successfully" });
@@ -849,147 +849,95 @@ const Customer = {
     }
   },
 
-  upload: (
+  upload: async (
     client_application_id,
     db_table,
     db_column,
     savedImagePaths,
     callback
   ) => {
-    startConnection((err, connection) => {
-      if (err) {
-        console.error("Error starting connection:", err);
-        return callback(false, {
-          error: "Error starting database connection.",
-          details: err,
-        });
-      }
-
+    try {
       const checkTableSql = `
         SELECT COUNT(*) AS count 
         FROM information_schema.tables 
         WHERE table_schema = DATABASE() 
         AND table_name = ?`;
 
-      connection.query(checkTableSql, [db_table], (tableErr, tableResults) => {
-        if (tableErr) {
-          connectionRelease(connection);
-          console.error("Error checking table existence:", tableErr);
-          return callback(false, {
-            error: "Error checking table existence.",
-            details: tableErr,
-          });
-        }
-
-        if (tableResults[0].count === 0) {
-          const createTableSql = `
-            CREATE TABLE \`${db_table}\` (
-              \`id\` bigint(20) NOT NULL AUTO_INCREMENT,
-              \`cmt_id\` bigint(20) NOT NULL,
-              \`client_application_id\` bigint(20) NOT NULL,
-              \`branch_id\` int(11) NOT NULL,
-              \`customer_id\` int(11) NOT NULL,
-              \`status\` ENUM(
-                          'nil', 'initiated', 'hold', 'closure_advice', 'wip', 'insuff', 'completed', 
-                          'stopcheck', 'active_employment', 'not_doable', 'candidate_denied', 
-                          'completed_green', 'completed_orange', 'completed_red', 'completed_yellow', 'completed_pink'
-                        ) DEFAULT NULL,
-              \`is_submitted\` TINYINT(1) DEFAULT 0,
-              \`is_billed\` TINYINT(1) DEFAULT 0,
-              \`billed_date\` TIMESTAMP NULL DEFAULT NULL,
-              \`created_at\` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-              \`updated_at\` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-              PRIMARY KEY (\`id\`),
-              KEY \`client_application_id\` (\`client_application_id\`),
-              KEY \`cmt_application_customer_id\` (\`customer_id\`),
-              KEY \`cmt_application_cmt_id\` (\`cmt_id\`),
-              CONSTRAINT \`fk_${db_table}_client_application_id\` FOREIGN KEY (\`client_application_id\`) REFERENCES \`client_applications\` (\`id\`) ON DELETE CASCADE,
-              CONSTRAINT \`fk_${db_table}_customer_id\` FOREIGN KEY (\`customer_id\`) REFERENCES \`customers\` (\`id\`) ON DELETE CASCADE,
-              CONSTRAINT \`fk_${db_table}_cmt_id\` FOREIGN KEY (\`cmt_id\`) REFERENCES \`cmt_applications\` (\`id\`) ON DELETE CASCADE
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;`;
-
-          connection.query(createTableSql, (createErr) => {
-            if (createErr) {
-              connectionRelease(connection);
-              console.error("Error creating table:", createErr);
-              return callback(false, {
-                error: "Error creating table.",
-                details: createErr,
-              });
-            }
-            proceedToCheckColumns();
-          });
-        } else {
-          proceedToCheckColumns();
-        }
-
-        function proceedToCheckColumns() {
-          const currentColumnsSql = `SHOW COLUMNS FROM \`${db_table}\``;
-
-          connection.query(currentColumnsSql, (err, results) => {
-            if (err) {
-              connectionRelease(connection);
-              return callback(false, {
-                error: "Error fetching current columns.",
-                details: err,
-              });
-            }
-
-            // Extract column names from the results (use 'Field' instead of 'COLUMN_NAME')
-            const existingColumns = results.map((row) => row.Field);
-            const expectedColumns = [db_column];
-
-            // Filter out missing columns
-            const missingColumns = expectedColumns.filter(
-              (field) => !existingColumns.includes(field)
-            );
-
-            const addColumnPromises = missingColumns.map((column) => {
-              return new Promise((resolve, reject) => {
-                const alterTableSql = `ALTER TABLE \`${db_table}\` ADD COLUMN \`${column}\` LONGTEXT`;
-                connection.query(alterTableSql, (alterErr) => {
-                  if (alterErr) {
-                    reject(alterErr);
-                  } else {
-                    resolve();
-                  }
-                });
-              });
-            });
-
-            Promise.all(addColumnPromises)
-              .then(() => {
-                const insertSql = `UPDATE \`${db_table}\` SET \`${db_column}\` = ? WHERE \`client_application_id\` = ?`;
-                const joinedPaths = savedImagePaths.join(", ");
-                connection.query(
-                  insertSql,
-                  [joinedPaths, client_application_id],
-                  (queryErr, results) => {
-                    connectionRelease(connection);
-
-                    if (queryErr) {
-                      console.error("Error updating records:", queryErr);
-                      return callback(false, {
-                        error: "Error updating records.",
-                        details: queryErr,
-                      });
-                    }
-                    callback(true, results);
-                  }
-                );
-              })
-              .catch((columnErr) => {
-                connectionRelease(connection);
-                console.error("Error adding columns:", columnErr);
-                callback(false, {
-                  error: "Error adding columns.",
-                  details: columnErr,
-                });
-              });
-          });
-        }
+      const tableResults = await sequelize.query(checkTableSql, {
+        replacements: [db_table],
+        type: QueryTypes.SELECT,
       });
-    });
+
+      if (tableResults[0].count === 0) {
+        const createTableSql = `
+          CREATE TABLE \`${db_table}\` (
+            \`id\` BIGINT(20) NOT NULL AUTO_INCREMENT,
+            \`cmt_id\` BIGINT(20) NOT NULL,
+            \`client_application_id\` BIGINT(20) NOT NULL,
+            \`branch_id\` INT(11) NOT NULL,
+            \`customer_id\` INT(11) NOT NULL,
+            \`status\` ENUM(
+              'nil', 'initiated', 'hold', 'closure_advice', 'wip', 'insuff', 'completed', 
+              'stopcheck', 'active_employment', 'not_doable', 'candidate_denied', 
+              'completed_green', 'completed_orange', 'completed_red', 'completed_yellow', 'completed_pink'
+            ) DEFAULT NULL,
+            \`is_submitted\` TINYINT(1) DEFAULT 0,
+            \`is_billed\` TINYINT(1) DEFAULT 0,
+            \`billed_date\` TIMESTAMP NULL DEFAULT NULL,
+            \`created_at\` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+            \`updated_at\` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY (\`id\`),
+            KEY \`client_application_id\` (\`client_application_id\`),
+            KEY \`cmt_application_customer_id\` (\`customer_id\`),
+            KEY \`cmt_application_cmt_id\` (\`cmt_id\`),
+            CONSTRAINT \`fk_${db_table}_client_application_id\` FOREIGN KEY (\`client_application_id\`) REFERENCES \`client_applications\` (\`id\`) ON DELETE CASCADE,
+            CONSTRAINT \`fk_${db_table}_customer_id\` FOREIGN KEY (\`customer_id\`) REFERENCES \`customers\` (\`id\`) ON DELETE CASCADE,
+            CONSTRAINT \`fk_${db_table}_cmt_id\` FOREIGN KEY (\`cmt_id\`) REFERENCES \`cmt_applications\` (\`id\`) ON DELETE CASCADE
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;`;
+
+        await sequelize.query(createTableSql, { type: QueryTypes.RAW });
+      }
+
+      await proceedToCheckColumns();
+    } catch (error) {
+      console.error("Error processing upload:", error);
+      callback(false, { error: "Unexpected error occurred.", details: error });
+    }
+
+    async function proceedToCheckColumns() {
+      try {
+        const currentColumnsSql = `SHOW COLUMNS FROM \`${db_table}\``;
+        const results = await sequelize.query(currentColumnsSql, {
+          type: QueryTypes.SELECT,
+        });
+
+        const existingColumns = results.map((row) => row.Field);
+        const missingColumns = [db_column].filter(
+          (field) => !existingColumns.includes(field)
+        );
+
+        for (const column of missingColumns) {
+          const alterTableSql = `ALTER TABLE \`${db_table}\` ADD COLUMN \`${column}\` LONGTEXT`;
+          await sequelize.query(alterTableSql, { type: QueryTypes.RAW });
+        }
+
+        const insertSql = `
+          UPDATE \`${db_table}\` 
+          SET \`${db_column}\` = ? 
+          WHERE \`client_application_id\` = ?`;
+
+        const joinedPaths = savedImagePaths.join(", ");
+        const updateResults = await sequelize.query(insertSql, {
+          replacements: [joinedPaths, client_application_id],
+          type: QueryTypes.UPDATE,
+        });
+
+        callback(true, updateResults);
+      } catch (error) {
+        console.error("Error adding columns or inserting data:", error);
+        callback(false, { error: "Error updating table.", details: error });
+      }
+    }
   },
 
   getAttachmentsByClientAppID: async (client_application_id, callback) => {
