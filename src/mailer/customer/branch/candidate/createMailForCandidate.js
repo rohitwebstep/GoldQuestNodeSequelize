@@ -1,9 +1,10 @@
 const nodemailer = require("nodemailer");
-const { startConnection, connectionRelease } = require("../../../../config/db"); // Import the existing MySQL connection
+const { sequelize } = require("../../../../config/db"); // Import the existing MySQL connection
+const { QueryTypes } = require("sequelize");
 
 const generateTable = (services) => {
   if (!Array.isArray(services) || services.length === 0) {
-      return `<tr>
+    return `<tr>
               <td colspan="3" style="text-align: center;">No instructions available for the selected services.</td>
             </tr>`;
   }
@@ -13,32 +14,32 @@ const generateTable = (services) => {
   const mergedServices = {};
 
   services.forEach((service) => {
-      const match = service.match(/(.*?)(?:[-\s]?(\d+))?:\s*(.*)/);
+    const match = service.match(/(.*?)(?:[-\s]?(\d+))?:\s*(.*)/);
 
-      if (!match) return;
+    if (!match) return;
 
-      const baseTitle = match[1].trim(); // Extracts base title
-      const version = match[2] ? match[2].trim() : ""; // Extracts version if present
-      const description = match[3].trim(); // Extracts description
+    const baseTitle = match[1].trim(); // Extracts base title
+    const version = match[2] ? match[2].trim() : ""; // Extracts version if present
+    const description = match[3].trim(); // Extracts description
 
-      if (typeof description !== "string" || !description.trim() || description.trim().toLowerCase() === "null") {
-          return;
-      }
+    if (typeof description !== "string" || !description.trim() || description.trim().toLowerCase() === "null") {
+      return;
+    }
 
-      // Use base title as a key
-      if (!mergedServices[baseTitle]) {
-          mergedServices[baseTitle] = { name: baseTitle, versions: [], descriptions: [] };
-      }
+    // Use base title as a key
+    if (!mergedServices[baseTitle]) {
+      mergedServices[baseTitle] = { name: baseTitle, versions: [], descriptions: [] };
+    }
 
-      // Append version if not already added
-      if (version && !mergedServices[baseTitle].versions.includes(version)) {
-          mergedServices[baseTitle].versions.push(version);
-      }
+    // Append version if not already added
+    if (version && !mergedServices[baseTitle].versions.includes(version)) {
+      mergedServices[baseTitle].versions.push(version);
+    }
 
-      // Append description if not already added
-      if (!mergedServices[baseTitle].descriptions.includes(description)) {
-          mergedServices[baseTitle].descriptions.push(description);
-      }
+    // Append description if not already added
+    if (!mergedServices[baseTitle].descriptions.includes(description)) {
+      mergedServices[baseTitle].descriptions.push(description);
+    }
   });
 
   // console.log("Merged Services - ", mergedServices);
@@ -46,30 +47,30 @@ const generateTable = (services) => {
   const mergedDescriptionsMap = new Map();
 
   Object.values(mergedServices).forEach(({ name, versions, descriptions }) => {
-      const key = descriptions.join(" "); // Using descriptions as key to merge same descriptions
-      if (!mergedDescriptionsMap.has(key)) {
-          mergedDescriptionsMap.set(key, [{ name, versions }]);
-      } else {
-          mergedDescriptionsMap.get(key).push({ name, versions });
-      }
+    const key = descriptions.join(" "); // Using descriptions as key to merge same descriptions
+    if (!mergedDescriptionsMap.has(key)) {
+      mergedDescriptionsMap.set(key, [{ name, versions }]);
+    } else {
+      mergedDescriptionsMap.get(key).push({ name, versions });
+    }
   });
 
   const mergedTableHTML = Array.from(mergedDescriptionsMap.entries())
-      .map(([description, services], index) => {
-          // Format service names with their respective versions
-          const serviceNames = services
-              .map(({ name, versions }) => versions.length ? `${name} (${versions.join("/")})` : name)
-              .join(" / ");
+    .map(([description, services], index) => {
+      // Format service names with their respective versions
+      const serviceNames = services
+        .map(({ name, versions }) => versions.length ? `${name} (${versions.join("/")})` : name)
+        .join(" / ");
 
-          return `
+      return `
           <tr>
             <td>${index + 1}</td>
             <td>${serviceNames}</td>
             <td>${description}</td>
           </tr>
         `;
-      })
-      .join("");
+    })
+    .join("");
 
   // console.log(mergedTableHTML);
   return mergedTableHTML;
@@ -88,41 +89,22 @@ async function createMailForCandidate(
   toArr,
   ccArr
 ) {
-  const connection = await new Promise((resolve, reject) => {
-    startConnection((err, conn) => {
-      if (err) {
-        console.error("Failed to connect to the database:", err);
-        return reject({
-          message: "Failed to connect to the database",
-          error: err,
-        });
-      }
-      resolve(conn);
-    });
-  });
-
   try {
     // Fetch email template
-    const [emailRows] = await connection
-      .promise()
-      .query(
-        "SELECT * FROM emails WHERE module = ? AND action = ? AND status = 1",
-        [module, action]
-      );
-
+    const [emailRows] = await sequelize.query("SELECT * FROM emails WHERE module = ? AND action = ? AND status = 1", {
+      replacements: [mailModule, action],
+      type: QueryTypes.SELECT,
+    });
     if (emailRows.length === 0) throw new Error("Email template not found");
-    const email = emailRows[0];
+    const email = emailRows;  // Assign the first (and only) element to email
 
     // Fetch SMTP credentials
-    const [smtpRows] = await connection
-      .promise()
-      .query(
-        "SELECT * FROM smtp_credentials WHERE module = ? AND action = ? AND status = '1'",
-        [module, action]
-      );
-
+    const [smtpRows] = await sequelize.query("SELECT * FROM smtp_credentials WHERE module = ? AND action = ? AND status = '1'", {
+      replacements: [mailModule, action],
+      type: QueryTypes.SELECT,
+    });
     if (smtpRows.length === 0) throw new Error("SMTP credentials not found");
-    const smtp = smtpRows[0];
+    const smtp = smtpRows;  // Assign the first (and only) element to smtp
 
     // Create transporter
     const transporter = nodemailer.createTransport({

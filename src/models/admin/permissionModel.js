@@ -1,53 +1,35 @@
-const { pool, startConnection, connectionRelease } = require("../../config/db");
+const { sequelize } = require("../../config/db");
+const { QueryTypes } = require("sequelize");
 
 const Permission = {
-  rolesList: (callback) => {
-    const rolesSql = `
-      SELECT 
-        role
-      FROM \`permissions\`
-    `;
-
-    const groupsSql = `
-      SELECT DISTINCT \`group\` 
-      FROM \`services\`
-    `;
-
-    startConnection((err, connection) => {
-      if (err) {
-        return callback(err, null);
-      }
-
-      connection.query(rolesSql, (rolesErr, rolesResults) => {
-        if (rolesErr) {
-          console.error("Database query error: Roles", rolesErr);
-          connectionRelease(connection); // Release the connection
-          return callback(rolesErr, null);
-        }
-
-        connection.query(groupsSql, (groupsErr, groupsResults) => {
-          connectionRelease(connection); // Release the connection
-
-          if (groupsErr) {
-            console.error("Database query error: Groups", groupsErr);
-            return callback(groupsErr, null);
-          }
-
-          // Extract just the role and group values into arrays
-          const roles = rolesResults.map(role => role.role);
-          const groups = groupsResults.map(group => group.group);
-
-          // Return the response with roles and groups as arrays
-          const response = {
-            roles: roles,
-            groups: groups,
-          };
-
-          callback(null, response);
-        });
+  rolesList: async (callback) => {
+    try {
+      const rolesSql = `
+        SELECT role FROM \`permissions\`
+      `;
+  
+      const groupsSql = `
+        SELECT DISTINCT \`group\` FROM \`services\`
+      `;
+  
+      const rolesResults = await sequelize.query(rolesSql, {
+        type: QueryTypes.SELECT,
       });
-    });
-  },
+  
+      const groupsResults = await sequelize.query(groupsSql, {
+        type: QueryTypes.SELECT,
+      });
+  
+      // Extract just the role and group values into arrays
+      const roles = rolesResults.map(role => role.role);
+      const groups = groupsResults.map(group => group.group);
+  
+      // Return the response with roles and groups as arrays
+      callback(null, { roles, groups });
+    } catch (error) {
+      callback(error, null);
+    }
+  },  
 
   list: (callback) => {
     const sql = `

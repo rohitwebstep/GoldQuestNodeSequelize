@@ -127,9 +127,7 @@ exports.create = (req, res) => {
                                 token: newToken,
                             });
                         }
-
-                        console.log(`result - `, result);
-
+                        
                         return res.status(200).json({
                             status: true,
                             message: "Application delete request has been applied successfully.",

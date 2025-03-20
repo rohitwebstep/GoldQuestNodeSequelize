@@ -213,7 +213,8 @@ const common = {
         console.error("Error parsing permissions JSON:", parseErr);
         return callback({ status: false, message: "Access Denied" }, null);
       }
-
+      // console.log(`permissions - `, permissions);
+      // console.log(`action - `, action);
       // Step 4: Check if Action is Allowed
       if (!permissions[action]) {
         return callback({ status: false, message: "Access Denied" }, null);

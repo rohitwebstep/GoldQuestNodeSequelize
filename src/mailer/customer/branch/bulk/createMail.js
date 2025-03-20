@@ -1,6 +1,7 @@
 const nodemailer = require("nodemailer");
 const path = require("path");
-const { startConnection, connectionRelease } = require("../../../../config/db"); // Import the existing MySQL connection
+const { sequelize } = require("../../../../config/db"); // Import the existing MySQL connection
+const { QueryTypes } = require("sequelize");
 
 // Function to check if a file exists
 const checkFileExists = async (url) => {
@@ -17,8 +18,8 @@ const createAttachments = async (attachments_url) => {
   const urls = Array.isArray(attachments_url)
     ? attachments_url
     : typeof attachments_url === "string"
-    ? attachments_url.split(",")
-    : [];
+      ? attachments_url.split(",")
+      : [];
 
   const attachments = [];
 
@@ -57,35 +58,21 @@ async function createMail(
   let connection;
 
   try {
-    // Establish database connection
-    connection = await new Promise((resolve, reject) => {
-      startConnection((err, conn) => {
-        if (err) {
-          return reject(err);
-        }
-        resolve(conn);
-      });
-    });
-
     // Fetch email template
-    const [emailRows] = await connection
-      .promise()
-      .query(
-        "SELECT * FROM emails WHERE module = ? AND action = ? AND status = 1",
-        [module, action]
-      );
+    const [emailRows] = await sequelize.query("SELECT * FROM emails WHERE module = ? AND action = ? AND status = 1", {
+      replacements: [mailModule, action],
+      type: QueryTypes.SELECT,
+    });
     if (emailRows.length === 0) throw new Error("Email template not found");
-    const email = emailRows[0];
+    const email = emailRows;  // Assign the first (and only) element to email
 
     // Fetch SMTP credentials
-    const [smtpRows] = await connection
-      .promise()
-      .query(
-        "SELECT * FROM smtp_credentials WHERE module = ? AND action = ? AND status = '1'",
-        [module, action]
-      );
+    const [smtpRows] = await sequelize.query("SELECT * FROM smtp_credentials WHERE module = ? AND action = ? AND status = '1'", {
+      replacements: [mailModule, action],
+      type: QueryTypes.SELECT,
+    });
     if (smtpRows.length === 0) throw new Error("SMTP credentials not found");
-    const smtp = smtpRows[0];
+    const smtp = smtpRows;  // Assign the first (and only) element to smtp
 
     // Create transporter
     const transporter = nodemailer.createTransport({
@@ -168,9 +155,6 @@ async function createMail(
   } catch (error) {
     console.error("Error sending email:", error.message);
   } finally {
-    if (connection) {
-      connectionRelease(connection); // Ensure the connection is released
-    }
   }
 }
 
