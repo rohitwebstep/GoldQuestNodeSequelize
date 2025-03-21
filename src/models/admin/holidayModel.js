@@ -1,189 +1,148 @@
-const { pool, startConnection, connectionRelease } = require("../../config/db");
+const { sequelize } = require("../../config/db");
+const { QueryTypes } = require("sequelize");
 
 const Holiday = {
-  create: (title, date, callback) => {
-    // Step 1: Check if a holiday with the same title already exists
-    const checkHolidaySql = `
-      SELECT * FROM \`holidays\` WHERE \`title\` = ?
-    `;
-
-    startConnection((err, connection) => {
-      if (err) {
-        return callback(err, null);
-      }
-
-      connection.query(checkHolidaySql, [title], (checkErr, holidayResults) => {
-        if (checkErr) {
-          console.error("Error checking holiday:", checkErr);
-          connectionRelease(connection); // Release connection on error
-          return callback(checkErr, null);
-        }
-
-        // Step 2: If a holiday with the same title exists, return an error
-        if (holidayResults.length > 0) {
-          const error = new Error("Holiday with the same name already exists");
-          console.error(error.message);
-          connectionRelease(connection); // Release connection before returning error
-          return callback(error, null);
-        }
-
-        // Step 3: Insert the new holiday
-        const insertHolidaySql = `
-          INSERT INTO \`holidays\` (\`title\`, \`date\`)
-          VALUES (?, ?)
+  create: async (title, date, callback) => {
+    try {
+      // Step 1: Check if a holiday with the same title already exists
+      const checkHolidaySql = `
+            SELECT * FROM \`holidays\` WHERE \`title\` = ?
         `;
 
-        connection.query(
-          insertHolidaySql,
-          [title, date],
-          (insertErr, results) => {
-            connectionRelease(connection); // Release the connection
-
-            if (insertErr) {
-              console.error("Database query error: 46", insertErr);
-              return callback(insertErr, null);
-            }
-            callback(null, results);
-          }
-        );
+      const holidayResults = await sequelize.query(checkHolidaySql, {
+        replacements: [title],
+        type: QueryTypes.SELECT,
       });
-    });
-  },
 
-  list: (callback) => {
-    const sql = `SELECT * FROM \`holidays\``;
-
-    startConnection((err, connection) => {
-      if (err) {
-        return callback(err, null);
+      // Step 2: If a holiday with the same title exists, return an error
+      if (holidayResults.length > 0) {
+        const error = new Error("Holiday with the same name already exists");
+        return callback(error, null);
       }
 
-      connection.query(sql, (queryErr, results) => {
-        connectionRelease(connection); // Release the connection
+      // Step 3: Insert the new holiday
+      const insertHolidaySql = `
+            INSERT INTO \`holidays\` (\`title\`, \`date\`) VALUES (?, ?)
+        `;
 
-        if (queryErr) {
-          console.error("Database query error: 47", queryErr);
-          return callback(queryErr, null);
-        }
-        callback(null, results);
+      const [results, metadata] = await sequelize.query(insertHolidaySql, {
+        replacements: [title, date],
+        type: QueryTypes.INSERT,
       });
-    });
+
+      // Return the ID of the inserted record
+      callback(null, { id: metadata.insertId, title, date });
+    } catch (error) {
+      callback(error, null);
+    }
   },
 
-  digitlAddressHoliday: (callback) => {
-    const sql = `
-      SELECT * FROM \`holidays\`
-      WHERE LOWER(\`title\`) LIKE '%digital%'
-      AND (LOWER(\`title\`) LIKE '%verification%' OR LOWER(\`title\`) LIKE '%address%')
-      LIMIT 1
-    `;
+  list: async (callback) => {
+    try {
+      const sql = `SELECT * FROM \`holidays\``;
 
-    startConnection((err, connection) => {
-      if (err) {
-        return callback(err, null);
-      }
-
-      connection.query(sql, (queryErr, results) => {
-        connectionRelease(connection); // Release the connection
-
-        if (queryErr) {
-          console.error("Database query error: 48", queryErr);
-          return callback(queryErr, null);
-        }
-
-        // Check if results are found and return the first entry or null if not found
-        const singleEntry = results.length > 0 ? results[0] : null;
-        callback(null, singleEntry); // Return single entry or null if not found
+      const results = await sequelize.query(sql, {
+        type: QueryTypes.SELECT,
       });
-    });
+
+      callback(null, results);
+    } catch (error) {
+      callback(error, null);
+    }
   },
 
-  getHolidayById: (id, callback) => {
-    const sql = `SELECT * FROM \`holidays\` WHERE \`id\` = ?`;
+  digitlAddressHoliday: async (callback) => {
+    try {
+      const sql = `
+            SELECT * FROM \`holidays\`
+            WHERE LOWER(\`title\`) LIKE '%digital%'
+            AND (LOWER(\`title\`) LIKE '%verification%' OR LOWER(\`title\`) LIKE '%address%')
+            LIMIT 1
+        `;
 
-    startConnection((err, connection) => {
-      if (err) {
-        return callback(err, null);
-      }
-
-      connection.query(sql, [id], (queryErr, results) => {
-        connectionRelease(connection); // Release the connection
-
-        if (queryErr) {
-          console.error("Database query error: 49", queryErr);
-          return callback(queryErr, null);
-        }
-        callback(null, results[0]);
+      const results = await sequelize.query(sql, {
+        type: QueryTypes.SELECT,
       });
-    });
+
+      // Return single entry or null if not found
+      const singleEntry = results.length > 0 ? results[0] : null;
+      callback(null, singleEntry);
+    } catch (error) {
+      callback(error, null);
+    }
   },
 
-  getHolidayRequiredDocumentsByHolidayId: (holiday_id, callback) => {
-    const sql = `SELECT * FROM \`holiday_required_documents\` WHERE \`holiday_id\` = ?`;
+  getHolidayById: async (id, callback) => {
+    try {
+      const sql = `SELECT * FROM \`holidays\` WHERE \`id\` = ?`;
 
-    startConnection((err, connection) => {
-      if (err) {
-        return callback(err, null);
-      }
-
-      connection.query(sql, [holiday_id], (queryErr, results) => {
-        connectionRelease(connection); // Release the connection
-
-        if (queryErr) {
-          console.error("Database query error: 50", queryErr);
-          return callback(queryErr, null);
-        }
-        callback(null, results[0]);
+      const results = await sequelize.query(sql, {
+        replacements: [id],
+        type: QueryTypes.SELECT,
       });
-    });
+
+      // Return the first result if found, else null
+      callback(null, results.length > 0 ? results[0] : null);
+    } catch (error) {
+      callback(error, null);
+    }
   },
 
-  update: (id, title, date, callback) => {
-    const sql = `
-      UPDATE \`holidays\`
-      SET \`title\` = ?, \`date\` = ?
-      WHERE \`id\` = ?
-    `;
+  getHolidayRequiredDocumentsByHolidayId: async (holiday_id, callback) => {
+    try {
+      const sql = `SELECT * FROM \`holiday_required_documents\` WHERE \`holiday_id\` = ?`;
 
-    startConnection((err, connection) => {
-      if (err) {
-        return callback(err, null);
-      }
-
-      connection.query(sql, [title, date, id], (queryErr, results) => {
-        connectionRelease(connection); // Release the connection
-
-        if (queryErr) {
-          console.error(" 51", queryErr);
-          return callback(queryErr, null);
-        }
-        callback(null, results);
+      const results = await sequelize.query(sql, {
+        replacements: [holiday_id],
+        type: QueryTypes.SELECT,
       });
-    });
+
+      // Return the full results array
+      callback(null, results);
+    } catch (error) {
+      callback(error, null);
+    }
   },
 
-  delete: (id, callback) => {
-    const sql = `
-      DELETE FROM \`holidays\`
-      WHERE \`id\` = ?
-    `;
+  update: async (id, title, date, callback) => {
+    try {
+      const sql = `
+            UPDATE \`holidays\`
+            SET \`title\` = ?, \`date\` = ?
+            WHERE \`id\` = ?
+        `;
 
-    startConnection((err, connection) => {
-      if (err) {
-        return callback(err, null);
-      }
-
-      connection.query(sql, [id], (queryErr, results) => {
-        connectionRelease(connection); // Release the connection
-
-        if (queryErr) {
-          console.error("Database query error: 51", queryErr);
-          return callback(queryErr, null);
-        }
-        callback(null, results);
+      const [results] = await sequelize.query(sql, {
+        replacements: [title, date, id],
+        type: QueryTypes.UPDATE,
       });
-    });
+
+      // Return the number of affected rows
+      callback(null, { affectedRows: results });
+    } catch (error) {
+      callback(error, null);
+    }
   },
+
+  delete: async (id, callback) => {
+    try {
+      const sql = `
+        DELETE FROM \`holidays\`
+        WHERE \`id\` = ?
+      `;
+
+      // Run the query and capture the result directly
+      const result = await sequelize.query(sql, {
+        replacements: [id],
+        type: QueryTypes.DELETE,
+      });
+
+      // The number of affected rows is the first property of the result
+      callback(null, result);
+    } catch (error) {
+      callback(error, null);
+    }
+  }
 };
 
 module.exports = Holiday;
