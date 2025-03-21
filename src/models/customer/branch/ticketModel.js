@@ -1,8 +1,5 @@
-const {
-  pool,
-  startConnection,
-  connectionRelease,
-} = require("../../../config/db");
+const { sequelize } = require("../../../config/db");
+const { QueryTypes } = require("sequelize");
 
 function generateTicketNumber() {
   const prefix = "TCK";
@@ -12,21 +9,16 @@ function generateTicketNumber() {
 }
 
 const Branch = {
-  create: (ticketData, callback) => {
-    startConnection((err, connection) => {
-      if (err) {
-        return callback(
-          { message: "Failed to connect to the database", error: err },
-          null
-        );
-      }
-
+  create: async (ticketData, callback) => {
+    try {
       const ticketNumber = generateTicketNumber(); // Ensure this function generates a unique ticket number
+
       const sqlInsertTicket = `
-          INSERT INTO \`tickets\` (
-            \`branch_id\`, \`customer_id\`, \`ticket_number\`, \`title\`, \`description\`
-          ) VALUES (?, ?, ?, ?, ?)
+            INSERT INTO \`tickets\` (
+                \`branch_id\`, \`customer_id\`, \`ticket_number\`, \`title\`, \`description\`
+            ) VALUES (?, ?, ?, ?, ?)
         `;
+
       const ticketValues = [
         ticketData.branch_id,
         ticketData.customer_id,
@@ -35,286 +27,177 @@ const Branch = {
         ticketData.description,
       ];
 
-      connection.query(sqlInsertTicket, ticketValues, (err, ticketResults) => {
-        connectionRelease(connection); // Ensure the connection is properly released
-
-        if (err) {
-          console.error("Database insertion error for ticket:", err);
-          return callback(
-            {
-              message: "Database insertion error for ticket",
-              error: err,
-            },
-            null
-          );
-        }
-
-        const ticketId = ticketResults.insertId;
-        callback(null, { ticketNumber, ticketId });
+      const [result] = await sequelize.query(sqlInsertTicket, {
+        replacements: ticketValues,
+        type: QueryTypes.INSERT,
       });
-    });
+
+      const ticketId = result.insertId; // Correct way to get the inserted ID
+
+      callback(null, { ticketNumber, ticketId });
+    } catch (error) {
+      console.error("Error creating ticket:", error);
+      callback(error, null);
+    }
   },
 
-  list: (branch_id, callback) => {
-    startConnection((err, connection) => {
-      if (err) {
-        return callback(
-          { message: "Failed to connect to the database", error: err },
-          null
-        );
+  list: async (branch_id, callback) => {
+    try {
+      const sql = `
+            SELECT id, ticket_number, title, description, created_at 
+            FROM \`tickets\` 
+            WHERE \`branch_id\` = ? 
+            ORDER BY \`created_at\` DESC
+        `;
+
+      const results = await sequelize.query(sql, {
+        replacements: [branch_id],
+        type: QueryTypes.SELECT,
+      });
+
+      callback(null, results);
+    } catch (error) {
+      console.error("Error fetching tickets list:", error);
+      callback(error, null);
+    }
+  },
+
+  getTicketDataByTicketNumber: async (ticketNumber, branchId, callback) => {
+    try {
+      const sql = `
+            SELECT id, title, description, created_at 
+            FROM \`tickets\` 
+            WHERE \`ticket_number\` = ? AND \`branch_id\` = ? 
+            LIMIT 1
+        `;
+
+      const ticketResults = await sequelize.query(sql, {
+        replacements: [ticketNumber, branchId],
+        type: QueryTypes.SELECT,
+      });
+
+      if (ticketResults.length === 0) {
+        return callback({ message: "Ticket not found" }, null);
       }
 
-      const sql = `SELECT id, ticket_number, title, description, created_at FROM \`tickets\` WHERE \`branch_id\` = ? ORDER BY \`created_at\` DESC`;
-      connection.query(sql, [branch_id], (err, results) => {
-        // Ensure connection is released even if there's an error
-        connectionRelease(connection);
+      const ticketData = ticketResults[0];
 
-        if (err) {
-          console.error("Database query error: 84", err);
-          return callback(
-            { message: "Database query error", error: err },
-            null
-          );
-        }
+      // Get the conversations associated with the ticket
+      const conversationsSql = `
+            SELECT id, \`from\`, message, created_at 
+            FROM \`ticket_conversations\` 
+            WHERE ticket_id = ? AND branch_id = ?
+        `;
 
-        callback(null, results);
+      const conversationResults = await sequelize.query(conversationsSql, {
+        replacements: [ticketData.id, branchId],
+        type: QueryTypes.SELECT,
       });
-    });
+
+      // Return both ticket data and conversations
+      callback(null, {
+        ticket: ticketData,
+        conversations: conversationResults,
+      });
+
+    } catch (error) {
+      console.error("Error fetching ticket data:", error);
+      callback(error, null);
+    }
   },
 
-  getTicketDataByTicketNumber: (ticketNumber, branchId, callback) => {
-    startConnection((err, connection) => {
-      if (err) {
-        return callback(
-          { message: "Failed to connect to the database", error: err },
-          null
-        );
+  chat: async (ticketData, callback) => {
+    try {
+      // Fetch ticket details
+      const sql = `
+            SELECT id, title, description, created_at 
+            FROM \`tickets\` 
+            WHERE \`ticket_number\` = ? AND \`branch_id\` = ? 
+            LIMIT 1
+        `;
+
+      const ticketResults = await sequelize.query(sql, {
+        replacements: [ticketData.ticket_number, ticketData.branch_id],
+        type: QueryTypes.SELECT,
+      });
+
+      if (ticketResults.length === 0) {
+        return callback({ message: "Ticket not found" }, null);
       }
 
-      const sql = `SELECT id, title, description, created_at FROM \`tickets\` WHERE \`ticket_number\` = ? AND \`branch_id\` = ? LIMIT 1`;
+      const ticketQryData = ticketResults[0];
 
-      connection.query(sql, [ticketNumber, branchId], (err, ticketResults) => {
-        // Ensure connection is released even if there's an error
-        connectionRelease(connection);
+      // Insert new conversation
+      const sqlInsertTicketConversation = `
+            INSERT INTO \`ticket_conversations\` (
+                \`branch_id\`, \`customer_id\`, \`ticket_id\`, \`from\`, \`message\`, \`created_at\`
+            ) VALUES (?, ?, ?, ?, ?, NOW())
+        `;
 
-        if (err) {
-          console.error("Database query error: 84", err); // Log the error in the query
-          return callback(
-            { message: "Database query error", error: err },
-            null
-          );
-        }
-
-        if (ticketResults.length === 0) {
-          return callback({ message: "Ticket not found" }, null);
-        }
-
-        const ticketData = ticketResults[0];
-
-        // Get the conversations associated with the ticket
-        const conversationsSql = `SELECT id, \`from\`, message, created_at FROM \`ticket_conversations\` WHERE ticket_id = ? AND branch_id = ?`;
-
-        connection.query(
-          conversationsSql,
-          [ticketData.id, branchId],
-          (err, conversationResults) => {
-            // Ensure connection is released even if there's an error
-            connectionRelease(connection);
-
-            if (err) {
-              console.error("Database query error: 85", err); // Log the error in the query
-              return callback(
-                { message: "Database query error", error: err },
-                null
-              );
-            }
-
-            // Return both ticket data and conversations
-            callback(null, {
-              ticket: ticketData,
-              conversations: conversationResults,
-            });
-          }
-        );
+      await sequelize.query(sqlInsertTicketConversation, {
+        replacements: [
+          ticketData.branch_id,
+          ticketData.customer_id,
+          ticketQryData.id,
+          "branch",
+          ticketData.message,
+        ],
+        type: QueryTypes.INSERT, // Correct Query Type for INSERT
       });
-    });
+
+      // Return ticket details with current timestamp
+      callback(null, {
+        title: ticketQryData.title,
+        description: ticketQryData.description,
+        created_at: new Date().toISOString(), // Return server time instead of querying again
+      });
+
+    } catch (error) {
+      console.error("Error in chat function:", error);
+      callback(error, null);
+    }
   },
 
-  chat: (ticketData, callback) => {
-    const sql = `SELECT id, title, description, created_at FROM \`tickets\` WHERE \`ticket_number\` = ? AND \`branch_id\` = ? LIMIT 1`;
-    startConnection((err, connection) => {
-      connection.query(
-        sql,
-        [ticketData.ticket_number, ticketData.branch_id],
-        (err, ticketResults) => {
-          // Ensure connection is released even if there's an error
-          connectionRelease(connection);
-
-          if (err) {
-            console.error("Database query error: 84", err); // Log the error in the query
-            return callback(
-              { message: "Database query error", error: err },
-              null
-            );
-          }
-
-          if (ticketResults.length === 0) {
-            return callback({ message: "Ticket not found" }, null);
-          }
-
-          const ticketQryData = ticketResults[0];
-          const sqlInsertTicketConversation = `
-        INSERT INTO \`ticket_conversations\` (
-          \`branch_id\`, \`customer_id\`, \`ticket_id\`, \`from\`, \`message\`
-        ) VALUES (?, ?, ?, ?, ?)
-      `;
-          const ticketConversationValues = [
-            ticketData.branch_id,
-            ticketData.customer_id,
-            ticketQryData.id,
-            "branch",
-            ticketData.message,
-          ];
-
-          connection.query(
-            sqlInsertTicketConversation,
-            ticketConversationValues,
-            (err, conversationResults) => {
-              connectionRelease(connection); // Ensure the connection is properly released
-
-              if (err) {
-                console.error(
-                  "Database insertion error for ticket conversation:",
-                  err
-                );
-                return callback(
-                  {
-                    message: "Database insertion error for ticket conversation",
-                    error: err,
-                  },
-                  null
-                );
-              }
-              const conversationId = conversationResults.insertId;
-
-              // You may need to fetch the `created_at` from the database again after insert
-              const sqlGetCreatedAt = `
-        SELECT \`created_at\`
-        FROM \`ticket_conversations\`
-        WHERE \`id\` = ?
+  delete: async (ticket_number, branch_id, callback) => {
+    try {
+      // Fetch ticket ID
+      const sql = `
+        SELECT id FROM \`tickets\` WHERE \`ticket_number\` = ? AND \`branch_id\` = ? LIMIT 1
       `;
 
-              connection.query(
-                sqlGetCreatedAt,
-                [conversationId],
-                (err, result) => {
-                  if (err) {
-                    console.error("Error fetching created_at:", err);
-                    return callback(
-                      {
-                        message: "Error fetching created_at",
-                        error: err,
-                      },
-                      null
-                    );
-                  }
-                  const createdAt = result[0].created_at;
+      const ticketResults = await sequelize.query(sql, {
+        replacements: [ticket_number, branch_id],
+        type: QueryTypes.SELECT,
+      });
 
-                  callback(null, {
-                    title: ticketQryData.title,
-                    description: ticketQryData.description,
-                    created_at: createdAt,
-                  });
-                }
-              );
-            }
-          );
-        }
-      );
-    });
-  },
-
-  delete: (ticket_number, branch_id, callback) => {
-    startConnection((err, connection) => {
-      if (err) {
-        return callback(
-          { message: "Failed to connect to the database", error: err },
-          null
-        );
+      if (ticketResults.length === 0) {
+        return callback({ message: "Ticket not found" }, null);
       }
 
-      const sql = `SELECT id FROM \`tickets\` WHERE \`ticket_number\` = ? AND \`branch_id\` = ? LIMIT 1`;
-      connection.query(
-        sql,
-        [ticket_number, branch_id],
-        (err, ticketResults) => {
-          // Ensure connection is released even if there's an error
-          if (err) {
-            connectionRelease(connection); // Release connection if query fails
-            console.error("Database query error: 84", err);
-            return callback(
-              { message: "Database query error", error: err },
-              null
-            );
-          }
+      const ticketId = ticketResults[0].id;
 
-          if (ticketResults.length === 0) {
-            connectionRelease(connection); // Release connection if no ticket found
-            return callback({ message: "Ticket not found" }, null);
-          }
+      // Delete ticket conversations first
+      const deleteConversationsSql = `DELETE FROM \`ticket_conversations\` WHERE \`ticket_id\` = ?`;
+      await sequelize.query(deleteConversationsSql, {
+        replacements: [ticketId],
+        type: QueryTypes.DELETE, // Correct QueryType for DELETE
+      });
 
-          const ticketQryData = ticketResults[0];
+      // Delete the ticket
+      const deleteTicketSql = `DELETE FROM \`tickets\` WHERE \`id\` = ?`;
+      const deleteTicketResults = await sequelize.query(deleteTicketSql, {
+        replacements: [ticketId],
+        type: QueryTypes.DELETE, // Correct QueryType for DELETE
+      });
 
-          // Proceed with deletion of ticket conversations
-          const deleteConversationsSql = `DELETE FROM \`ticket_conversations\` WHERE \`ticket_id\` = ?`;
-          connection.query(
-            deleteConversationsSql,
-            [ticketQryData.id],
-            (err, deleteConversationsResults) => {
-              if (err) {
-                connectionRelease(connection); // Release connection on error
-                console.error(
-                  "Database query error: Deleting ticket conversations",
-                  err
-                );
-                return callback(
-                  {
-                    message:
-                      "Database query error deleting ticket conversations",
-                    error: err,
-                  },
-                  null
-                );
-              }
+      callback(null, { message: "Ticket deleted successfully" });
 
-              // Proceed with deletion of the ticket itself
-              const deleteTicketSql = `DELETE FROM \`tickets\` WHERE \`id\` = ?`;
-              connection.query(
-                deleteTicketSql,
-                [ticketQryData.id],
-                (err, deleteTicketResults) => {
-                  connectionRelease(connection); // Release connection after ticket deletion
+    } catch (error) {
+      console.error("Error in delete function:", error);
+      callback(error, null);
+    }
+  }
 
-                  if (err) {
-                    console.error("Database query error: Deleting ticket", err);
-                    return callback(
-                      {
-                        message: "Database query error deleting ticket",
-                        error: err,
-                      },
-                      null
-                    );
-                  }
-
-                  callback(null, deleteTicketResults);
-                }
-              );
-            }
-          );
-        }
-      );
-    });
-  },
 };
 
 module.exports = Branch;
