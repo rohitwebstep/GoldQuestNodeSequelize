@@ -130,12 +130,23 @@ const clientApplication = {
       `;
 
       let values = [
-        new_application_id, name, employee_id, spoc, batch_number,
-        sub_client, location, branch_id, serviceIds, packageIds,
-        customer_id, purpose_of_application, nationality
+        new_application_id ?? '',
+        name ?? '',
+        employee_id ?? '',
+        spoc ?? '',
+        batch_number ?? '',
+        sub_client ?? '',
+        location ?? '',
+        branch_id ?? '',
+        serviceIds ?? '',
+        packageIds ?? '',
+        customer_id ?? '',
+        purpose_of_application ?? '',
+        nationality ?? ''
       ];
 
-      if (attach_documents) {
+      // Ensure attach_documents is included properly
+      if (attach_documents !== undefined && attach_documents !== null) {
         sql += `, attach_documents`;
         values.push(attach_documents);
       }
@@ -147,7 +158,9 @@ const clientApplication = {
         type: QueryTypes.INSERT, // FIXED: Correct query type
       });
 
-      callback(null, { results, new_application_id });
+      const insertId = results?.[0] ?? null; // Ensure safe extraction
+
+      callback(null, { results: { insertId }, new_application_id });
     } catch (error) {
       console.error("Database query error:", error);
       callback(error, null);
@@ -227,6 +240,7 @@ const clientApplication = {
 
     Promise.all(cmtPromises)
       .then(() => {
+        finalResults.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
         callback(null, finalResults);
       })
       .catch((err) => {
@@ -316,24 +330,13 @@ const clientApplication = {
       console.log("Query parameters:", queryParams);
 
       // Execute the query
-      const [affectedRows] = await sequelize.query(sqlUpdateCustomer, {
+      const affectedRows = await sequelize.query(sqlUpdateCustomer, {
         replacements: queryParams, // Positional replacements using ?
         type: QueryTypes.UPDATE,
       });
       console.log("Affected rows:", affectedRows);
 
-      // Check if any rows were affected
-      if (affectedRows > 0) {
-        console.log("Update successful.");
-        return callback(true, { message: "Update successful", affectedRows });
-      } else {
-        console.warn("No rows updated. Please check the client application ID.");
-        return callback(false, {
-          error: "No rows updated. Please check the client application ID.",
-          query: sqlUpdateCustomer,
-          params: queryParams,
-        });
-      }
+      return callback(true, { message: "Update successful", affectedRows });
     } catch (error) {
       // Log error if something goes wrong
       console.error("Database update error:", error);
@@ -436,115 +439,92 @@ const clientApplication = {
     }
   },
 
-  delete: (id, callback) => {
-    startConnection((err, connection) => {
-      if (err) {
+  delete: async (id, callback) => {
+    try {
+      // Step 1: Retrieve services from client_applications
+      const sqlGetServices = `
+        SELECT services FROM client_applications WHERE id = ?
+      `;
+      const results = await sequelize.query(sqlGetServices, {
+        replacements: [id],
+        type: QueryTypes.SELECT,
+      });
+
+      if (results.length === 0) {
         return callback(
-          { message: "Failed to connect to the database", error: err },
+          { message: "No client application found with the given ID" },
           null
         );
       }
 
-      // Step 1: Retrieve services from client_applications where id = id
-      const sqlGetServices =
-        "SELECT services FROM `client_applications` WHERE `id` = ?";
-      connection.query(sqlGetServices, [id], (err, results) => {
-        if (err) {
-          connectionRelease(connection); // Ensure the connection is released
-          console.error("Database query error: 116", err);
-          return callback(err, null);
-        }
+      // Step 2: Process services
+      const services = results[0].services;
+      const servicesArray = services
+        ? services.split(",").map((service) => parseInt(service.trim()))
+        : [];
 
-        if (results.length === 0) {
-          connectionRelease(connection); // Ensure the connection is released
-          return callback(
-            { message: "No client application found with the given ID" },
-            null
-          );
-        }
+      const jsonResults = [];
 
-        // Get the services string and split it into an array
-        const services = results[0].services;
-        const servicesArray = services
-          .split(",")
-          .map((service) => parseInt(service.trim())); // Parse to integers
+      for (const serviceId of servicesArray) {
+        // Retrieve JSON from report_forms
+        const sqlGetJson = `
+          SELECT json FROM report_forms WHERE service_id = ?
+        `;
+        const jsonQueryResults = await sequelize.query(sqlGetJson, {
+          replacements: [serviceId],
+          type: QueryTypes.SELECT,
+        });
 
-        const jsonResults = []; // Array to hold JSON results
-        let completedQueries = 0; // Counter to track completed queries
+        if (jsonQueryResults.length > 0) {
+          try {
+            const jsonData = JSON.parse(jsonQueryResults[0].json);
+            const dbTable = jsonData.db_table;
 
-        // Step 2: Loop through each service ID and query the report_forms table
-        servicesArray.forEach((serviceId) => {
-          const sqlGetJson =
-            "SELECT json FROM report_forms WHERE service_id = ?";
-          connection.query(sqlGetJson, [serviceId], (err, jsonQueryResults) => {
-            if (err) {
-              console.error(
-                "Database query error for service ID",
-                serviceId,
-                ":",
-                err
-              );
-            } else if (jsonQueryResults.length > 0) {
-              try {
-                const jsonData = JSON.parse(jsonQueryResults[0].json);
-                const dbTable = jsonData.db_table;
+            if (dbTable) {
+              // Check if an entry exists in dbTable
+              const sqlCheckEntry = `SELECT * FROM \`${dbTable}\` WHERE client_application_id = ?`;
+              const entryResults = await sequelize.query(sqlCheckEntry, {
+                replacements: [id],
+                type: QueryTypes.SELECT,
+              });
 
-                // Check if dbTable exists and if there is an entry with client_application_id = id
-                const sqlCheckEntry = `SELECT * FROM \`${dbTable}\` WHERE client_application_id = ?`;
-                connection.query(sqlCheckEntry, [id], (err, entryResults) => {
-                  if (err) {
-                    console.error(
-                      "Database query error while checking dbTable:",
-                      err
-                    );
-                  } else if (entryResults.length > 0) {
-                    // Entry found, proceed to delete it
-                    const sqlDeleteEntry = `DELETE FROM \`${dbTable}\` WHERE client_application_id = ?`;
-                    connection.query(sqlDeleteEntry, [id], (err) => {
-                      if (err) {
-                        console.error(
-                          "Database query error during entry deletion:",
-                          err
-                        );
-                      }
-                    });
-                  }
+              if (entryResults.length > 0) {
+                // Delete the entry from the dynamic table
+                const sqlDeleteEntry = `DELETE FROM \`${dbTable}\` WHERE client_application_id = ?`;
+                await sequelize.query(sqlDeleteEntry, {
+                  replacements: [id],
+                  type: QueryTypes.DELETE,
                 });
-
-                // Store the JSON result
-                jsonResults.push(jsonQueryResults[0].json);
-              } catch (parseError) {
-                console.error("Error parsing JSON:", parseError);
               }
             }
 
-            // Increment the counter and check if all queries are done
-            completedQueries++;
-            if (completedQueries === servicesArray.length) {
-              // Step 3: Now delete the client_application entry
-              const sqlDelete =
-                "DELETE FROM `client_applications` WHERE `id` = ?";
-              connection.query(sqlDelete, [id], (err, deleteResults) => {
-                connectionRelease(connection); // Ensure the connection is released
+            jsonResults.push(jsonQueryResults[0].json);
+          } catch (parseError) {
+            console.error("Error parsing JSON:", parseError);
+          }
+        }
+      }
 
-                if (err) {
-                  console.error("Database query error during deletion:", err);
-                  return callback(err, null);
-                }
-
-                // Return both the deleted services and the results from json queries
-                callback(null, {
-                  deletedServices: servicesArray,
-                  jsonResults,
-                  deleteResults,
-                });
-              });
-            }
-          });
-        });
+      // Step 3: Delete client_application entry
+      const sqlDelete = `
+        DELETE FROM client_applications WHERE id = ?
+      `;
+      await sequelize.query(sqlDelete, {
+        replacements: [id],
+        type: QueryTypes.DELETE,
       });
-    });
+
+      // Return both the deleted services and JSON results
+      callback(null, {
+        deletedServices: servicesArray,
+        jsonResults,
+        message: "Client application deleted successfully.",
+      });
+    } catch (error) {
+      callback(error, null);
+    }
   },
+
 };
 
 module.exports = clientApplication;

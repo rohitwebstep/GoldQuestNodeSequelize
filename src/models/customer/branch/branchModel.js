@@ -403,102 +403,70 @@ const Branch = {
     }
   },
 
-  getClientUniqueIDByBranchId: (id, callback) => {
-    startConnection((err, connection) => {
-      if (err) {
-        return callback(
-          { message: "Failed to connect to the database", error: err },
-          null
-        );
+  getClientUniqueIDByBranchId: async (id, callback) => {
+    try {
+      // Fetch customer_id from branches
+      const sql = "SELECT `customer_id` FROM `branches` WHERE `id` = ?";
+      const results = await sequelize.query(sql, {
+        replacements: [id],
+        type: QueryTypes.SELECT,
+      });
+
+      if (!results.length || !results[0].customer_id) {
+        return callback(null, false); // No customer_id found
       }
 
-      const sql = "SELECT `customer_id` FROM `branches` WHERE `id` = ?";
-      connection.query(sql, [id], (err, results) => {
-        if (err) {
-          console.error("Database query error: 90", err);
-          connectionRelease(connection);
-          return callback(err, null);
-        }
+      const customerId = results[0].customer_id;
 
-        if (results.length > 0 && results[0].customer_id) {
-          const customerId = results[0].customer_id;
-          const uniqueIdSql =
-            "SELECT `client_unique_id` FROM `customers` WHERE `id` = ?";
-
-          connection.query(
-            uniqueIdSql,
-            [customerId],
-            (err, uniqueIdResults) => {
-              connectionRelease(connection); // Ensure connection is released
-
-              if (err) {
-                console.error("Database query error: 91", err);
-                return callback(err, null);
-              }
-
-              if (
-                uniqueIdResults.length > 0 &&
-                uniqueIdResults[0].client_unique_id
-              ) {
-                return callback(null, uniqueIdResults[0].client_unique_id);
-              } else {
-                return callback(null, false);
-              }
-            }
-          );
-        } else {
-          connectionRelease(connection); // Ensure connection is released
-          return callback(null, false);
-        }
+      // Fetch client_unique_id from customers
+      const uniqueIdSql = "SELECT `client_unique_id` FROM `customers` WHERE `id` = ?";
+      const uniqueIdResults = await sequelize.query(uniqueIdSql, {
+        replacements: [customerId],
+        type: QueryTypes.SELECT,
       });
-    });
+
+      if (!uniqueIdResults.length || !uniqueIdResults[0].client_unique_id) {
+        return callback(null, false); // No unique_id found
+      }
+
+      return callback(null, uniqueIdResults[0].client_unique_id);
+    } catch (error) {
+      console.error("Database query error:", error);
+      return callback(error, null);
+    }
   },
 
-  getClientNameByBranchId: (id, callback) => {
-    startConnection((err, connection) => {
-      if (err) {
-        return callback(
-          { message: "Failed to connect to the database", error: err },
-          null
-        );
+  getClientNameByBranchId: async (id, callback) => {
+    try {
+      // Fetch customer_id from branches
+      const sql = "SELECT `customer_id` FROM `branches` WHERE `id` = ?";
+      const results = await sequelize.query(sql, {
+        replacements: [id],
+        type: QueryTypes.SELECT,
+      });
+
+      if (!results.length || !results[0].customer_id) {
+        return callback(null, false); // No customer_id found
       }
 
-      const sql = "SELECT `customer_id` FROM `branches` WHERE `id` = ?";
-      connection.query(sql, [id], (err, results) => {
-        if (err) {
-          console.error("Database query error: 92", err);
-          connectionRelease(connection);
-          return callback(err, null);
-        }
+      const customerId = results[0].customer_id;
 
-        if (results.length > 0 && results[0].customer_id) {
-          const customerId = results[0].customer_id;
-          const uniqueIdSql = "SELECT `name` FROM `customers` WHERE `id` = ?";
-
-          connection.query(
-            uniqueIdSql,
-            [customerId],
-            (err, uniqueIdResults) => {
-              connectionRelease(connection); // Ensure connection is released
-
-              if (err) {
-                console.error("Database query error: 93", err);
-                return callback(err, null);
-              }
-
-              if (uniqueIdResults.length > 0 && uniqueIdResults[0].name) {
-                return callback(null, uniqueIdResults[0].name);
-              } else {
-                return callback(null, false);
-              }
-            }
-          );
-        } else {
-          connectionRelease(connection); // Ensure connection is released
-          return callback(null, false);
-        }
+      // Fetch name from customers
+      const nameSql = "SELECT `name` FROM `customers` WHERE `id` = ?";
+      const nameResults = await sequelize.query(nameSql, {
+        replacements: [customerId],
+        type: QueryTypes.SELECT,
       });
-    });
+
+      if (!nameResults.length || !nameResults[0].name) {
+        return callback(null, false); // No name found
+      }
+
+      return callback(null, nameResults[0].name);
+    } catch (error) {
+      console.error("Database query error:", error);
+      return callback(error, null);
+    }
   },
 
   update: (id, name, email, password, callback) => {
