@@ -119,6 +119,7 @@ async function createMailForCandidate(
 
     // Generate the HTML table from service details
     const table_rows = generateTable(services);
+    
     // return;
     // Replace placeholders in the email template
     let template = email.template
