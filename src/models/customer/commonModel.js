@@ -1,5 +1,6 @@
 const crypto = require("crypto");
-const { pool, startConnection, connectionRelease } = require("../../config/db");
+const { sequelize } = require("../../config/db");
+const { QueryTypes } = require("sequelize");
 
 // Generates a new random token
 const generateToken = () => crypto.randomBytes(32).toString("hex");
@@ -14,91 +15,65 @@ const common = {
    * @param {number} customer_id - Customer ID
    * @param {function} callback - Callback function
    */
-  isCustomerTokenValid: (_token, customer_id, callback) => {
+  isCustomerTokenValid: async (_token, customer_id, callback) => {
     if (typeof callback !== "function") {
-      console.error("Callback is not a function 1");
+      console.error("Callback is not a function");
       return;
     }
 
-    startConnection((err, connection) => {
-      if (err) {
-        console.error("Failed to connect to the database:", err);
-        return callback(
-          { status: false, message: "Database connection error" },
-          null
-        );
+    try {
+      const sql = `
+            SELECT \`login_token\`, \`token_expiry\`
+            FROM \`customers\`
+            WHERE \`id\` = ?
+        `;
+
+      const results = await sequelize.query(sql, {
+        replacements: [customer_id],
+        type: QueryTypes.SELECT,
+      });
+
+      if (results.length === 0) {
+        return callback({ status: false, message: "Customer not found" }, null);
       }
 
-      const sql = `
-        SELECT \`login_token\`, \`token_expiry\`
-        FROM \`customers\`
-        WHERE \`id\` = ?
-      `;
+      const currentToken = results[0].login_token;
+      const tokenExpiry = new Date(results[0].token_expiry);
+      const currentTime = new Date();
 
-      connection.query(sql, [customer_id], (queryErr, results) => {
-        if (queryErr) {
-          connectionRelease(connection);
-          console.error("Database query error: 52", queryErr);
-          return callback({ status: false, message: "Database error" }, null);
-        }
+      if (_token !== currentToken) {
+        return callback({ status: false, message: "Invalid token provided" }, null);
+      }
 
-        if (results.length === 0) {
-          connectionRelease(connection);
-          return callback(
-            { status: false, message: "Customer not found" },
-            null
-          );
-        }
+      if (tokenExpiry > currentTime) {
+        return callback(null, { status: true, message: "Token is valid" });
+      }
 
-        const currentToken = results[0].login_token;
-        const tokenExpiry = new Date(results[0].token_expiry);
-        const currentTime = new Date();
+      // Token expired, generate a new one
+      const newToken = generateToken();
+      const newTokenExpiry = getTokenExpiry(); // Ensure this returns a valid Date or timestamp
 
-        if (_token !== currentToken) {
-          connectionRelease(connection);
-          return callback(
-            { status: false, message: "Invalid token provided" },
-            null
-          );
-        }
-
-        if (tokenExpiry > currentTime) {
-          connectionRelease(connection);
-          callback(null, { status: true, message: "Token is valid" });
-        } else {
-          const newToken = generateToken();
-          const newTokenExpiry = getTokenExpiry();
-
-          const updateSql = `
+      const updateSql = `
             UPDATE \`customers\`
             SET \`login_token\` = ?, \`token_expiry\` = ?
             WHERE \`id\` = ?
-          `;
+        `;
 
-          connection.query(
-            updateSql,
-            [newToken, newTokenExpiry, customer_id],
-            (updateErr) => {
-              connectionRelease(connection); // Release connection
-
-              if (updateErr) {
-                console.error("Error updating token:", updateErr);
-                return callback(
-                  { status: false, message: "Error updating token" },
-                  null
-                );
-              }
-
-              callback(null, {
-                status: true,
-                message: "Token was expired and has been refreshed",
-                newToken,
-              });
-            }
-          );
-        }
+      await sequelize.query(updateSql, {
+        replacements: [newToken, newTokenExpiry, customer_id],
+        type: QueryTypes.UPDATE,
       });
-    });
+
+      return callback(null, {
+        status: true,
+        message: "Token was expired and has been refreshed",
+        newToken,
+      });
+
+    } catch (error) {
+      console.error("Database error:", error);
+      return callback({ status: false, message: "Internal server error" }, null);
+    }
   },
 
   /**
@@ -109,44 +84,32 @@ const common = {
    * @param {string} error - Error message if any
    * @param {function} callback - Callback function
    */
-  customerLoginLog: (customer_id, action, result, error, callback) => {
+  customerLoginLog: async (customer_id, action, result, error, callback) => {
     if (typeof callback !== "function") {
-      console.error("Callback is not a function 2");
+      console.error("Callback is not a function");
       return;
     }
 
-    startConnection((err, connection) => {
-      if (err) {
-        console.error("Failed to connect to the database:", err);
-        return callback(
-          { status: false, message: "Database connection error" },
-          null
-        );
-      }
-
+    try {
       const insertSql = `
-        INSERT INTO \`customer_login_logs\` (\`customer_id\`, \`action\`, \`result\`, \`error\`, \`created_at\`)
-        VALUES (?, ?, ?, ?, NOW())
-      `;
+            INSERT INTO \`customer_login_logs\` (\`customer_id\`, \`action\`, \`result\`, \`error\`, \`created_at\`)
+            VALUES (?, ?, ?, ?, NOW())
+        `;
 
-      connection.query(
-        insertSql,
-        [customer_id, action, result, error],
-        (insertErr) => {
-          connectionRelease(connection); // Release connection
+      await sequelize.query(insertSql, {
+        replacements: [customer_id, action, result, error],
+        type: QueryTypes.INSERT,
+      });
 
-          if (insertErr) {
-            console.error("Database insertion error:", insertErr);
-            return callback({ status: false, message: "Database error" }, null);
-          }
+      callback(null, {
+        status: true,
+        message: "Customer login log entry added successfully",
+      });
 
-          callback(null, {
-            status: true,
-            message: "Customer login log entry added successfully",
-          });
-        }
-      );
-    });
+    } catch (error) {
+      console.error("Database error:", error);
+      callback({ status: false, message: "Failed to add login log" }, null);
+    }
   },
 
   /**
@@ -159,7 +122,7 @@ const common = {
    * @param {string} error - Error message if any
    * @param {function} callback - Callback function
    */
-  customerActivityLog: (
+  customerActivityLog: async (
     customer_id,
     module,
     action,
@@ -169,43 +132,32 @@ const common = {
     callback
   ) => {
     if (typeof callback !== "function") {
-      console.error("Callback is not a function 3");
+      console.error("Callback is not a function");
       return;
     }
 
-    startConnection((err, connection) => {
-      if (err) {
-        console.error("Failed to connect to the database:", err);
-        return callback(
-          { status: false, message: "Database connection error" },
-          null
-        );
-      }
-
+    try {
       const insertSql = `
-        INSERT INTO \`customer_activity_logs\` (\`customer_id\`, \`module\`, \`action\`, \`result\`, \`update\`, \`error\`, \`created_at\`)
-        VALUES (?, ?, ?, ?, ?, ?, NOW())
-      `;
+            INSERT INTO \`customer_activity_logs\` (\`customer_id\`, \`module\`, \`action\`, \`result\`, \`update\`, \`error\`, \`created_at\`)
+            VALUES (?, ?, ?, ?, ?, ?, NOW())
+        `;
 
-      connection.query(
-        insertSql,
-        [customer_id, module, action, result, update, error],
-        (insertErr) => {
-          connectionRelease(connection); // Release connection
+      await sequelize.query(insertSql, {
+        replacements: [customer_id, module, action, result, update, error],
+        type: QueryTypes.INSERT,
+      });
 
-          if (insertErr) {
-            console.error("Database insertion error:", insertErr);
-            return callback({ status: false, message: "Database error" }, null);
-          }
+      callback(null, {
+        status: true,
+        message: "Customer activity log entry added successfully",
+      });
 
-          callback(null, {
-            status: true,
-            message: "Customer activity log entry added successfully",
-          });
-        }
-      );
-    });
+    } catch (error) {
+      console.error("Database error:", error);
+      callback({ status: false, message: "Failed to add activity log" }, null);
+    }
   },
+
 };
 
 module.exports = common;
