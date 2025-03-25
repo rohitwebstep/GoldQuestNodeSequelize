@@ -459,7 +459,7 @@ const Customer = {
               ON 
                   ca.id = dav.candidate_application_id
               WHERE 
-                  AND ca.\`id\` = ?`;
+                  ca.\`id\` = ?`;
 
       const params = [branch_id, candidate_application_id];
 

@@ -489,11 +489,10 @@ const candidateApplication = {
             AND CA.branch_id = ? 
             AND CA.customer_id = ?`;
 
-      const [results] = await sequelize.query(sql, {
+      const results = await sequelize.query(sql, {
         replacements: [app_id, branch_id, customer_id],
         type: QueryTypes.SELECT,
       });
-
       // Return the entry if it exists, or false otherwise
       const entry = results.length > 0 ? results[0] : false;
       callback(null, entry);

@@ -291,7 +291,7 @@ exports.create = (req, res) => {
                                 const bgv_href = `${appHost}/background-form?${base64_link_with_ids}`;
 
                                 // Fetch and process digital address service
-                                Service.digitlAddressService(
+                                Service.digitalAddressService(
                                   (err, serviceEntry) => {
                                     if (err) {
                                       console.error("Database error:", err);

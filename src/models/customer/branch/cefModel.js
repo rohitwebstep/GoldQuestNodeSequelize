@@ -3,112 +3,91 @@ const { sequelize } = require("../../../config/db");
 const { QueryTypes } = require("sequelize");
 
 const cef = {
-  formJson: (service_id, callback) => {
-    startConnection((err, connection) => {
-      if (err) {
-        return callback(
-          { message: "Failed to connect to the database", error: err },
-          null
-        );
-      }
+  formJson: async (service_id, callback) => {
+    try {
       const sql = "SELECT * FROM `cef_service_forms` WHERE `service_id` = ?";
-      connection.query(sql, [service_id], (queryErr, results) => {
-        connectionRelease(connection);
-        if (queryErr) {
-          console.error("Database query error: 107", queryErr);
-          return callback(queryErr, null);
-        }
-        callback(null, results);
+
+      const [results] = await sequelize.query(sql, {
+        replacements: [service_id],
+        type: QueryTypes.SELECT,
       });
-    });
+
+      callback(null, results);
+    } catch (error) {
+      callback(error, null);
+    }
   },
 
-  updateSubmitStatus: (data, callback) => {
-    const { candidateAppId, status } = data;
+  updateSubmitStatus: async (data, callback) => {
+    try {
+      const { candidateAppId, status } = data;
 
-    // If no duplicates are found, proceed with updating the admin record
-    const sql = `
-        UPDATE \`cef_applications\` 
-        SET 
-          \`is_submitted\` = ?
-        WHERE \`candidate_application_id\` = ?
-      `;
+      const sql = `
+            UPDATE \`cef_applications\` 
+            SET 
+              \`is_submitted\` = ?
+            WHERE \`candidate_application_id\` = ?
+        `;
 
-    startConnection((err, connection) => {
-      if (err) {
-        return callback(err, null);
-      }
-
-      connection.query(sql, [status, candidateAppId], (queryErr, results) => {
-        connectionRelease(connection); // Release the connection
-
-        if (queryErr) {
-          console.error("Database query error: 51", queryErr);
-          return callback(queryErr, null);
-        }
-        callback(null, results);
+      const [results] = await sequelize.query(sql, {
+        replacements: [status, candidateAppId],
+        type: QueryTypes.UPDATE, // Correct type for UPDATE queries
       });
-    });
+
+      callback(null, results);
+    } catch (error) {
+      callback(error, null);
+    }
   },
 
-  bgvFormOpened: (candidate_application_id, callback) => {
+  bgvFormOpened: async (candidate_application_id, callback) => {
+    try {
+      const sql = `
+            UPDATE \`candidate_applications\` 
+            SET 
+              \`is_bgv_form_opened\` = ?
+            WHERE \`id\` = ?
+        `;
 
-    // If no duplicates are found, proceed with updating the admin record
-    const sql = `
-        UPDATE \`candidate_applications\` 
-        SET 
-          \`is_bgv_form_opened\` = ?
-        WHERE \`id\` = ?
-      `;
-
-    startConnection((err, connection) => {
-      if (err) {
-        return callback(err, null);
-      }
-
-      connection.query(sql, ['1', candidate_application_id], (queryErr, results) => {
-        connectionRelease(connection); // Release the connection
-
-        if (queryErr) {
-          console.error("Database query error: 51", queryErr);
-          return callback(queryErr, null);
-        }
-        callback(null, results);
+      const [results] = await sequelize.query(sql, {
+        replacements: ['1', candidate_application_id],
+        type: QueryTypes.UPDATE, // Correct query type
       });
-    });
+
+      callback(null, results);
+    } catch (error) {
+      callback(error, null);
+    }
   },
 
-  updateReminderDetails: (data, callback) => {
-    const { candidateAppId } = data;
+  updateReminderDetails: async (data, callback) => {
+    try {
+      const { candidateAppId } = data;
 
-    const updateSQL = `
-      UPDATE \`candidate_applications\` 
-      SET 
-        \`cef_last_reminder_sent_at\` = CURDATE(),
-        \`dav_last_reminder_sent_at\` = CURDATE(),
-        \`reminder_sent\` = reminder_sent + 1
-      WHERE \`id\` = ?
-    `;
+      const updateSQL = `
+            UPDATE \`candidate_applications\` 
+            SET 
+                \`cef_last_reminder_sent_at\` = CURDATE(),
+                \`dav_last_reminder_sent_at\` = CURDATE(),
+                \`reminder_sent\` = \`reminder_sent\` + 1
+            WHERE \`id\` = ?
+        `;
 
-    startConnection((err, connection) => {
-      if (err) return callback(err, null);
-
-      connection.query(updateSQL, [candidateAppId], (queryErr, results) => {
-        connectionRelease(connection); // Ensure connection is released
-
-        if (queryErr) {
-          console.error("Database query error:", queryErr);
-          return callback(queryErr, null);
-        }
-
-        callback(null, results);
+      const [results] = await sequelize.query(updateSQL, {
+        replacements: [candidateAppId],
+        type: QueryTypes.UPDATE, // ✅ Correct query type for UPDATE
       });
-    });
+
+      callback(null, results);
+    } catch (error) {
+      callback(error, null);
+    }
   },
 
-  unsubmittedApplications: (callback) => {
-    const dayInterval = 0;
-    const sql = `
+  unsubmittedApplications: async (callback) => {
+    try {
+      const dayInterval = 0;
+      const sql = `
                 SELECT 
                     ca.id AS candidate_application_id, 
                     ca.name AS application_name, 
@@ -141,285 +120,240 @@ const cef = {
                     AND ca.reminder_sent < 5;
   `;
 
-    startConnection((err, connection) => {
-      if (err) return callback(err, null);
-
-      connection.query(sql, [dayInterval, dayInterval], (queryErr, results) => {
-        connectionRelease(connection); // Release the connection
-
-        if (queryErr) {
-          console.error("Database query error: 51", queryErr);
-          return callback(queryErr, null);
-        }
-        callback(null, results);
+      const results = await sequelize.query(sql, {
+        replacements: [dayInterval, dayInterval],
+        type: QueryTypes.SELECT,
       });
-    });
+
+      callback(null, results);
+    } catch (error) {
+      callback(error, null);
+    }
   },
 
-  filledOrUnfilledServices: (servicesIds, candidate_application_id, callback) => {
-    if (!servicesIds) {
-      return callback(null, {});
-    }
-    let services = Array.isArray(servicesIds) ? servicesIds : servicesIds.split(',').map(s => s.trim());
-    if (!Array.isArray(services) || services.length === 0) {
-      return callback(null, {}); // Return empty if no services are provided
-    }
-
-    startConnection((err, connection) => {
-      if (err) {
-        console.error("Database connection failed:", err);
-        return callback({ message: "Failed to connect to the database", error: err }, null);
+  filledOrUnfilledServices: async (servicesIds, candidate_application_id, callback) => {
+    try {
+      if (!servicesIds) {
+        return callback(null, {});
       }
 
-      let completedQueries = 0;
-      const serviceData = {}; // Store data for each service.
+      let services = Array.isArray(servicesIds) ? servicesIds : servicesIds.split(',').map(s => s.trim());
+      if (services.length === 0) {
+        return callback(null, {});
+      }
 
-      // Helper function to check completion
-      const checkCompletion = () => {
-        if (completedQueries === services.length) {
-          connectionRelease(connection);
-          callback(null, serviceData);
-        }
-      };
+      const serviceData = {};
 
-      // Loop through each service and perform actions
-      services.forEach((service, index) => {
+      for (const service of services) {
+        // Get JSON structure from cef_service_forms
         const query = "SELECT `json` FROM `cef_service_forms` WHERE `service_id` = ?";
+        const result = await sequelize.query(query, {
+          replacements: [service],
+          type: QueryTypes.SELECT,
+        });
 
-        connection.query(query, [service], (err, result) => {
-          if (err) {
-            console.error(`Error fetching JSON for service ${service}:`, err);
-            completedQueries++;
-            return checkCompletion();
-          }
+        if (!result.length) {
+          console.warn(`No JSON found for service: ${service}`);
+          serviceData[service] = { heading: `Service ${service}`, is_submitted: false };
+          continue;
+        }
 
-          if (result.length === 0) {
-            console.warn(`No JSON found for service: ${service}`);
-            completedQueries++;
-            return checkCompletion();
-          }
-
+        let jsonData;
+        try {
           const rawJson = result[0].json;
           const sanitizedJson = rawJson
             .replace(/\\"/g, '"')
             .replace(/\\'/g, "'");
           const jsonData = JSON.parse(sanitizedJson);
+        } catch (jsonErr) {
+          console.error(`Invalid JSON for service: ${service}`, jsonErr);
+          serviceData[service] = { heading: `Service ${service}`, is_submitted: false };
+          continue;
+        }
 
-          const dbTable = jsonData.db_table || null;
-          const heading = jsonData.heading || `Service ${service}`;
+        const dbTable = jsonData.db_table || null;
+        const heading = jsonData.heading || `Service ${service}`;
 
-          if (!dbTable) {
-            console.warn(`Missing db_table for service: ${service}`);
-            serviceData[service] = { heading, is_submitted: false };
-            completedQueries++;
-            return checkCompletion();
-          }
+        if (!dbTable) {
+          console.warn(`Missing db_table for service: ${service}`);
+          serviceData[service] = { heading, is_submitted: false };
+          continue;
+        }
 
-          const sql = `SELECT is_submitted FROM \`cef_${dbTable}\` WHERE \`candidate_application_id\` = ?`;
+        // Check submission status in cef_{dbTable}
+        const sql = `SELECT is_submitted FROM \`cef_${dbTable}\` WHERE \`candidate_application_id\` = ?`;
 
-          connection.query(sql, [candidate_application_id], (queryErr, dbTableResults) => {
-            if (queryErr) {
-              if (queryErr.code === "ER_NO_SUCH_TABLE") {
-                console.warn(`Table "cef_${dbTable}" does not exist. Skipping service: ${service}`);
-                serviceData[service] = { heading, is_submitted: false };
-              } else {
-                console.error(`Error executing query for service ${service}:`, queryErr);
-                serviceData[service] = { heading, is_submitted: false };
-              }
-            } else {
-              const isSubmitted = dbTableResults.length > 0 && dbTableResults[0].is_submitted === 1;
-              serviceData[service] = { heading, is_submitted: isSubmitted };
-            }
-            completedQueries++;
-            checkCompletion();
+        try {
+          const dbTableResults = await sequelize.query(sql, {
+            replacements: [candidate_application_id],
+            type: QueryTypes.SELECT,
           });
-        });
-      });
-    });
+
+          const isSubmitted = dbTableResults.length > 0 && dbTableResults[0].is_submitted === 1;
+          serviceData[service] = { heading, is_submitted: isSubmitted };
+        } catch (queryErr) {
+          if (queryErr.code === "ER_NO_SUCH_TABLE") {
+            console.warn(`Table "cef_${dbTable}" does not exist. Skipping service: ${service}`);
+          } else {
+            console.error(`Error executing query for service ${service}:`, queryErr);
+          }
+          serviceData[service] = { heading, is_submitted: false };
+        }
+      }
+
+      callback(null, serviceData);
+    } catch (error) {
+      console.error("Error in filledOrUnfilledServices:", error);
+      callback(error, null);
+    }
   },
 
   formJsonWithData: async (services, candidate_application_id, callback) => {
     try {
       const serviceData = {}; // Object to store data for each service.
-  
+
       // Step 1: Loop through each service and perform actions
       for (const service of services) {
         try {
           const query = "SELECT `json` FROM `cef_service_forms` WHERE `service_id` = ?";
           const serviceQuery = "SELECT `group` FROM `services` WHERE `id` = ?";
-  
+
           // Fetch JSON structure for the service
           const result = await sequelize.query(query, {
             replacements: [service],
             type: QueryTypes.SELECT,
           });
-  
+
           if (result.length === 0) {
             console.warn(`No JSON found for service: ${service}`);
             continue;
           }
-  
+
           // Parse JSON safely
           const rawJson = result[0].json;
           const sanitizedJson = rawJson.replace(/\\"/g, '"').replace(/\\'/g, "'");
           const jsonData = JSON.parse(sanitizedJson);
           const dbTable = jsonData.db_table;
-  
+
           // Fetch data from corresponding table
           const sql = `SELECT * FROM \`cef_${dbTable}\` WHERE \`candidate_application_id\` = ?`;
           const dbTableResults = await sequelize.query(sql, {
             replacements: [candidate_application_id],
             type: QueryTypes.SELECT,
           });
-  
+
           const dbTableResult = dbTableResults.length > 0 ? dbTableResults[0] : null;
-  
+
           // Fetch service group details
           const serviceResult = await sequelize.query(serviceQuery, {
             replacements: [service],
             type: QueryTypes.SELECT,
           });
-  
+
           const serviceGroup = serviceResult.length > 0 ? serviceResult[0].group : null;
-  
+
           // Store results
           serviceData[service] = { jsonData, data: dbTableResult, group: serviceGroup };
-  
+
         } catch (error) {
           console.error(`Error processing service ${service}:`, error);
         }
       }
-  
+
       // Return the final result
       return callback(null, serviceData);
     } catch (err) {
       console.error("Database connection error:", err);
       return callback({ message: "Failed to retrieve service data", error: err }, null);
     }
-  },  
+  },
 
-  getCMEFormDataByApplicationId: (
-    candidate_application_id,
-    db_table,
-    callback
-  ) => {
-    startConnection((err, connection) => {
-      if (err) {
-        return callback(
-          { message: "Failed to connect to the database", error: err },
-          null
-        );
-      }
+  getCMEFormDataByApplicationId: async (candidate_application_id, db_table, callback) => {
+    try {
       const checkTableSql = `
-        SELECT COUNT(*) AS count 
-        FROM information_schema.tables 
-        WHERE table_schema = ? AND table_name = ?`;
+            SELECT COUNT(*) AS count 
+            FROM information_schema.tables 
+            WHERE table_schema = ? AND table_name = ?`;
 
-      connection.query(
-        checkTableSql,
-        [process.env.DB_NAME || "goldquest", db_table],
-        (tableErr, tableResults) => {
-          if (tableErr) {
-            console.error("Error checking table existence:", tableErr);
-            connectionRelease(connection);
-            return callback(tableErr);
-          }
+      const tableResults = await sequelize.query(checkTableSql, {
+        replacements: [process.env.DB_NAME || "goldquest", db_table],
+        type: QueryTypes.SELECT,
+      });
 
-          if (tableResults[0].count === 0) {
-            const createTableSql = `
-            CREATE TABLE \`${db_table}\` (
-                \`id\` INT NOT NULL AUTO_INCREMENT,
-                \`cef_id\` INT NOT NULL,
-                \`candidate_application_id\` INT NOT NULL,
-                \`branch_id\` INT(11) NOT NULL,
-                \`customer_id\` INT(11) NOT NULL,
-                \`status\` ENUM(
-                          'nil', 'initiated', 'hold', 'closure_advice', 'wip', 'insuff', 'completed', 
-                          'stopcheck', 'active_employment', 'not_doable', 'candidate_denied', 
-                          'completed_green', 'completed_orange', 'completed_red', 'completed_yellow', 'completed_pink'
-                        ) DEFAULT NULL,
-                \`is_submitted\` TINYINT(1) DEFAULT 0,
-                \`is_billed\` TINYINT(1) DEFAULT 0,
-                \`billed_date\` TIMESTAMP NULL DEFAULT NULL,
-                \`created_at\` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
-                \`updated_at\` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-                PRIMARY KEY (\`id\`),
-                KEY \`candidate_application_id\` (\`candidate_application_id\`),
-                KEY \`cef_application_customer_id\` (\`customer_id\`),
-                KEY \`cef_application_cef_id\` (\`cef_id\`),
-                CONSTRAINT \`fk_${db_table}_candidate_application_id\` FOREIGN KEY (\`candidate_application_id\`) 
-                    REFERENCES \`candidate_applications\` (\`id\`) ON DELETE CASCADE,
-                CONSTRAINT \`fk_${db_table}_customer_id\` FOREIGN KEY (\`customer_id\`) 
-                    REFERENCES \`customers\` (\`id\`) ON DELETE CASCADE,
-                CONSTRAINT \`fk_${db_table}_cef_id\` FOREIGN KEY (\`cef_id\`) 
-                    REFERENCES \`cef_applications\` (\`id\`) ON DELETE CASCADE
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-        `;
+      if (tableResults[0].count === 0) {
+        console.warn(`Table ${db_table} does not exist. Creating it now.`);
 
-            connection.query(createTableSql, (createErr) => {
-              if (createErr) {
-                console.error(`Error creating table "${db_table}":`, createErr);
-                connectionRelease(connection);
-                return callback(createErr);
-              }
-              fetchData();
-            });
-          } else {
-            fetchData();
-          }
+        const createTableSql = `
+                CREATE TABLE \`${db_table}\` (
+                    \`id\` INT NOT NULL AUTO_INCREMENT,
+                    \`cef_id\` INT NOT NULL,
+                    \`candidate_application_id\` INT NOT NULL,
+                    \`branch_id\` INT(11) NOT NULL,
+                    \`customer_id\` INT(11) NOT NULL,
+                    \`status\` ENUM(
+                        'nil', 'initiated', 'hold', 'closure_advice', 'wip', 'insuff', 'completed', 
+                        'stopcheck', 'active_employment', 'not_doable', 'candidate_denied', 
+                        'completed_green', 'completed_orange', 'completed_red', 'completed_yellow', 'completed_pink'
+                    ) DEFAULT NULL,
+                    \`is_submitted\` TINYINT(1) DEFAULT 0,
+                    \`is_billed\` TINYINT(1) DEFAULT 0,
+                    \`billed_date\` TIMESTAMP NULL DEFAULT NULL,
+                    \`created_at\` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+                    \`updated_at\` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    PRIMARY KEY (\`id\`),
+                    KEY \`candidate_application_id\` (\`candidate_application_id\`),
+                    KEY \`cef_application_customer_id\` (\`customer_id\`),
+                    KEY \`cef_application_cef_id\` (\`cef_id\`),
+                    CONSTRAINT \`fk_${db_table}_candidate_application_id\` FOREIGN KEY (\`candidate_application_id\`) 
+                        REFERENCES \`candidate_applications\` (\`id\`) ON DELETE CASCADE,
+                    CONSTRAINT \`fk_${db_table}_customer_id\` FOREIGN KEY (\`customer_id\`) 
+                        REFERENCES \`customers\` (\`id\`) ON DELETE CASCADE,
+                    CONSTRAINT \`fk_${db_table}_cef_id\` FOREIGN KEY (\`cef_id\`) 
+                        REFERENCES \`cef_applications\` (\`id\`) ON DELETE CASCADE
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;`;
 
-          function fetchData() {
-            const sql = `SELECT * FROM \`${db_table}\` WHERE \`candidate_application_id\` = ?`;
-            connection.query(
-              sql,
-              [candidate_application_id],
-              (queryErr, results) => {
-                connectionRelease(connection);
-                if (queryErr) {
-                  console.error("Error executing query:", queryErr);
-                  return callback(queryErr);
-                }
-                const response = results.length > 0 ? results[0] : null;
-                callback(null, response);
-              }
-            );
-          }
-        }
-      );
-    });
-  },
-
-  getCEFApplicationById: (
-    candidate_application_id,
-    branch_id,
-    customer_id,
-    callback
-  ) => {
-    startConnection((err, connection) => {
-      if (err) {
-        return callback(
-          { message: "Failed to connect to the database", error: err },
-          null
-        );
+        await sequelize.query(createTableSql, {
+          type: QueryTypes.RAW, // Use RAW for DDL operations
+        });
       }
-      const sql =
-        "SELECT * FROM `cef_applications` WHERE `candidate_application_id` = ? AND `branch_id` = ? AND `customer_id` = ?";
-      connection.query(
-        sql,
-        [candidate_application_id, branch_id, customer_id],
-        (queryErr, results) => {
-          connectionRelease(connection);
-          if (queryErr) {
-            console.error("Database query error: 108", queryErr);
-            return callback(queryErr, null);
-          }
-          callback(null, results[0]);
-        }
-      );
-    });
+
+      // Fetch data after ensuring table exists
+      const fetchSql = `SELECT * FROM \`${db_table}\` WHERE \`candidate_application_id\` = ?`;
+
+      const results = await sequelize.query(fetchSql, {
+        replacements: [candidate_application_id],
+        type: QueryTypes.SELECT,
+      });
+
+      const response = results.length > 0 ? results[0] : null;
+      callback(null, response);
+    } catch (error) {
+      console.error("Error in getCMEFormDataByApplicationId:", error);
+      callback({ message: "Database query failed", error }, null);
+    }
   },
 
-  create: (
+  getCEFApplicationById: async (candidate_application_id, branch_id, customer_id, callback) => {
+    try {
+      const sql = `
+            SELECT * FROM \`cef_applications\` 
+            WHERE \`candidate_application_id\` = ? 
+            AND \`branch_id\` = ? 
+            AND \`customer_id\` = ?`;
+
+      const results = await sequelize.query(sql, {
+        replacements: [candidate_application_id, branch_id, customer_id],
+        type: QueryTypes.SELECT,
+      });
+
+      callback(null, results.length > 0 ? results[0] : null);
+    } catch (error) {
+      console.error("Error in getCEFApplicationById:", error);
+      callback({ message: "Database query failed", error }, null);
+    }
+  },
+
+  create: async (
     personal_information,
     is_employment_gap,
     is_education_gap,
@@ -430,62 +364,29 @@ const cef = {
   ) => {
     const fields = Object.keys(personal_information);
 
-    startConnection((err, connection) => {
-      if (err) {
-        return callback(
-          { message: "Failed to connect to the database", error: err },
-          null
-        );
-      }
-      const checkColumnsSql = `SHOW COLUMNS FROM \`cef_applications\``;
+    const checkColumnsSql = `SHOW COLUMNS FROM \`cef_applications\``;
 
-      connection.query(checkColumnsSql, (checkErr, results) => {
-        if (checkErr) {
-          console.error("Error checking columns:", checkErr);
-          connectionRelease(connection);
-          return callback(checkErr, null);
-        }
+    const results = await sequelize.query(checkColumnsSql, {
+      type: QueryTypes.SELECT,
+    });
+    const existingColumns = results.map((row) => row.Field);
+    const missingColumns = fields.filter(
+      (field) => !existingColumns.includes(field)
+    );
+    if (missingColumns.length > 0) {
+      const alterQueries = missingColumns.map((column) => {
+        return `ALTER TABLE cef_applications ADD COLUMN ${column} LONGTEXT`;
+      });
 
-        const existingColumns = results.map((row) => row.Field);
-        const missingColumns = fields.filter(
-          (field) => !existingColumns.includes(field)
-        );
-        if (missingColumns.length > 0) {
-          const alterQueries = missingColumns.map((column) => {
-            return `ALTER TABLE cef_applications ADD COLUMN ${column} LONGTEXT`;
-          });
+      const alterPromises = alterQueries.map(
+        async (query) =>
+          await sequelize.query(query, {
+            type: QueryTypes.ALTER,
+          })
+      );
 
-          const alterPromises = alterQueries.map(
-            (query) =>
-              new Promise((resolve, reject) => {
-                connection.query(query, (alterErr) => {
-                  if (alterErr) {
-                    console.error("Error adding column:", alterErr);
-                    return reject(alterErr);
-                  }
-                  resolve();
-                });
-              })
-          );
-
-          Promise.all(alterPromises)
-            .then(() => {
-              cef.insertOrUpdateEntry(
-                personal_information,
-                is_employment_gap,
-                is_education_gap,
-                candidate_application_id,
-                branch_id,
-                customer_id,
-                callback
-              );
-            })
-            .catch((alterErr) => {
-              console.error("Error executing ALTER statements:", alterErr);
-              connectionRelease(connection);
-              callback(alterErr, null);
-            });
-        } else {
+      Promise.all(alterPromises)
+        .then(() => {
           cef.insertOrUpdateEntry(
             personal_information,
             is_employment_gap,
@@ -495,13 +396,28 @@ const cef = {
             customer_id,
             callback
           );
-        }
-      });
-    });
+        })
+        .catch((alterErr) => {
+          console.error("Error executing ALTER statements:", alterErr);
+          connectionRelease(connection);
+          callback(alterErr, null);
+        });
+    } else {
+      cef.insertOrUpdateEntry(
+        personal_information,
+        is_employment_gap,
+        is_education_gap,
+        candidate_application_id,
+        branch_id,
+        customer_id,
+        callback
+      );
+    }
+
   },
 
   // Helper function for inserting or updating the entry
-  insertOrUpdateEntry: (
+  insertOrUpdateEntry: async (
     personal_information,
     is_employment_gap,
     is_education_gap,
@@ -510,76 +426,78 @@ const cef = {
     customer_id,
     callback
   ) => {
-    startConnection((err, connection) => {
-      if (err) {
-        return callback(
-          { message: "Failed to connect to the database", error: err },
-          null
-        );
-      }
-      const checkEntrySql =
-        "SELECT * FROM cef_applications WHERE candidate_application_id = ?";
-      connection.query(
-        checkEntrySql,
-        [candidate_application_id],
-        (entryErr, entryResults) => {
-          if (entryErr) {
-            console.error("Error checking entry existence:", entryErr);
-            connectionRelease(connection);
-            return callback(entryErr, null);
-          }
+    const checkEntrySql =
+      "SELECT * FROM cef_applications WHERE candidate_application_id = ?";
 
-          personal_information.is_employment_gap = is_employment_gap;
-          personal_information.is_education_gap = is_education_gap;
-
-          if (entryResults.length > 0) {
-            // Entry exists, so update it
-            personal_information.branch_id = branch_id;
-            personal_information.customer_id = customer_id;
-
-            const updateSql =
-              "UPDATE cef_applications SET ? WHERE candidate_application_id = ?";
-            connection.query(
-              updateSql,
-              [personal_information, candidate_application_id],
-              (updateErr, updateResult) => {
-                connectionRelease(connection);
-                if (updateErr) {
-                  console.error("Error updating application:", updateErr);
-                  return callback(updateErr, null);
-                }
-                // Return the id (primary key) of the updated row
-                const updatedId = entryResults[0].id; // Get the existing `id` from the SELECT result
-                callback(null, { insertId: updatedId, result: updateResult });
-              }
-            );
-          } else {
-            // Entry does not exist, so insert it
-            const insertSql = "INSERT INTO cef_applications SET ?";
-            connection.query(
-              insertSql,
-              {
-                ...personal_information,
-                candidate_application_id,
-                branch_id,
-                customer_id,
-              },
-              (insertErr, insertResult) => {
-                connectionRelease(connection);
-                if (insertErr) {
-                  console.error("Error inserting application:", insertErr);
-                  return callback(insertErr, null);
-                }
-                callback(null, insertResult);
-              }
-            );
-          }
-        }
-      );
+    const entryResults = await sequelize.query(checkEntrySql, {
+      replacements: [candidate_application_id],
+      type: QueryTypes.SELECT,
     });
+
+    personal_information.is_employment_gap = is_employment_gap;
+    personal_information.is_education_gap = is_education_gap;
+
+    if (entryResults.length > 0) {
+      // Entry exists, so update it
+      personal_information.branch_id = branch_id;
+      personal_information.customer_id = customer_id;
+
+      // Function to filter out undefined, null, or empty values
+      const filteredInformation = Object.fromEntries(
+        Object.entries(personal_information).filter(
+          ([key, value]) => key !== 'customer_id' && key !== 'branch_id' && value !== undefined && value !== null && value !== ''
+        )
+      );
+      // Create a string of key-value pairs in the required format
+      const updateSqlHelper = Object.entries(filteredInformation)
+        .map(([key, value]) => `\`${key}\` = '${value}'`)
+        .join(', ');
+      const updateSql =
+        `UPDATE cef_applications SET ${updateSqlHelper} WHERE candidate_application_id = ?`;
+      const updateResult = await sequelize.query(updateSql, {
+        replacements: [candidate_application_id],
+        type: QueryTypes.UPDATE,
+      });
+      // Return the id (primary key) of the updated row
+      const updatedId = entryResults[0].id; // Get the existing `id` from the SELECT result
+      callback(null, { insertId: updatedId, result: updateResult });
+    } else {
+      const replacements = {
+        ...personal_information,
+        candidate_application_id,
+        branch_id,
+        customer_id,
+      };
+
+      // Function to filter out undefined, null, or empty values
+      const filteredInformation = Object.fromEntries(
+        Object.entries(replacements).filter(
+          ([key, value]) => value !== undefined && value !== null && value !== ''
+        )
+      );
+      // console.log(`filteredInformation - `, filteredInformation);
+
+      // Get keys (indexes) and values
+      const indexes = Object.keys(filteredInformation);
+      const values = Object.values(filteredInformation);
+
+      // Build the SQL query dynamically
+      const insertSql = `INSERT INTO cef_applications (${indexes.join(', ')}) VALUES (${indexes.map(() => '?').join(', ')})`;
+
+      const insertResult = await sequelize.query(insertSql, {
+        replacements: values,
+        type: QueryTypes.INSERT,
+      });
+      // console.log(`insertResult - `, insertResult);
+      const insertId = insertResult[0];
+
+      callback(null, { insertId });
+    }
+
+
   },
 
-  createOrUpdateAnnexure: (
+  createOrUpdateAnnexure: async (
     cef_id,
     candidate_application_id,
     branch_id,
@@ -597,31 +515,19 @@ const cef = {
     removeKeys.forEach(key => delete mainJson[key]);
     const fields = Object.keys(mainJson);
 
-    startConnection((err, connection) => {
-      if (err) {
-        return callback(
-          { message: "Failed to connect to the database", error: err },
-          null
-        );
-      }
-      // 1. Check if the table exists
-      const checkTableSql = `
+    // 1. Check if the table exists
+    const checkTableSql = `
             SELECT COUNT(*) AS count 
             FROM information_schema.tables 
             WHERE table_schema = ? AND table_name = ?`;
 
-      connection.query(
-        checkTableSql,
-        [process.env.DB_NAME || "goldquest", db_table],
-        (tableErr, tableResults) => {
-          if (tableErr) {
-            console.error("Error checking table existence:", tableErr);
-            connectionRelease(connection);
-            return callback(tableErr, null);
-          }
+    const tableResults = await sequelize.query(checkTableSql, {
+      replacements: [process.env.DB_NAME || "goldquest", db_table],
+      type: QueryTypes.SELECT,
+    });
 
-          if (tableResults[0].count === 0) {
-            const createTableSql = `
+    if (tableResults[0].count === 0) {
+      const createTableSql = `
             CREATE TABLE \`${db_table}\` (
                 \`id\` INT NOT NULL AUTO_INCREMENT,
                 \`cef_id\` INT NOT NULL,
@@ -654,130 +560,111 @@ const cef = {
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
         `;
 
-            connection.query(createTableSql, (createErr) => {
-              if (createErr) {
-                console.error("Error creating table:", createErr);
-                connectionRelease(connection);
-                return callback(createErr, null);
-              }
-              proceedToCheckColumns();
-            });
-          } else {
-            proceedToCheckColumns();
-          }
+      await sequelize.query(createTableSql, {
+        type: QueryTypes.SELECT,
+      });
+      proceedToCheckColumns();
+    } else {
+      proceedToCheckColumns();
+    }
 
-          function proceedToCheckColumns() {
-            const checkColumnsSql = `SHOW COLUMNS FROM \`${db_table}\``;
+    async function proceedToCheckColumns() {
+      const checkColumnsSql = `SHOW COLUMNS FROM \`${db_table}\``;
+      const results = await sequelize.query(checkColumnsSql, {
+        type: QueryTypes.SELECT,
+      });
 
-            connection.query(checkColumnsSql, (err, results) => {
-              if (err) {
-                console.error("Error checking columns:", err);
-                connectionRelease(connection);
-                return callback(err, null);
-              }
-
-              const existingColumns = results.map((row) => row.Field);
-              const missingColumns = fields.filter(
-                (field) => !existingColumns.includes(field)
-              );
-
-              // 4. Add missing columns
-              if (missingColumns.length > 0) {
-                const alterQueries = missingColumns.map((column) => {
-                  return `ALTER TABLE \`${db_table}\` ADD COLUMN \`${column}\` LONGTEXT`; // Adjust data type as necessary
-                });
-
-                // Run all ALTER statements in sequence
-                const alterPromises = alterQueries.map(
-                  (query) =>
-                    new Promise((resolve, reject) => {
-                      connection.query(query, (alterErr) => {
-                        if (alterErr) {
-                          console.error("Error adding column:", alterErr);
-                          return reject(alterErr);
-                        }
-                        resolve();
-                      });
-                    })
-                );
-
-                Promise.all(alterPromises)
-                  .then(() => checkAndUpdateEntry())
-                  .catch((alterErr) => {
-                    console.error(
-                      "Error executing ALTER statements:",
-                      alterErr
-                    );
-                    connectionRelease(connection);
-                    callback(alterErr, null);
-                  });
-              } else {
-                checkAndUpdateEntry();
-              }
-            });
-          }
-
-          function checkAndUpdateEntry() {
-            // 5. Check if entry exists by candidate_application_id
-            const checkEntrySql = `SELECT * FROM \`${db_table}\` WHERE candidate_application_id = ?`;
-            connection.query(
-              checkEntrySql,
-              [candidate_application_id],
-              (entryErr, entryResults) => {
-                if (entryErr) {
-                  console.error("Error checking entry existence:", entryErr);
-                  connectionRelease(connection);
-                  return callback(entryErr, null);
-                }
-
-                // 6. Insert or update the entry
-                if (entryResults.length > 0) {
-                  const updateSql = `UPDATE \`${db_table}\` SET ? WHERE candidate_application_id = ?`;
-                  connection.query(
-                    updateSql,
-                    [mainJson, candidate_application_id],
-                    (updateErr, updateResult) => {
-                      connectionRelease(connection); // Ensure the connection is released
-                      if (updateErr) {
-                        console.error("Error updating application:", updateErr);
-                        return callback(updateErr, null);
-                      }
-                      callback(null, updateResult);
-                    }
-                  );
-                } else {
-                  const insertSql = `INSERT INTO \`${db_table}\` SET ?`;
-                  connection.query(
-                    insertSql,
-                    {
-                      ...mainJson,
-                      candidate_application_id,
-                      branch_id,
-                      customer_id,
-                      cef_id, // Include cef_id in the insert statement
-                    },
-                    (insertErr, insertResult) => {
-                      connectionRelease(connection); // Ensure the connection is released
-                      if (insertErr) {
-                        console.error(
-                          "Error inserting application:",
-                          insertErr
-                        );
-                        return callback(insertErr, null);
-                      }
-                      callback(null, insertResult);
-                    }
-                  );
-                }
-              }
-            );
-          }
-        }
+      const existingColumns = results.map((row) => row.Field);
+      const missingColumns = fields.filter(
+        (field) => !existingColumns.includes(field)
       );
-    });
+
+      // 4. Add missing columns
+      if (missingColumns.length > 0) {
+        const alterQueries = missingColumns.map((column) => {
+          return `ALTER TABLE \`${db_table}\` ADD COLUMN \`${column}\` LONGTEXT`; // Adjust data type as necessary
+        });
+
+        // Run all ALTER statements in sequence
+        const alterPromises = alterQueries.map(
+          async (query) =>
+            await sequelize.query(query, {
+              type: QueryTypes.SELECT,
+            })
+        );
+
+        Promise.all(alterPromises)
+          .then(() => checkAndUpdateEntry())
+          .catch((alterErr) => {
+            console.error(
+              "Error executing ALTER statements:",
+              alterErr
+            );
+            callback(alterErr, null);
+          });
+      } else {
+        checkAndUpdateEntry();
+      }
+
+    }
+
+    async function checkAndUpdateEntry() {
+      // 5. Check if entry exists by candidate_application_id
+      const checkEntrySql = `SELECT * FROM \`${db_table}\` WHERE candidate_application_id = ?`;
+      const entryResults = await sequelize.query(checkEntrySql, {
+        replacements: [candidate_application_id],
+        type: QueryTypes.SELECT,
+      });
+
+      // 6. Insert or update the entry
+      if (entryResults.length > 0) {
+
+        // Create a string of key-value pairs in the required format
+        const updateSqlHelper = Object.entries(mainJson)
+          .map(([key, value]) => `\`${key}\` = '${value}'`)
+          .join(', ');
+
+        const updateSql = `UPDATE \`${db_table}\` SET ${updateSqlHelper} WHERE candidate_application_id = ?`;
+        const updateResult = await sequelize.query(updateSql, {
+          replacements: [candidate_application_id],
+          type: QueryTypes.UPDATE,
+        });
+        callback(null, updateResult);
+      } else {
+
+        const replacements = {
+          ...mainJson,
+          candidate_application_id,
+          branch_id,
+          customer_id,
+          cef_id, // Include cef_id in the insert statement
+        };
+
+        // console.log(`replacements - `, replacements);
+
+        // Get keys (indexes) and values
+        const indexes = Object.keys(replacements);
+        const values = Object.values(replacements);
+
+        // Build the SQL query dynamically
+        const insertSql = `INSERT INTO \`${db_table}\` (${indexes.join(', ')}) VALUES (${indexes.map(() => '?').join(', ')})`;
+
+        const insertResult = await sequelize.query(insertSql, {
+          replacements: values,
+          type: QueryTypes.INSERT,
+        });
+        // console.log(`insertResult - `, insertResult);
+        const insertId = insertResult[0];
+
+        callback(null, { insertId });
+      }
+
+    }
+
+
   },
 
-  upload: (
+  upload: async (
     cef_id,
     candidate_application_id,
     db_table,
@@ -785,34 +672,20 @@ const cef = {
     savedImagePaths,
     callback
   ) => {
-    startConnection((err, connection) => {
-      if (err) {
-        console.error("Error starting connection:", err);
-        return callback(false, {
-          error: "Error starting database connection.",
-          details: err,
-        });
-      }
-
-      const checkTableSql = `
+    const checkTableSql = `
         SELECT COUNT(*) AS count 
         FROM information_schema.tables 
         WHERE table_schema = DATABASE() 
         AND table_name = ?`;
 
-      connection.query(checkTableSql, [db_table], (tableErr, tableResults) => {
-        if (tableErr) {
-          connectionRelease(connection);
-          console.error("Error checking table existence:", tableErr);
-          return callback(false, {
-            error: "Error checking table existence.",
-            details: tableErr,
-          });
-        }
+    const tableResults = await sequelize.query(checkTableSql, {
+      replacements: [db_table],
+      type: QueryTypes.SELECT,
+    });
 
-        if (tableResults[0].count === 0) {
+    if (tableResults[0].count === 0) {
 
-          const createTableSql = `
+      const createTableSql = `
           CREATE TABLE \`${db_table}\` (
               \`id\` INT NOT NULL AUTO_INCREMENT,
               \`cef_id\` INT NOT NULL,
@@ -845,238 +718,150 @@ const cef = {
           ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
       `;
 
-          connection.query(createTableSql, (createErr) => {
-            if (createErr) {
-              connectionRelease(connection);
-              console.error("Error creating table:", createErr);
-              return callback(false, {
-                error: "Error creating table.",
-                details: createErr,
-              });
-            }
-            proceedToCheckColumns();
-          });
-        } else {
-          proceedToCheckColumns();
-        }
 
-        function proceedToCheckColumns() {
-          const currentColumnsSql = `SHOW COLUMNS FROM \`${db_table}\``;
-
-          connection.query(currentColumnsSql, (err, results) => {
-            if (err) {
-              connectionRelease(connection);
-              return callback(false, {
-                error: "Error fetching current columns.",
-                details: err,
-              });
-            }
-
-            const existingColumns = results.map((row) => row.Field);
-            const expectedColumns = [db_column];
-            const missingColumns = expectedColumns.filter(
-              (column) => !existingColumns.includes(column)
-            );
-
-            const addColumnPromises = missingColumns.map((column) => {
-              return new Promise((resolve, reject) => {
-                const alterTableSql = `ALTER TABLE \`${db_table}\` ADD COLUMN \`${column}\` LONGTEXT`;
-                connection.query(alterTableSql, (alterErr) => {
-                  if (alterErr) {
-                    reject(alterErr);
-                  } else {
-                    resolve();
-                  }
-                });
-              });
-            });
-
-            Promise.all(addColumnPromises)
-              .then(() => {
-                const insertSql = `UPDATE \`${db_table}\` SET \`${db_column}\` = ? WHERE \`candidate_application_id\` = ?`;
-                const joinedPaths = savedImagePaths.join(", ");
-                connection.query(
-                  insertSql,
-                  [joinedPaths, candidate_application_id],
-                  (queryErr, results) => {
-                    connectionRelease(connection);
-
-                    if (queryErr) {
-                      console.error("Error updating records:", queryErr);
-                      return callback(false, {
-                        error: "Error updating records.",
-                        details: queryErr,
-                      });
-                    }
-                    callback(true, results);
-                  }
-                );
-              })
-              .catch((columnErr) => {
-                connectionRelease(connection);
-                console.error("Error adding columns:", columnErr);
-                callback(false, {
-                  error: "Error adding columns.",
-                  details: columnErr,
-                });
-              });
-          });
-        }
+      await sequelize.query(createTableSql, {
+        replacements: [interfaceType],
+        type: QueryTypes.SELECT,
       });
-    });
+      proceedToCheckColumns();
+    } else {
+      proceedToCheckColumns();
+    }
+
+    async function proceedToCheckColumns() {
+
+      const currentColumnsSql = `SHOW COLUMNS FROM \`${db_table}\``;
+      const results = await sequelize.query(currentColumnsSql, {
+        type: QueryTypes.SELECT,
+      });
+
+      const existingColumns = results.map((row) => row.Field);
+      const expectedColumns = [db_column];
+      const missingColumns = expectedColumns.filter(
+        (column) => !existingColumns.includes(column)
+      );
+
+      const addColumnPromises = missingColumns.map(async (column) => {
+        const alterTableSql = `ALTER TABLE \`${db_table}\` ADD COLUMN \`${column}\` LONGTEXT`;
+
+        await sequelize.query(alterTableSql, {
+          type: QueryTypes.ALTER,
+        });
+      });
+
+      Promise.all(addColumnPromises)
+        .then(async () => {
+          const insertSql = `UPDATE \`${db_table}\` SET \`${db_column}\` = ? WHERE \`candidate_application_id\` = ?`;
+          const joinedPaths = savedImagePaths.join(", ");
+          const results = await sequelize.query(insertSql, {
+            replacements: [joinedPaths, candidate_application_id],
+            type: QueryTypes.UPDATE,
+          });
+          callback(true, results);
+        })
+        .catch((columnErr) => {
+          console.error("Error adding columns:", columnErr);
+          callback(false, {
+            error: "Error adding columns.",
+            details: columnErr,
+          });
+        });
+
+    }
+
+
   },
 
-  getAttachmentsByClientAppID: (candidate_application_id, callback) => {
-    startConnection((err, connection) => {
-      if (err) {
-        console.error("Error starting connection:", err);
-        return callback(err, null);
+  getAttachmentsByClientAppID: async (candidate_application_id, callback) => {
+    try {
+      const sql = "SELECT `services` FROM `candidate_applications` WHERE `id` = ?";
+      const results = await sequelize.query(sql, {
+        replacements: [candidate_application_id],
+        type: QueryTypes.SELECT,
+      });
+
+      if (results.length === 0) {
+        return callback(null, []);
       }
 
-      const sql =
-        "SELECT `services` FROM `candidate_applications` WHERE `id` = ?";
-      connection.query(sql, [candidate_application_id], (err, results) => {
-        if (err) {
-          console.error("Database query error: 26", err);
-          connectionRelease(connection);
-          return callback(err, null);
-        }
-
-        if (results.length > 0) {
-          const cefSql =
-            "SELECT `signature`, `resume_file`, `govt_id`, `pan_card_image`, `aadhar_card_image`, `passport_photo` FROM `cef_applications` WHERE `candidate_application_id` = ?";
-
-          connection.query(
-            cefSql,
-            [candidate_application_id],
-            (err, cefResults) => {
-              if (err) {
-                console.error("Database query error: 26", err);
-                connectionRelease(connection);
-                return callback(err, null);
-              }
-
-              // Merging cefResults with ongoing data (finalAttachments)
-              let finalAttachments = [];
-
-              // If cefResults contains any attachments, add them to finalAttachments
-              if (cefResults.length > 0) {
-                const cefData = cefResults[0];
-                Object.keys(cefData).forEach((field) => {
-                  if (cefData[field]) {
-                    finalAttachments.push(cefData[field]); // Add non-falsy values to finalAttachments
-                  }
-                });
-              }
-
-              const services = results[0].services.split(","); // Split services by comma
-              const dbTableFileInputs = {}; // Object to store db_table and its file inputs
-              let completedQueries = 0;
-
-              // Step 1: Loop through each service and perform actions
-              services.forEach((service) => {
-                const query =
-                  "SELECT `json` FROM `cef_service_forms` WHERE `service_id` = ?";
-                connection.query(query, [service], (err, result) => {
-                  completedQueries++;
-
-                  if (err) {
-                    console.error(
-                      "Error fetching JSON for service:",
-                      service,
-                      err
-                    );
-                  } else if (result.length > 0) {
-                    try {
-                      // Parse the JSON data
-                      const rawJson = result[0].json;
-                      const sanitizedJson = rawJson
-                        .replace(/\\"/g, '"')
-                        .replace(/\\'/g, "'");
-                      const jsonData = JSON.parse(sanitizedJson);
-                      const dbTable = jsonData.db_table;
-
-                      // Initialize an array for the dbTable if not already present
-                      if (!dbTableFileInputs[dbTable]) {
-                        dbTableFileInputs[dbTable] = [];
-                      }
-
-                      // Extract inputs with type 'file' and add to the db_table array
-                      jsonData.rows.forEach((row) => {
-                        row.inputs.forEach((input) => {
-                          if (input.type === "file") {
-                            dbTableFileInputs[dbTable].push(input.name);
-                          }
-                        });
-                      });
-                    } catch (parseErr) {
-                      console.error(
-                        "Error parsing JSON for service:",
-                        service,
-                        parseErr
-                      );
-                    }
-                  }
-
-                  // When all services have been processed
-                  if (completedQueries === services.length) {
-                    // Fetch the host from the database and process file attachments
-                    let tableQueries = 0;
-                    const totalTables = Object.keys(dbTableFileInputs).length;
-
-                    // Loop through each db_table and perform a query
-                    for (const [dbTable, fileInputNames] of Object.entries(
-                      dbTableFileInputs
-                    )) {
-                      const selectQuery = `SELECT ${fileInputNames.length > 0
-                        ? fileInputNames.join(", ")
-                        : "*"
-                        } FROM cef_${dbTable} WHERE candidate_application_id = ?`;
-
-                      connection.query(
-                        selectQuery,
-                        [candidate_application_id],
-                        (err, rows) => {
-                          tableQueries++;
-
-                          if (err) {
-                            console.error(
-                              `Error querying table ${dbTable}:`,
-                              err
-                            );
-                          } else {
-                            // Combine values from each row into a single string
-                            rows.forEach((row) => {
-                              const attachments = Object.values(row)
-                                .filter((value) => value) // Remove any falsy values
-                                .join(","); // Join values by comma
-
-                              // Split and concatenate the URL with each attachment
-                              attachments.split(",").forEach((attachment) => {
-                                finalAttachments.push(`${attachment}`);
-                              });
-                            });
-                          }
-
-                          // When all db_table queries are completed, return finalAttachments
-                          if (tableQueries === totalTables) {
-                            connectionRelease(connection); // Release connection before callback
-                            callback(null, finalAttachments.join(", "));
-                          }
-                        }
-                      );
-                    }
-                  }
-                });
-              });
-            }
-          );
-        } else {
-          connectionRelease(connection); // Release connection if no results found
-          callback(null, []); // Return an empty array if no results found
-        }
+      // Fetch attachments from cef_applications
+      const cefSql =
+        "SELECT `signature`, `resume_file`, `govt_id`, `pan_card_image`, `aadhar_card_image`, `passport_photo` FROM `cef_applications` WHERE `candidate_application_id` = ?";
+      const cefResults = await sequelize.query(cefSql, {
+        replacements: [candidate_application_id],
+        type: QueryTypes.SELECT,
       });
-    });
+
+      let finalAttachments = [];
+
+      // If attachments exist in cef_applications, add them
+      if (cefResults.length > 0) {
+        for (const field in cefResults[0]) {
+          if (cefResults[0][field]) {
+            finalAttachments.push(cefResults[0][field]); // Push only non-null values
+          }
+        }
+      }
+
+      // Process services
+      const services = results[0].services.split(",");
+      const dbTableFileInputs = {};
+
+      for (const service of services) {
+        const query = "SELECT `json` FROM `cef_service_forms` WHERE `service_id` = ?";
+        const result = await sequelize.query(query, {
+          replacements: [service],
+          type: QueryTypes.SELECT,
+        });
+
+        if (result.length > 0) {
+          try {
+            const rawJson = result[0].json.replace(/\\"/g, '"').replace(/\\'/g, "'");
+            const jsonData = JSON.parse(rawJson);
+            const dbTable = jsonData.db_table;
+
+            if (!dbTableFileInputs[dbTable]) {
+              dbTableFileInputs[dbTable] = [];
+            }
+
+            for (const row of jsonData.rows) {
+              for (const input of row.inputs) {
+                if (input.type === "file") {
+                  dbTableFileInputs[dbTable].push(input.name);
+                }
+              }
+            }
+          } catch (parseErr) {
+            console.error("Error parsing JSON for service:", service, parseErr);
+          }
+        }
+      }
+
+      // Fetch attachments from related tables
+      for (const [dbTable, fileInputNames] of Object.entries(dbTableFileInputs)) {
+        if (fileInputNames.length === 0) continue;
+
+        const selectQuery = `SELECT ${fileInputNames.join(", ")} FROM cef_${dbTable} WHERE candidate_application_id = ?`;
+        const rows = await sequelize.query(selectQuery, {
+          replacements: [candidate_application_id],
+          type: QueryTypes.SELECT,
+        });
+
+        for (const row of rows) {
+          for (const value of Object.values(row)) {
+            if (value) {
+              finalAttachments.push(value);
+            }
+          }
+        }
+      }
+
+      callback(null, finalAttachments.join(", "));
+    } catch (error) {
+      console.error("Error fetching attachments:", error);
+      callback(error, null);
+    }
   },
+
 };
 module.exports = cef;
