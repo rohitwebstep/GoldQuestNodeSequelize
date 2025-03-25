@@ -1,4 +1,5 @@
-const { pool, startConnection, connectionRelease } = require("../../../config/db");
+const { sequelize } = require("../../../config/db");
+const { QueryTypes } = require("sequelize");
 
 const backgroundVerificationForm = {
     list: async (callback) => {
