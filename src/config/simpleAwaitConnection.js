@@ -85,4 +85,4 @@ const connectionRelease = async () => { };
 /**
  * ✅ Export database connection utilities
  */
-module.exports = { startConnection, connectionRelease };
+module.exports = {  };
