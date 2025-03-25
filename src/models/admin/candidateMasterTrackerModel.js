@@ -157,10 +157,15 @@ const Customer = {
                 cef.id AS cef_id,
                 dav.created_at AS dav_filled_date,
                 dav.id AS dav_id,
+                c.client_unique_id,
                 CASE WHEN cef.id IS NOT NULL THEN 1 ELSE 0 END AS cef_submitted,
                 CASE WHEN dav.id IS NOT NULL THEN 1 ELSE 0 END AS dav_submitted
             FROM 
                 \`candidate_applications\` ca
+            INNER JOIN 
+                \`customers\` c
+            ON 
+                c.id = ca.customer_id
             LEFT JOIN 
                 \`cef_applications\` cef 
             ON 
@@ -202,6 +207,7 @@ const Customer = {
       // Process each candidate application
       await Promise.all(
         results.map(async (candidateApp) => {
+          candidateApp.applications_id = `CD-${candidateApp.client_unique_id}-${candidateApp.main_id}`;
           const servicesResult = { cef: {}, dav: {} };
           const servicesIds = candidateApp.services ? candidateApp.services.split(",") : [];
 
@@ -320,10 +326,15 @@ const Customer = {
                 cef.id AS cef_id,
                 dav.created_at AS dav_filled_date,
                 dav.id AS dav_id,
+                c.client_unique_id,
                 CASE WHEN cef.id IS NOT NULL THEN 1 ELSE 0 END AS cef_submitted,
                 CASE WHEN dav.id IS NOT NULL THEN 1 ELSE 0 END AS dav_submitted
             FROM 
                 \`candidate_applications\` ca
+            INNER JOIN 
+                \`customers\` c
+            ON 
+                c.id = ca.customer_id
             LEFT JOIN 
                 \`cef_applications\` cef 
             ON 
@@ -366,6 +377,7 @@ const Customer = {
           }
 
           const cmtPromises = results.map(async (candidateApp) => {
+            candidateApp.applications_id = `CD-${candidateApp.client_unique_id}-${candidateApp.main_id}`;
             const servicesResult = { cef: {}, dav: {} };
             const serviceNames = [];
             const servicesIds = candidateApp.services
