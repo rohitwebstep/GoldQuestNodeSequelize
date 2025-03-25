@@ -9,7 +9,6 @@ exports.create = (req, res) => {
   let missingFields = [];
   if (!title || title === "") missingFields.push("Title");
   if (!description || description === "") missingFields.push("Description");
-  if (!email_description || email_description === "") missingFields.push("Email Description");
   if (!short_code || short_code === "") missingFields.push("Short Code");
   if (!group || group === "") missingFields.push("Service Group");
   if (!sac_code || sac_code === "") missingFields.push("SAC Code");
@@ -229,7 +228,6 @@ exports.update = (req, res) => {
   if (!id || id === "") missingFields.push("Service ID");
   if (!title || title === "") missingFields.push("Title");
   if (!description || description === "") missingFields.push("Description");
-  if (!email_description || email_description === "") missingFields.push("Email Description");
   if (!short_code || short_code === "") missingFields.push("Short Code");
   if (!sac_code || sac_code === "") missingFields.push("SAC Code");
   if (!excel_sorting || excel_sorting === "") missingFields.push("Excel Sorting");

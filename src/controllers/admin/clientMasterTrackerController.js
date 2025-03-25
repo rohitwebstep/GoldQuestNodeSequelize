@@ -1266,10 +1266,10 @@ exports.generateReport = (req, res) => {
                     const annexurePromises = [];
 
                     for (let key in annexure) {
-
                       const db_table = key ?? null;
                       const modifiedDbTable = db_table.replace(/-/g, "_");
                       const subJson = annexure[modifiedDbTable] ?? null;
+
                       const annexurePromise = new Promise((resolve, reject) => {
                         ClientMasterTrackerModel.getCMTAnnexureByApplicationId(
                           application_id,
@@ -1289,10 +1289,9 @@ exports.generateReport = (req, res) => {
                                 ? "update"
                                 : "create";
 
-                            let cmt_id;
-                            if (annexureLogStatus === "update") {
+                            if (logStatus == "update") {
                               cmt_id = currentCMTApplication.id;
-                            } else if (annexureLogStatus === "create") {
+                            } else if (logStatus == "create") {
                               cmt_id = cmtResult.insertId;
                             }
 
@@ -1318,6 +1317,7 @@ exports.generateReport = (req, res) => {
                                         ...changes,
                                       })
                                       : JSON.stringify(mainJson);
+
                                   AdminCommon.adminActivityLog(
                                     admin_id,
                                     "admin/client-master-tracker",
@@ -1358,7 +1358,6 @@ exports.generateReport = (req, res) => {
                           branch_id,
                           (emailError, emailData) => {
                             if (emailError) {
-
                               console.error(
                                 "Error fetching emails:",
                                 emailError
@@ -1388,7 +1387,6 @@ exports.generateReport = (req, res) => {
                               application_id,
                               branch_id,
                               (err, application) => {
-
                                 if (err) {
                                   console.error("Database error:", err);
                                   return res.status(500).json({
