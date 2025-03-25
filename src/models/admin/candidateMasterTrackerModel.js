@@ -12,7 +12,7 @@ const Customer = {
     try {
       let customersIDConditionString = "";
 
-      if (filter_status && filter_status !== null && filter_status !== "") {
+      if (filter_status && filter_status !== null && filter_status.trim() !== "") {
         // Query when `filter_status` exists
         const sql = `
           SELECT b.customer_id, 
@@ -147,35 +147,35 @@ const Customer = {
   applicationListByBranch: async (filter_status, branch_id, status, callback) => {
     try {
       let sql = `
-            SELECT 
-                ca.*, 
-                ca.id AS main_id, 
-                cef.created_at AS cef_filled_date,
-                cef.is_employment_gap,
-                cef.is_education_gap,
-                cef.created_at,
-                cef.id AS cef_id,
-                dav.created_at AS dav_filled_date,
-                dav.id AS dav_id,
-                c.client_unique_id,
-                CASE WHEN cef.id IS NOT NULL THEN 1 ELSE 0 END AS cef_submitted,
-                CASE WHEN dav.id IS NOT NULL THEN 1 ELSE 0 END AS dav_submitted
-            FROM 
-                \`candidate_applications\` ca
-            INNER JOIN 
-                \`customers\` c
-            ON 
-                c.id = ca.customer_id
-            LEFT JOIN 
-                \`cef_applications\` cef 
-            ON 
-                ca.id = cef.candidate_application_id
-            LEFT JOIN 
-                \`dav_applications\` dav 
-            ON 
-                ca.id = dav.candidate_application_id
-            WHERE 
-                ca.\`branch_id\` = ?`;
+              SELECT 
+                  ca.*, 
+                  ca.id AS main_id, 
+                  cef.created_at AS cef_filled_date,
+                  cef.is_employment_gap,
+                  cef.is_education_gap,
+                  cef.created_at,
+                  cef.id AS cef_id,
+                  dav.created_at AS dav_filled_date,
+                  dav.id AS dav_id,
+                  c.client_unique_id,
+                  CASE WHEN cef.id IS NOT NULL THEN 1 ELSE 0 END AS cef_submitted,
+                  CASE WHEN dav.id IS NOT NULL THEN 1 ELSE 0 END AS dav_submitted
+              FROM 
+                  \`candidate_applications\` ca
+              INNER JOIN 
+                  \`customers\` c
+              ON 
+                  c.id = ca.customer_id
+              LEFT JOIN 
+                  \`cef_applications\` cef 
+              ON 
+                  ca.id = cef.candidate_application_id
+              LEFT JOIN 
+                  \`dav_applications\` dav 
+              ON 
+                  ca.id = dav.candidate_application_id
+              WHERE 
+                  ca.\`branch_id\` = ?`;
 
       const params = [branch_id];
 
@@ -196,10 +196,10 @@ const Customer = {
 
       // Fetch Digital Address Verification service
       const davSql = `
-            SELECT id FROM \`services\`
-            WHERE LOWER(\`title\`) LIKE '%digital%' 
-            AND (LOWER(\`title\`) LIKE '%verification%' OR LOWER(\`title\`) LIKE '%address%')
-            LIMIT 1`;
+              SELECT id FROM \`services\`
+              WHERE LOWER(\`title\`) LIKE '%digital%' 
+              AND (LOWER(\`title\`) LIKE '%verification%' OR LOWER(\`title\`) LIKE '%address%')
+              LIMIT 1`;
 
       const davResults = await sequelize.query(davSql, { type: QueryTypes.SELECT });
       const digitalAddressID = davResults.length > 0 ? parseInt(davResults[0].id, 10) : null;
@@ -231,9 +231,9 @@ const Customer = {
           // Fetch DAV details
           if (candidateApp.dav_submitted === 1) {
             const checkDavSql = `
-                        SELECT identity_proof, home_photo, locality
-                        FROM \`dav_applications\`
-                        WHERE \`candidate_application_id\` = ?`;
+                          SELECT identity_proof, home_photo, locality
+                          FROM \`dav_applications\`
+                          WHERE \`candidate_application_id\` = ?`;
 
             try {
               const davResults = await sequelize.query(checkDavSql, {
@@ -263,9 +263,9 @@ const Customer = {
           // Fetch CEF details
           if (candidateApp.cef_submitted === 1) {
             const checkCefSql = `
-                        SELECT signature, resume_file, govt_id, pan_card_image, aadhar_card_image, passport_photo
-                        FROM \`cef_applications\`
-                        WHERE \`candidate_application_id\` = ?`;
+                          SELECT signature, resume_file, govt_id, pan_card_image, aadhar_card_image, passport_photo
+                          FROM \`cef_applications\`
+                          WHERE \`candidate_application_id\` = ?`;
 
             try {
               const cefResults = await sequelize.query(checkCefSql, {
@@ -294,6 +294,110 @@ const Customer = {
                 servicesResult.cef["Candidate Basic Attachments"] = candidateBasicAttachments;
                 candidateApp.service_data = servicesResult;
               }
+
+              const dbTableFileInputs = {};
+              const dbTableColumnLabel = {};
+              const dbTableWithHeadings = {};
+
+              try {
+                // Fetch JSON data for all services
+                await Promise.all(
+                  servicesIds.map(async (service) => {
+                    const query = "SELECT `json` FROM `cef_service_forms` WHERE `service_id` = ?";
+                    const result = await sequelize.query(query, {
+                      replacements: [service],
+                      type: QueryTypes.SELECT,
+                    });
+
+                    if (result.length > 0) {
+                      try {
+                        const rawJson = result[0].json;
+                        const sanitizedJson = rawJson
+                          .replace(/\\"/g, '"')
+                          .replace(/\\'/g, "'");
+                        const jsonData = JSON.parse(sanitizedJson);
+                        const dbTable = jsonData.db_table;
+                        const heading = jsonData.heading;
+
+                        if (dbTable && heading) {
+                          dbTableWithHeadings[dbTable] = heading;
+                        }
+
+                        if (!dbTableFileInputs[dbTable]) {
+                          dbTableFileInputs[dbTable] = [];
+                        }
+
+                        jsonData.rows.forEach((row) => {
+                          row.inputs.forEach((input) => {
+                            if (input.type === "file") {
+                              dbTableFileInputs[dbTable].push(input.name);
+                              dbTableColumnLabel[input.name] = input.label;
+                            }
+                          });
+                        });
+                      } catch (parseErr) {
+                        console.error("Error parsing JSON:", parseErr);
+                      }
+                    }
+                  })
+                );
+
+                const tableQueries = await Promise.all(
+                  Object.entries(dbTableFileInputs).map(async ([dbTable, fileInputNames]) => {
+                    if (fileInputNames.length === 0) {
+                      console.log(`Skipping table ${dbTable} as fileInputNames is empty.`);
+                      return;
+                    }
+
+                    try {
+                      // Fetch existing columns in the table
+                      const describeQuery = `DESCRIBE cef_${dbTable}`;
+                      const existingColumns = await sequelize.query(describeQuery, {
+                        type: QueryTypes.SELECT,
+                      });
+
+                      const columnNames = existingColumns.map((col) => col.Field);
+                      const validColumns = fileInputNames.filter((col) => columnNames.includes(col));
+
+                      if (validColumns.length === 0) {
+                        console.log(`Skipping table ${dbTable} as no valid columns exist.`);
+                        return;
+                      }
+
+                      // Fetch relevant data
+                      const selectQuery = `SELECT ${validColumns.join(", ")} FROM cef_${dbTable} WHERE candidate_application_id = ?`;
+                      const rows = await sequelize.query(selectQuery, {
+                        replacements: [candidateApp.main_id],
+                        type: QueryTypes.SELECT,
+                      });
+
+                      // Map column names to labels
+                      const updatedRows = rows.map((row) => {
+                        const updatedRow = {};
+                        Object.entries(row).forEach(([key, value]) => {
+                          if (value != null && value.trim() !== "") {
+                            updatedRow[dbTableColumnLabel[key] || key] = value;
+                          }
+                        });
+                        return updatedRow;
+                      });
+
+                      if (updatedRows.length > 0) {
+                        servicesResult.cef[dbTableWithHeadings[dbTable]] = updatedRows;
+                      }
+                    } catch (error) {
+                      console.error(`Error processing table ${dbTable}:`, error);
+                    }
+                  })
+                );
+
+                if (tableQueries.length > 0) {
+                  candidateApp.service_data = servicesResult;
+                }
+              } catch (error) {
+                return Promise.reject(error);
+              }
+
             } catch (error) {
               console.error("Error processing CEF services:", error);
             }
@@ -326,15 +430,10 @@ const Customer = {
                 cef.id AS cef_id,
                 dav.created_at AS dav_filled_date,
                 dav.id AS dav_id,
-                c.client_unique_id,
                 CASE WHEN cef.id IS NOT NULL THEN 1 ELSE 0 END AS cef_submitted,
                 CASE WHEN dav.id IS NOT NULL THEN 1 ELSE 0 END AS dav_submitted
             FROM 
                 \`candidate_applications\` ca
-            INNER JOIN 
-                \`customers\` c
-            ON 
-                c.id = ca.customer_id
             LEFT JOIN 
                 \`cef_applications\` cef 
             ON 
@@ -377,7 +476,6 @@ const Customer = {
           }
 
           const cmtPromises = results.map(async (candidateApp) => {
-            candidateApp.applications_id = `CD-${candidateApp.client_unique_id}-${candidateApp.main_id}`;
             const servicesResult = { cef: {}, dav: {} };
             const serviceNames = [];
             const servicesIds = candidateApp.services
@@ -603,7 +701,7 @@ const Customer = {
                           const updatedRows = rows.map((row) => {
                             const updatedRow = {};
                             for (const [key, value] of Object.entries(row)) {
-                              if (value != null && value !== "") {
+                              if (value != null && value.trim() !== "") {
                                 const label = dbTableColumnLabel[key];
                                 updatedRow[label || key] = value; // Use label if available, else keep original key
                               }
@@ -738,12 +836,12 @@ const Customer = {
           \`candidate_application_id\` = ? 
           AND \`branch_id\` = ?
       `;
-  
+
       const cefResults = await sequelize.query(checkCefSql, {
         replacements: [application_id, branch_id],
         type: QueryTypes.SELECT,
       });
-  
+
       // If no entry in cef_applications, return error
       if (cefResults.length === 0) {
         return callback(
@@ -751,13 +849,13 @@ const Customer = {
           null
         );
       }
-  
+
       return callback(null, cefResults[0]);
     } catch (error) {
       console.error("Error fetching CEF application:", error);
       return callback({ message: "Internal Server Error" }, null);
     }
-  },  
+  },
 
   davApplicationByID: (application_id, branch_id, callback) => {
     // Start a connection
