@@ -1,13 +1,15 @@
 const crypto = require("crypto");
-const { pool, startConnection, connectionRelease } = require("../../config/db");
+const { sequelize } = require("../../config/db");
+const { QueryTypes } = require("sequelize");
 
 // Function to hash the password using MD5
 const hashPassword = (password) =>
   crypto.createHash("md5").update(password).digest("hex");
 
 const Customer = {
-  list: (callback) => {
-    const sql = `WITH BranchesCTE AS (
+  list: async (callback) => {
+    try {
+      const sql = `WITH BranchesCTE AS (
       SELECT 
         b.id AS branch_id,
         b.customer_id
@@ -56,122 +58,80 @@ const Customer = {
     ON 
       customers.id = application_counts.customer_id;`;
 
-    startConnection((err, connection) => {
-      if (err) {
-        return callback(
-          { message: "Failed to connect to the database", error: err },
-          null
-        );
-      }
-
-      connection.query(sql, (err, results) => {
-        connectionRelease(connection); // Ensure connection is released
-
-        if (err) {
-          console.error("Database query error: 36", err);
-          return callback(err, null);
-        }
-        callback(null, results);
+      const results = await sequelize.query(sql, {
+        type: QueryTypes.SELECT,
       });
-    });
+
+      callback(null, results);
+    } catch (error) {
+      callback({ message: "An error occurred while retrieving the list", error }, null);
+    }
   },
 
-  listByCustomerID: (customer_id, callback) => {
-    const sql = `SELECT b.id AS branch_id, b.name AS branch_name, COUNT(ca.id) AS application_count
+  listByCustomerID: async (customer_id, callback) => {
+    try {
+      const sql = `SELECT b.id AS branch_id, b.name AS branch_name, COUNT(ca.id) AS application_count
       FROM client_applications ca
       INNER JOIN branches b ON ca.branch_id = b.id
       WHERE ca.status != 'closed'
       AND b.customer_id = ?
       GROUP BY b.name;`;
 
-    startConnection((err, connection) => {
-      if (err) {
-        return callback(
-          { message: "Failed to connect to the database", error: err },
-          null
-        );
-      }
-
-      connection.query(sql, [customer_id], (err, results) => {
-        connectionRelease(connection); // Ensure connection is released
-
-        if (err) {
-          console.error("Database query error: 37", err);
-          return callback(err, null);
-        }
-        callback(null, results);
+      const results = await sequelize.query(sql, {
+        replacements: [customer_id],
+        type: QueryTypes.SELECT,
       });
-    });
+
+      callback(null, results);
+    } catch (error) {
+      callback({ message: "An error occurred while retrieving branches by customer ID", error }, null);
+    }
   },
 
-  applicationListByBranch: (branch_id, callback) => {
-    const sql = `SELECT * FROM \`client_applications\` WHERE \`status\` != 'closed' AND \`branch_id\` = ?;`;
+  applicationListByBranch: async (branch_id, callback) => {
+    try {
+      const sql = `SELECT * FROM \`client_applications\` WHERE \`status\` != 'closed' AND \`branch_id\` = ?;`;
 
-    startConnection((err, connection) => {
-      if (err) {
-        return callback(
-          { message: "Failed to connect to the database", error: err },
-          null
-        );
-      }
-
-      connection.query(sql, [branch_id], (err, results) => {
-        connectionRelease(connection); // Ensure connection is released
-
-        if (err) {
-          console.error("Database query error: 38", err);
-          return callback(err, null);
-        }
-        callback(null, results);
+      const results = await sequelize.query(sql, {
+        replacements: [branch_id],
+        type: QueryTypes.SELECT,
       });
-    });
+
+      callback(null, results);
+    } catch (error) {
+      callback({ message: "An error occurred while retrieving applications by branch ID", error }, null);
+    }
   },
 
-  applicationByID: (application_id, branch_id, callback) => {
-    const sql =
-      "SELECT * FROM `client_applications` WHERE `id` = ? AND `branch_id` = ?";
+  applicationByID: async (application_id, branch_id, callback) => {
+    try {
+      const sql =
+        "SELECT * FROM `client_applications` WHERE `id` = ? AND `branch_id` = ?";
 
-    startConnection((err, connection) => {
-      if (err) {
-        return callback(
-          { message: "Failed to connect to the database", error: err },
-          null
-        );
-      }
-
-      connection.query(sql, [application_id, branch_id], (err, results) => {
-        connectionRelease(connection); // Ensure connection is released
-
-        if (err) {
-          console.error("Database query error: 39", err);
-          return callback(err, null);
-        }
-        callback(null, results[0] || null); // Return single application or null if not found
+      const results = await sequelize.query(sql, {
+        replacements: [application_id, branch_id],
+        type: QueryTypes.SELECT,
       });
-    });
+
+      callback(null, results[0] || null); // Return single application or null if not found
+    } catch (error) {
+      callback({ message: "An error occurred while retrieving the application by ID", error }, null);
+    }
   },
 
-  reportFormJsonByServiceID: (service_id, callback) => {
-    const sql = "SELECT `json` FROM `report_forms` WHERE `id` = ?";
+  reportFormJsonByServiceID: async (service_id, callback) => {
+    try {
+      const sql = "SELECT `json` FROM `report_forms` WHERE `id` = ?";
 
-    startConnection((err, connection) => {
-      if (err) {
-        return callback(
-          { message: "Failed to connect to the database", error: err },
-          null
-        );
-      }
-
-      connection.query(sql, [service_id], (err, results) => {
-        connectionRelease(connection); // Ensure connection is released
-
-        if (err) {
-          console.error("Database query error: 40", err);
-          return callback(err, null);
-        }
-        callback(null, results[0] || null); // Return single application or null if not found
+      const results = await sequelize.query(sql, {
+        replacements: [service_id],
+        type: QueryTypes.SELECT,
       });
-    });
+
+      callback(null, results[0] || null); // Return JSON or null if not found
+    } catch (error) {
+      callback({ message: "An error occurred while retrieving the report form JSON by service ID", error }, null);
+    }
   },
 };
 
