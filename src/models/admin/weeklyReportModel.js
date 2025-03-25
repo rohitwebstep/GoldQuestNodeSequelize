@@ -1,31 +1,24 @@
-const { pool, startConnection, connectionRelease } = require("../../config/db");
+const { sequelize } = require("../../config/db");
+const { QueryTypes } = require("sequelize");
 
 const WeeklyReport = {
-  list: (startOfWeek, endOfWeek, callback) => {
+  list: async (startOfWeek, endOfWeek, callback) => {
     const sql = `
       SELECT * FROM \`client_applications\`
       WHERE \`created_at\` BETWEEN ? AND ?
     `;
 
-    startConnection((err, connection) => {
-      if (err) {
-        console.error("Database connection error:", err);
-        return callback(err, null);
-      }
-
-      // Execute the query with startOfWeek and endOfWeek as parameters
-      connection.query(sql, [startOfWeek, endOfWeek], (queryErr, results) => {
-        connectionRelease(connection);
-
-        if (queryErr) {
-          console.error("Database query error:", queryErr);
-          return callback(queryErr, null);
-        }
-
-        callback(null, results);
+    try {
+      const results = await sequelize.query(sql, {
+        replacements: [startOfWeek, endOfWeek],
+        type: QueryTypes.SELECT,
       });
-    });
+      callback(null, results);
+    } catch (error) {
+      callback(error, null);
+    }
   },
+
 };
 
 module.exports = WeeklyReport;
