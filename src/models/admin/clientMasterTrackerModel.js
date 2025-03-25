@@ -280,73 +280,62 @@ const Customer = {
     }
   },
 
-  applicationDataByClientApplicationID: (
-    client_application_id,
-    branch_id,
-    callback
-  ) => {
-    // Start a connection
-    startConnection((err, connection) => {
-      if (err) {
-        return callback(err, null);
-      }
+  applicationDataByClientApplicationID: async (client_application_id, branch_id, callback) => {
+    try {
+      // SQL query with JOINs to fetch required data
+      const sql = `
+            SELECT 
+              ca.*, 
+              ca.id AS main_id, 
+              cmt.first_insufficiency_marks,
+              cmt.first_insuff_date,
+              cmt.first_insuff_reopened_date,
+              cmt.second_insufficiency_marks,
+              cmt.second_insuff_date,
+              cmt.second_insuff_reopened_date,
+              cmt.third_insufficiency_marks,
+              cmt.third_insuff_date,
+              cmt.third_insuff_reopened_date,
+              cmt.overall_status,
+              cmt.report_date,
+              cmt.report_status,
+              cmt.report_type,
+              cmt.qc_done_by,
+              qc_admin.name AS qc_done_by_name,
+              cmt.delay_reason,
+              cmt.report_generate_by,
+              report_admin.name AS report_generated_by_name,
+              cmt.case_upload
+            FROM 
+              \`client_applications\` ca
+            LEFT JOIN 
+              \`cmt_applications\` cmt 
+            ON 
+              ca.id = cmt.client_application_id
+            LEFT JOIN 
+              \`admins\` AS qc_admin 
+            ON 
+              qc_admin.id = cmt.qc_done_by
+            LEFT JOIN 
+              \`admins\` AS report_admin 
+            ON 
+              report_admin.id = cmt.report_generate_by
+            WHERE 
+              ca.\`id\` = ? 
+              AND ca.\`branch_id\` = ?
+            ORDER BY ca.\`created_at\` DESC;
+        `;
 
-      // Base SQL query with JOINs to fetch client_spoc_name and cmt_applications data if it exists
-      let sql = `
-        SELECT 
-          ca.*, 
-          ca.id AS main_id, 
-          cmt.first_insufficiency_marks,
-          cmt.first_insuff_date,
-          cmt.first_insuff_reopened_date,
-          cmt.second_insufficiency_marks,
-          cmt.second_insuff_date,
-          cmt.second_insuff_reopened_date,
-          cmt.third_insufficiency_marks,
-          cmt.third_insuff_date,
-          cmt.third_insuff_reopened_date,
-          cmt.overall_status,
-          cmt.report_date,
-          cmt.report_status,
-          cmt.report_type,
-          cmt.qc_done_by,
-          qc_admin.name AS qc_done_by_name,
-          cmt.delay_reason,
-          cmt.report_generate_by,
-          report_admin.name AS report_generated_by_name,
-          cmt.case_upload
-        FROM 
-          \`client_applications\` ca
-        LEFT JOIN 
-          \`cmt_applications\` cmt 
-        ON 
-          ca.id = cmt.client_application_id
-        LEFT JOIN 
-          \`admins\` AS qc_admin 
-        ON 
-          qc_admin.id = cmt.qc_done_by
-        LEFT JOIN 
-          \`admins\` AS report_admin 
-        ON 
-          report_admin.id = cmt.report_generate_by
-        WHERE 
-          ca.\`id\` = ? AND
-          ca.\`branch_id\` = ?`;
-
-      const params = [client_application_id, branch_id]; // Start with branch_id
-
-      sql += ` ORDER BY ca.\`created_at\` DESC;`;
-
-      // Execute the query using the connection
-      connection.query(sql, params, (err, results) => {
-        connectionRelease(connection); // Release the connection
-        if (err) {
-          console.error("Database query error: 18", err);
-          return callback(err, null);
-        }
-        callback(null, results[0]);
+      const results = await sequelize.query(sql, {
+        replacements: [client_application_id, branch_id],
+        type: QueryTypes.SELECT,
       });
-    });
+
+      callback(null, results[0] || null); // Return the first result or null if empty
+    } catch (error) {
+      console.error("Error fetching application data:", error);
+      callback(error, null);
+    }
   },
 
   applicationByID: async (application_id, branch_id, callback) => {
@@ -497,36 +486,24 @@ const Customer = {
     }
   },
 
-  getCMTApplicationIDByClientApplicationId: (
-    client_application_id,
-    callback
-  ) => {
-    if (!client_application_id) {
-      return callback(null, false);
-    }
-
-    // Start a connection
-    startConnection((err, connection) => {
-      if (err) {
-        return callback(err, null);
+  getCMTApplicationIDByClientApplicationId: async (client_application_id, callback) => {
+    try {
+      if (!client_application_id) {
+        return callback(null, false);
       }
 
-      const sql =
-        "SELECT `id` FROM `cmt_applications` WHERE `client_application_id` = ?";
+      const sql = "SELECT `id` FROM `cmt_applications` WHERE `client_application_id` = ?";
 
-      connection.query(sql, [client_application_id], (err, results) => {
-        connectionRelease(connection); // Release connection
-        if (err) {
-          console.error("Database query error: 24", err);
-          return callback(err, null);
-        }
-
-        if (results.length > 0) {
-          return callback(null, results[0].id);
-        }
-        callback(null, false);
+      const results = await sequelize.query(sql, {
+        replacements: [client_application_id],
+        type: QueryTypes.SELECT,
       });
-    });
+
+      return callback(null, results.length > 0 ? results[0].id : false);
+    } catch (error) {
+      console.error("Error fetching CMT Application ID:", error);
+      callback(error, null);
+    }
   },
 
   getCMTAnnexureByApplicationId: async (
