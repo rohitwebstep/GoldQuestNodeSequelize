@@ -227,22 +227,12 @@ const subUser = {
     }
   },
 
-  updatePassword: (data, callback) => {
+  updatePassword: async (data, callback) => {
     const { id, branch_id, customer_id, password } = data;
 
-    // Start DB connection
-    startConnection((err, connection) => {
-      if (err) {
-        console.error("Failed to connect to the database:", err);
-        return callback(
-          { message: "Failed to connect to the database", error: err },
-          null
-        );
-      }
-
-      try {
-        // SQL query for updating the record in branch_sub_users
-        const updateSql = `
+    try {
+      // SQL query for updating the record in branch_sub_users
+      const updateSql = `
                   UPDATE \`branch_sub_users\` 
                   SET 
                       \`branch_id\` = ?, 
@@ -251,117 +241,80 @@ const subUser = {
                   WHERE \`id\` = ?
               `;
 
-        const values = [branch_id, customer_id, password, id];
+      const values = [branch_id, customer_id, password, id];
 
-        // Execute the query
-        connection.query(updateSql, values, (err, results) => {
-          // Release connection after query execution
-          connectionRelease(connection);
+      const [affectedRows] = await sequelize.query(updateSql, {
+        replacements: values,
+        type: QueryTypes.UPDATE, // Correct type for UPDATE query
+      });
 
-          if (err) {
-            console.error("Database query error:", err);
-            return callback(
-              { message: "Error updating the record", error: err },
-              null
-            );
-          }
-
-          // Handle no rows affected
-          if (results.affectedRows === 0) {
-            return callback(
-              { message: "No record found with the given ID." },
-              null
-            );
-          }
-
-          // Success
-          return callback(null, {
-            results,
-            message: "Record updated successfully.",
-          });
-        });
-      } catch (error) {
-        // Release connection and handle unexpected errors
-        connectionRelease(connection);
-        console.error("Unexpected error:", error);
-        return callback({ message: "Unexpected error occurred", error }, null);
+      // Handle no rows affected
+      if (affectedRows === 0) {
+        return callback({ message: "No record found with the given ID." }, null);
       }
-    });
+
+      // Success
+      return callback(null, {
+        message: "Record updated successfully.",
+      });
+    } catch (error) {
+      console.error("Unexpected error:", error);
+      return callback({ message: "Unexpected error occurred", error }, null);
+    }
+
   },
 
-  updateStatus: (status, client_application_id, callback) => {
-    startConnection((err, connection) => {
-      if (err) {
-        return callback(
-          { message: "Failed to connect to the database", error: err },
-          null
-        );
-      }
+  updateStatus: async (status, client_application_id, callback) => {
+    try {
       const sql = `
         UPDATE \`client_applications\`
-        SET
-          \`status\` = ?
-        WHERE
-          \`id\` = ?
+        SET \`status\` = ?
+        WHERE \`id\` = ?
       `;
 
-      connection.query(sql, [status, client_application_id], (err, results) => {
-        connectionRelease(connection); // Ensure the connection is released
-
-        if (err) {
-          console.error("Database query error: 115", err);
-          return callback(err, null);
-        }
-        callback(null, results);
+      const [affectedRows] = await sequelize.query(sql, {
+        replacements: [status, client_application_id],
+        type: QueryTypes.UPDATE, // Correct type for UPDATE query
       });
-    });
-  },
 
-  delete: (id, callback) => {
-    // Start database connection
-    startConnection((err, connection) => {
-      if (err) {
-        console.error("Failed to connect to the database:", err);
-        return callback(
-          { message: "Failed to connect to the database", error: err },
-          null
-        );
+      // Handle no rows affected
+      if (affectedRows === 0) {
+        return callback({ message: "No record found with the given ID." }, null);
       }
 
-      // SQL query to delete the record
-      const deleteSql = `DELETE FROM branch_sub_users WHERE id = ?`;
+      // Success response
+      return callback(null, { message: "Status updated successfully." });
 
-      connection.query(deleteSql, [id], (err, results) => {
-        // Release the connection after query execution
-        connectionRelease(connection);
-
-        if (err) {
-          console.error("Database query error:", err);
-          return callback(
-            {
-              message: "An error occurred while deleting the record.",
-              error: err,
-            },
-            null
-          );
-        }
-
-        // Check if any rows were affected (i.e., if the record was deleted)
-        if (results.affectedRows === 0) {
-          return callback(
-            { message: "No record found with the provided ID." },
-            null
-          );
-        }
-
-        // Successfully deleted
-        callback(null, {
-          message: "Record deleted successfully.",
-          affectedRows: results.affectedRows,
-        });
-      });
-    });
+    } catch (error) {
+      console.error("Unexpected error:", error);
+      return callback({ message: "Unexpected error occurred", error }, null);
+    }
   },
+
+  delete: async (id, callback) => {
+    try {
+      // SQL query to delete the record
+      const deleteSql = `DELETE FROM \`branch_sub_users\` WHERE \`id\` = ?`;
+
+      const [affectedRows] = await sequelize.query(deleteSql, {
+        replacements: [id],
+        type: QueryTypes.DELETE, // Correct type for DELETE query
+      });
+
+      // Handle no rows affected (i.e., record not found)
+      if (affectedRows === 0) {
+        return callback({ message: "No record found with the provided ID." }, null);
+      }
+
+      // Successfully deleted
+      return callback(null, { message: "Record deleted successfully." });
+
+    } catch (error) {
+      console.error("Unexpected error:", error);
+      return callback({ message: "Unexpected error occurred", error }, null);
+    }
+  },
+
 };
 
 module.exports = subUser;
