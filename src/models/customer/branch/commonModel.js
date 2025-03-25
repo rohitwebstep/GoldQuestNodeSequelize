@@ -268,75 +268,59 @@ const common = {
     }
   },
 
-  getCustomerNameByBranchID: (branch_id, callback) => {
-    if (typeof callback !== "function") {
-      console.error("Callback is not a function 8");
-      return;
-    }
-
-    // First query to get customer_id from the branches table
-    const branchSql = `
-      SELECT \`customer_id\`
-      FROM \`branches\`
-      WHERE \`id\` = ?
-    `;
-
-    startConnection((err, connection) => {
-      if (err) {
-        console.error("Connection error:", err);
-        return callback({ status: false, message: "Connection error" }, null);
+  getCustomerNameByBranchID: async (branch_id, callback) => {
+    try {
+      if (typeof callback !== "function") {
+        console.error("Callback is not a function");
+        return;
       }
 
-      connection.query(branchSql, [branch_id], (err, branchResults) => {
-        if (err) {
-          connectionRelease(connection);
-          console.error("Database query error: 120", err);
-          return callback({ status: false, message: "Database error" }, null);
-        }
+      // Query to get customer_id from branches table
+      const branchSql = `
+        SELECT \`customer_id\`
+        FROM \`branches\`
+        WHERE \`id\` = ?;
+      `;
 
-        if (branchResults.length === 0) {
-          connectionRelease(connection);
-          return callback({ status: false, message: "Branch not found" }, null);
-        }
-
-        const branch = branchResults[0];
-        const customerId = branch.customer_id;
-
-        // Second query to get customer name from the customers table
-        const customerSql = `
-          SELECT \`name\`
-          FROM \`customers\`
-          WHERE \`id\` = ?
-        `;
-
-        connection.query(customerSql, [customerId], (err, customerResults) => {
-          connectionRelease(connection); // Release connection
-
-          if (err) {
-            console.error("Database query error: 121", err);
-            return callback({ status: false, message: "Database error" }, null);
-          }
-
-          if (customerResults.length === 0) {
-            return callback(
-              { status: false, message: "Customer not found" },
-              null
-            );
-          }
-
-          const customer = customerResults[0];
-
-          // Return the branch ID and customer name
-          callback(null, {
-            status: true,
-            message: "Customer name retrieved successfully",
-            customer_name: customer.name,
-            branch_id: branch_id,
-          });
-        });
+      const branchResults = await sequelize.query(branchSql, {
+        replacements: [branch_id],
+        type: QueryTypes.SELECT,
       });
-    });
+
+      if (branchResults.length === 0) {
+        return callback({ status: false, message: "Branch not found" }, null);
+      }
+
+      const customerId = branchResults[0].customer_id;
+
+      // Query to get customer name from customers table
+      const customerSql = `
+        SELECT \`name\`
+        FROM \`customers\`
+        WHERE \`id\` = ?;
+      `;
+
+      const customerResults = await sequelize.query(customerSql, {
+        replacements: [customerId],
+        type: QueryTypes.SELECT,
+      });
+
+      if (customerResults.length === 0) {
+        return callback({ status: false, message: "Customer not found" }, null);
+      }
+
+      callback(null, {
+        status: true,
+        message: "Customer name retrieved successfully",
+        customer_name: customerResults[0].name,
+        branch_id: branch_id,
+      });
+    } catch (error) {
+      console.error("Error fetching customer name:", error);
+      callback({ status: false, message: "Internal server error" }, null);
+    }
   },
+
 };
 
 module.exports = common;

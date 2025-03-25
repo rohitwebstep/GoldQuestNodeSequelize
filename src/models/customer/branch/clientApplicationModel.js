@@ -167,7 +167,6 @@ const clientApplication = {
     }
   },
 
-  // Other methods remain unchanged, but should include startConnection and connectionRelease
   list: async (branch_id, callback) => {
     const sqlClient = `
     SELECT 
