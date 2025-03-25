@@ -1,7 +1,7 @@
 const { pool, startConnection, connectionRelease } = require("../../../config/db");
 
 const backgroundVerificationForm = {
-    list: (callback) => {
+    list: async (callback) => {
         const sql = `
             SELECT 
                 s.id,
@@ -13,27 +13,17 @@ const backgroundVerificationForm = {
             JOIN \`cef_service_forms\` rp ON rp.service_id = s.id
         `;
 
-        startConnection((err, connection) => {
-            if (err) {
-                console.error("Database connection error:", err);
-                return callback(err, null);
-            }
-
-            connection.query(sql, (queryErr, results) => {
-                // Ensure connection is released in all cases
-                connectionRelease(connection);
-
-                if (queryErr) {
-                    console.error("Database query error:", queryErr);
-                    return callback(queryErr, null);
-                }
-
-                callback(null, results);
+        try {
+            const results = await sequelize.query(sql, {
+                type: QueryTypes.SELECT,
             });
-        });
+            callback(null, results);
+        } catch (error) {
+            callback(error, null);
+        }
     },
 
-    formByServiceId: (service_id, callback) => {
+    formByServiceId: async (service_id, callback) => {
         const sql = `
             SELECT 
                 s.id,
@@ -47,58 +37,35 @@ const backgroundVerificationForm = {
             LIMIT 1
         `;
 
-        startConnection((err, connection) => {
-            if (err) {
-                console.error("Database connection error:", err);
-                return callback(err, null);
-            }
-
-            connection.query(sql, [service_id], (queryErr, results) => {
-                // Ensure connection is released in all cases
-                connectionRelease(connection);
-
-                if (queryErr) {
-                    console.error("Database query error:", queryErr);
-                    return callback(queryErr, null);
-                }
-
-                // Return the first result or null if no rows are found
-                callback(null, results.length > 0 ? results[0] : null);
+        try {
+            const results = await sequelize.query(sql, {
+                replacements: [service_id],
+                type: QueryTypes.SELECT,
             });
-        });
+            callback(null, results.length > 0 ? results[0] : null);
+        } catch (error) {
+            callback(error, null);
+        }
     },
 
-    update: (
-        service_id,
-        json,
-        callback
-    ) => {
+    update: async (service_id, json, callback) => {
         const sql = `
           UPDATE \`cef_service_forms\`
           SET \`json\` = ?
           WHERE \`service_id\` = ?
         `;
 
-        startConnection((err, connection) => {
-            if (err) {
-                return callback(err, null);
-            }
-
-            connection.query(
-                sql,
-                [json, service_id],
-                (queryErr, results) => {
-                    connectionRelease(connection); // Release the connection
-
-                    if (queryErr) {
-                        console.error(" 51", queryErr);
-                        return callback(queryErr, null);
-                    }
-                    callback(null, results);
-                }
-            );
-        });
+        try {
+            const results = await sequelize.query(sql, {
+                replacements: [json, service_id],
+                type: QueryTypes.UPDATE,
+            });
+            callback(null, results);
+        } catch (error) {
+            callback(error, null);
+        }
     },
+
 };
 
 module.exports = backgroundVerificationForm;
