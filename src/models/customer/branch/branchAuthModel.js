@@ -48,168 +48,123 @@ const Branch = {
     }
   },
 
-  findByEmailOrMobileAllInfo: (username, callback) => {
-    startConnection((err, connection) => {
-      if (err) {
-        return callback(
-          { message: "Failed to connect to the database", error: err },
-          null
-        );
-      }
-
+  findByEmailOrMobileAllInfo: async (username, callback) => {
+    try {
       // Query the branches table first
       const sqlBranches = `
-        SELECT 'branch' AS type, *
-        FROM \`branches\`
-        WHERE \`email\` = ?
-      `;
-
-      connection.query(sqlBranches, [username], (err, branchResults) => {
-        if (err) {
-          connectionRelease(connection);
-          console.error("Database query error (branches):", err);
-          return callback(
-            { message: "Database query error (branches)", error: err },
-            null
-          );
-        }
-
-        if (branchResults.length > 0) {
-          // If found in branches, return the result
-          connectionRelease(connection);
-          return callback(null, branchResults);
-        }
-
-        // If not found in branches, query the branch_sub_users table
-        const sqlSubUsers = `
-          SELECT 'sub_user' AS type, *
-          FROM \`branch_sub_users\`
-          WHERE \`email\` = ?
+            SELECT 'branch' AS type, * 
+            FROM \`branches\` 
+            WHERE \`email\` = ?
         `;
 
-        connection.query(sqlSubUsers, [username], (err, subUserResults) => {
-          connectionRelease(connection);
-
-          if (err) {
-            console.error("Database query error (branch_sub_users):", err);
-            return callback(
-              {
-                message: "Database query error (branch_sub_users)",
-                error: err,
-              },
-              null
-            );
-          }
-
-          if (subUserResults.length === 0) {
-            // No record found in either table
-            return callback(
-              {
-                message: "No branch or sub-user found with the provided email",
-              },
-              null
-            );
-          }
-
-          // Found in branch_sub_users
-          callback(null, subUserResults);
-        });
+      const branchResults = await sequelize.query(sqlBranches, {
+        replacements: [username],
+        type: QueryTypes.SELECT,
       });
-    });
+
+      if (branchResults.length > 0) {
+        return callback(null, branchResults);
+      }
+
+      // If not found in branches, query the branch_sub_users table
+      const sqlSubUsers = `
+            SELECT 'sub_user' AS type, * 
+            FROM \`branch_sub_users\` 
+            WHERE \`email\` = ?
+        `;
+
+      const subUserResults = await sequelize.query(sqlSubUsers, {
+        replacements: [username],
+        type: QueryTypes.SELECT,
+      });
+
+      if (subUserResults.length === 0) {
+        return callback({ message: "No branch or sub-user found with the provided email" }, null);
+      }
+
+      return callback(null, subUserResults);
+    } catch (error) {
+      console.error("Error fetching user information:", error);
+      return callback({ message: "Database query failed", error }, null);
+    }
   },
 
-  updatePasswordResetPermission: (status, branch_id, callback) => {
-    const sql = `
-      UPDATE \`branches\`
-      SET \`can_request_password_reset\` = ?
-      WHERE \`id\` = ?
-    `;
+  updatePasswordResetPermission: async (status, branch_id, callback) => {
+    try {
+      const sql = `
+            UPDATE \`branches\`
+            SET \`can_request_password_reset\` = ?
+            WHERE \`id\` = ?
+        `;
 
-    startConnection((err, connection) => {
-      if (err) {
-        console.error("Database connection error:", err);
+      const [affectedRows] = await sequelize.query(sql, {
+        replacements: [status, branch_id],
+        type: QueryTypes.UPDATE,
+      });
+
+      if (affectedRows === 0) {
         return callback({
           success: false,
-          message: "Database connection failed",
-          error: err
+          message: "No branch found with the provided ID or no update was necessary"
         }, null);
       }
 
-      connection.query(sql, [status, branch_id], (queryErr, results) => {
-        connectionRelease(connection); // Ensure connection is released
-
-        if (queryErr) {
-          console.error("Database query error:", queryErr);
-          return callback({
-            success: false,
-            message: "Failed to update password reset permission",
-            error: queryErr
-          }, null);
-        }
-
-        if (results.affectedRows === 0) {
-          return callback({
-            success: false,
-            message: "No admin found with the provided ID or no update was necessary"
-          }, null);
-        }
-
-        return callback(null, {
-          success: true,
-          message: `Password reset permission updated successfully to ${status ? 'Allowed' : 'Denied'}`,
-          data: { affectedRows: results.affectedRows }
-        });
+      return callback(null, {
+        success: true,
+        message: `Password reset permission updated successfully to ${status ? 'Allowed' : 'Denied'}`,
+        data: { affectedRows }
       });
-    });
+    } catch (error) {
+      console.error("Error updating password reset permission:", error);
+      return callback({
+        success: false,
+        message: "Database query failed",
+        error
+      }, null);
+    }
   },
 
-  setResetPasswordToken: (id, token, tokenExpiry, callback) => {
-    const sql = `
-      UPDATE \`branches\`
-      SET 
-        \`reset_password_token\` = ?, 
-        \`password_token_expiry\` = ?,
-        \`can_request_password_reset\` = ?,
-        \`password_reset_request_count\` = 
-          CASE 
-            WHEN DATE(\`password_reset_requested_at\`) = CURDATE() 
-            THEN \`password_reset_request_count\` + 1 
-            ELSE 1 
-          END,
-        \`password_reset_requested_at\` = 
-          CASE 
-            WHEN DATE(\`password_reset_requested_at\`) = CURDATE() 
-            THEN \`password_reset_requested_at\` 
-            ELSE NOW() 
-          END
-      WHERE \`id\` = ?
-    `;
+  setResetPasswordToken: async (id, token, tokenExpiry, callback) => {
+    try {
+      const sql = `
+            UPDATE \`branches\`
+            SET 
+                \`reset_password_token\` = ?, 
+                \`password_token_expiry\` = ?,
+                \`can_request_password_reset\` = ?,
+                \`password_reset_request_count\` = 
+                    CASE 
+                        WHEN DATE(\`password_reset_requested_at\`) = CURDATE() 
+                        THEN \`password_reset_request_count\` + 1 
+                        ELSE 1 
+                    END,
+                \`password_reset_requested_at\` = 
+                    CASE 
+                        WHEN DATE(\`password_reset_requested_at\`) = CURDATE() 
+                        THEN \`password_reset_requested_at\` 
+                        ELSE NOW() 
+                    END
+            WHERE \`id\` = ?
+        `;
 
-    startConnection((err, connection) => {
-      if (err) {
-        console.error("Database connection error:", err);
-        return callback({ success: false, message: "Database connection failed", error: err }, null);
+      const [affectedRows] = await sequelize.query(sql, {
+        replacements: [token, tokenExpiry, 1, id],
+        type: QueryTypes.UPDATE,
+      });
+
+      if (affectedRows === 0) {
+        return callback({ success: false, message: "No branch found with the provided ID or no update required" }, null);
       }
 
-      connection.query(sql, [token, tokenExpiry, 1, id], (queryErr, results) => {
-        connectionRelease(connection); // Ensure the connection is released
-
-        if (queryErr) {
-          console.error("Database query error:", queryErr);
-          return callback({ success: false, message: "Failed to update reset password token", error: queryErr }, null);
-        }
-
-        if (results.affectedRows === 0) {
-          return callback({ success: false, message: "No branch found with the provided ID or no update required" }, null);
-        }
-
-        return callback(null, {
-          success: true,
-          message: "Password reset token updated successfully",
-          data: { affectedRows: results.affectedRows }
-        });
+      return callback(null, {
+        success: true,
+        message: "Password reset token updated successfully",
+        data: { affectedRows }
       });
-    });
+    } catch (error) {
+      console.error("Error updating password reset token:", error);
+      return callback({ success: false, message: "Database query failed", error }, null);
+    }
   },
 
   validatePassword: async (email, password, type, callback) => {
@@ -245,93 +200,62 @@ const Branch = {
     }
   },
 
-  updatePassword: (new_password, branch_id, callback) => {
-    startConnection((err, connection) => {
-      if (err) {
+  updatePassword: async (new_password, branch_id, callback) => {
+    try {
+      const sql = `UPDATE \`branches\` SET \`password\` = MD5(?), \`reset_password_token\` = null, \`login_token\` = null, \`token_expiry\` = null, \`password_token_expiry\` = null WHERE \`id\` = ?`;
+
+      const [affectedRows] = await sequelize.query(sql, {
+        replacements: [new_password, branch_id],
+        type: QueryTypes.SELECT,
+      });
+
+      // Check if the password was updated
+      if (affectedRows === 0) {
         return callback(
-          { message: "Failed to connect to the database", error: err },
+          { message: "Branch not found or password not updated. Please check the provided details." },
           null
         );
       }
 
-      const sql = `UPDATE \`branches\` SET \`password\` = MD5(?), \`reset_password_token\` = null, \`login_token\` = null, \`token_expiry\` = null, \`password_token_expiry\` = null WHERE \`id\` = ?`;
-
-      connection.query(sql, [new_password, branch_id], (err, results) => {
-        connectionRelease(connection); // Ensure connection is released
-
-        if (err) {
-          console.error("Database query error: 77", err);
-          return callback(
-            {
-              message: "An error occurred while updating the password.",
-              error: err,
-            },
-            null
-          );
-        }
-
-        // Check if the branch_id was found and the update affected any rows
-        if (results.affectedRows === 0) {
-          return callback(
-            {
-              message:
-                "Branch not found or password not updated. Please check the provided details.",
-            },
-            null
-          );
-        }
-
-        callback(null, {
-          message: "Password updated successfully.",
-          affectedRows: results.affectedRows,
-        });
-      });
-    });
+      callback(null, { message: "Password updated successfully.", affectedRows });
+    } catch (error) {
+      console.error("Error updating password:", error);
+      return callback({ message: "Database query failed", error }, null);
+    }
   },
 
-  updateOTP: (branch_id, otp, otp_expiry, callback) => {
-    const sql = `UPDATE \`branches\` SET \`otp\` = ?, \`otp_expiry\` = ?,  \`reset_password_token\` = null, \`login_token\` = null, \`token_expiry\` = null, \`password_token_expiry\` = null WHERE \`id\` = ?`;
+  updateOTP: async (branch_id, otp, otp_expiry, callback) => {
+    try {
+      const sql = `
+            UPDATE \`branches\` 
+            SET 
+                \`otp\` = ?, 
+                \`otp_expiry\` = ?,  
+                \`reset_password_token\` = NULL, 
+                \`login_token\` = NULL, 
+                \`token_expiry\` = NULL, 
+                \`password_token_expiry\` = NULL 
+            WHERE \`id\` = ?
+        `;
 
-    startConnection((err, connection) => {
-      if (err) {
-        return callback(err, null);
+      const [affectedRows] = await sequelize.query(sql, {
+        replacements: [otp, otp_expiry, branch_id],
+        type: QueryTypes.UPDATE,
+      });
+
+      // Check if the OTP was updated
+      if (affectedRows === 0) {
+        return callback(
+          { message: "Branch not found or OTP not updated. Please check the provided details." },
+          null
+        );
       }
 
-      connection.query(
-        sql,
-        [otp, otp_expiry, branch_id],
-        (queryErr, results) => {
-          connectionRelease(connection); // Release the connection
-
-          if (queryErr) {
-            console.error("Database query error: 8", queryErr);
-            return callback(
-              {
-                message: "An error occurred while updating the password.",
-                error: queryErr,
-              },
-              null
-            );
-          }
-
-          // Check if the branch_id was found and the update affected any rows
-          if (results.affectedRows === 0) {
-            return callback(
-              {
-                message:
-                  "Branch not found or password not updated. Please check the provided details.",
-              },
-              null
-            );
-          }
-
-          callback(null, {
-            message: "Password updated successfully.",
-            affectedRows: results.affectedRows,
-          });
-        }
-      );
-    });
+      callback(null, { message: "OTP updated successfully.", affectedRows });
+    } catch (error) {
+      console.error("Error updating OTP:", error);
+      return callback({ message: "Database query failed", error }, null);
+    }
   },
 
   updateToken: async (id, token, tokenExpiry, type, callback) => {
@@ -370,81 +294,56 @@ const Branch = {
     }
   },
 
-  validateLogin: (id, callback) => {
-    startConnection((err, connection) => {
-      if (err) {
-        return callback(
-          { message: "Failed to connect to the database", error: err },
-          null
-        );
-      }
-
+  validateLogin: async (id, callback) => {
+    try {
       const sql = `
-        SELECT \`login_token\`, \`token_expiry\`
-        FROM \`branches\`
-        WHERE \`id\` = ?
-      `;
-
-      connection.query(sql, [id], (err, results) => {
-        connectionRelease(connection); // Ensure connection is released
-
-        if (err) {
-          console.error("Database query error: 79", err);
-          return callback(
-            { message: "Database query error", error: err },
-            null
-          );
-        }
-
-        if (results.length === 0) {
-          return callback({ message: "Branch not found" }, null);
-        }
-
-        callback(null, results);
-      });
-    });
-  },
-
-  // Clear login token and token expiry
-  logout: (id, callback) => {
-    startConnection((err, connection) => {
-      if (err) {
-        return callback(
-          { message: "Failed to connect to the database", error: err },
-          null
-        );
-      }
-
-      const sql = `
-          UPDATE \`branches\`
-          SET \`login_token\` = NULL, \`token_expiry\` = NULL
-          WHERE \`id\` = ?
+            SELECT \`login_token\`, \`token_expiry\`
+            FROM \`branches\`
+            WHERE \`id\` = ?
         `;
 
-      connection.query(sql, [id], (err, results) => {
-        connectionRelease(connection); // Ensure connection is released
-
-        if (err) {
-          console.error("Database query error: 80", err);
-          return callback(
-            { message: "Database update error", error: err },
-            null
-          );
-        }
-
-        if (results.affectedRows === 0) {
-          return callback(
-            {
-              message:
-                "Token clear failed. Branch not found or no changes made.",
-            },
-            null
-          );
-        }
-
-        callback(null, results);
+      const results = await sequelize.query(sql, {
+        replacements: [id],
+        type: QueryTypes.SELECT,
       });
-    });
+
+      if (!results || results.length === 0) {
+        return callback({ message: "Branch not found" }, null);
+      }
+
+      return callback(null, results[0]);
+
+    } catch (error) {
+      console.error("Error validating login:", error);
+      return callback({ message: "Database query failed", error }, null);
+    }
+  },
+
+  logout: async (id, callback) => {
+    try {
+      const sql = `
+            UPDATE \`branches\`
+            SET \`login_token\` = NULL, \`token_expiry\` = NULL
+            WHERE \`id\` = ?
+        `;
+
+      const result = await sequelize.query(sql, {
+        replacements: [id],
+        type: QueryTypes.UPDATE,
+      });
+
+      const affectedRows = result[1];
+
+      if (affectedRows === 0) {
+        return callback({ message: "Token clear failed. Branch not found or no changes made." }, null);
+      }
+
+      return callback(null, { success: true, message: "Logout successful.", affectedRows });
+
+    } catch (error) {
+      console.error("Error during logout:", error);
+      return callback({ message: "Database query failed", error }, null);
+    }
   },
 
   findById: async (sub_user_id, branch_id, callback) => {
@@ -511,40 +410,30 @@ const Branch = {
       );
     }
   },
+  isBranchSubUserActive: async (id, callback) => {
+    try {
+      const sql = `
+            SELECT \`status\`
+            FROM \`branch_sub_users\`
+            WHERE \`id\` = ?
+        `;
 
-  isBranchSubUserActive: (id, callback) => {
-    startConnection((err, connection) => {
-      if (err) {
-        return callback(
-          { message: "Failed to connect to the database", error: err },
-          null
-        );
+      const results = await sequelize.query(sql, {
+        replacements: [id],
+        type: QueryTypes.SELECT,
+      });
+
+      if (!results || results.length === 0) {
+        return callback({ message: "Branch sub-user not found" }, null);
       }
 
-      const sql = `
-        SELECT \`status\`
-        FROM \`branch_sub_users\`
-        WHERE \`id\` = ?
-      `;
+      const isActive = results[0].status === 1;
+      return callback(null, { isActive });
 
-      connection.query(sql, [id], (err, results) => {
-        connectionRelease(connection); // Ensure connection is released
-
-        if (err) {
-          console.error("Database query error: 82", err);
-          return callback(
-            { message: "Database query error", error: err },
-            null
-          );
-        }
-        if (results.length === 0) {
-          return callback({ message: "Branch not found" }, null);
-        }
-
-        const isActive = results[0].status == 1;
-        callback(null, { isActive });
-      });
-    });
+    } catch (error) {
+      console.error("Error checking branch sub-user status:", error);
+      return callback({ message: "Database query failed", error }, null);
+    }
   },
 
   isCustomerActive: async (customerID, callback) => {
