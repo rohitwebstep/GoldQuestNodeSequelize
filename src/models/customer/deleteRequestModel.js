@@ -151,7 +151,7 @@ const DeleteRequest = {
             console.log(`affectedRows - `, affectedRows);
             // Check if any rows were affected
             if (affectedRows > 0) {
-                callback(null, { status: true, message: "Status updated successfully 1", results });
+                callback(null, { status: true, message: "Status updated successfully", results });
             } else {
                 callback({ status: false, message: "No pending request found or status is already updated", results }, null);
             }
