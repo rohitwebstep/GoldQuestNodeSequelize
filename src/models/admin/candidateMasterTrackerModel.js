@@ -345,7 +345,7 @@ const Customer = {
                 const tableQueries = await Promise.all(
                   Object.entries(dbTableFileInputs).map(async ([dbTable, fileInputNames]) => {
                     if (fileInputNames.length === 0) {
-                      console.log(`Skipping table ${dbTable} as fileInputNames is empty.`);
+                      console.log(`Skipping table ${dbTable} as fileInputNames is empty 1.`);
                       return;
                     }
 
@@ -382,9 +382,25 @@ const Customer = {
                         return updatedRow;
                       });
 
-                      if (updatedRows.length > 0) {
-                        servicesResult.cef[dbTableWithHeadings[dbTable]] = updatedRows;
+                      if (
+                        updatedRows.length > 0 &&
+                        updatedRows.some((row, index) => {
+                          const isValid = Object.keys(row).length > 0 && Object.values(row).some(value => value !== undefined && value !== null && value !== '');
+                          return isValid;
+                        })
+                      ) {
+
+                        // Filter the rows based on the condition that both the index and value are not empty
+                        const validRows = updatedRows.filter((row, index) => {
+                          const isValid = Object.keys(row).length > 0 &&
+                            Object.values(row).some(value => value !== undefined && value !== null && value !== '');
+                          return isValid;
+                        });
+
+
+                        servicesResult.cef[dbTableWithHeadings[dbTable]] = validRows;
                       }
+
                     } catch (error) {
                       console.error(`Error processing table ${dbTable}:`, error);
                     }
@@ -412,207 +428,161 @@ const Customer = {
     }
   },
 
-  applicationListByBranchByCandidateID: (candidate_application_id, branch_id, callback) => {
-    startConnection((err, connection) => {
-      if (err) {
-        console.error("Error starting database connection:", err);
-        return callback(err, null);
-      }
-
+  applicationListByBranchByCandidateID: async (candidate_application_id, branch_id, callback) => {
+    try {
       let sql = `
-            SELECT 
-                ca.*, 
-                ca.id AS main_id, 
-                cef.created_at AS cef_filled_date,
-                cef.is_employment_gap,
-                cef.is_education_gap,
-                cef.created_at,
-                cef.id AS cef_id,
-                dav.created_at AS dav_filled_date,
-                dav.id AS dav_id,
-                CASE WHEN cef.id IS NOT NULL THEN 1 ELSE 0 END AS cef_submitted,
-                CASE WHEN dav.id IS NOT NULL THEN 1 ELSE 0 END AS dav_submitted
-            FROM 
-                \`candidate_applications\` ca
-            LEFT JOIN 
-                \`cef_applications\` cef 
-            ON 
-                ca.id = cef.candidate_application_id
-            LEFT JOIN 
-                \`dav_applications\` dav 
-            ON 
-                ca.id = dav.candidate_application_id
-            WHERE 
-                ca.\`branch_id\` = ?
-                AND ca.\`id\` = ?`;
+              SELECT 
+                  ca.*, 
+                  ca.id AS main_id, 
+                  cef.created_at AS cef_filled_date,
+                  cef.is_employment_gap,
+                  cef.is_education_gap,
+                  cef.created_at,
+                  cef.id AS cef_id,
+                  dav.created_at AS dav_filled_date,
+                  dav.id AS dav_id,
+                  c.client_unique_id,
+                  CASE WHEN cef.id IS NOT NULL THEN 1 ELSE 0 END AS cef_submitted,
+                  CASE WHEN dav.id IS NOT NULL THEN 1 ELSE 0 END AS dav_submitted
+              FROM 
+                  \`candidate_applications\` ca
+              INNER JOIN 
+                  \`customers\` c
+              ON 
+                  c.id = ca.customer_id
+              LEFT JOIN 
+                  \`cef_applications\` cef 
+              ON 
+                  ca.id = cef.candidate_application_id
+              LEFT JOIN 
+                  \`dav_applications\` dav 
+              ON 
+                  ca.id = dav.candidate_application_id
+              WHERE 
+                  AND ca.\`id\` = ?`;
 
       const params = [branch_id, candidate_application_id];
+
       sql += ` ORDER BY ca.\`created_at\` DESC;`;
 
-      connection.query(sql, params, (err, results) => {
-        if (err) {
-          console.error("Database query error:", err);
-          connectionRelease(connection);
-          return callback(err, null);
-        }
+      const results = await sequelize.query(sql, {
+        replacements: params,
+        type: QueryTypes.SELECT,
+      });
 
-        const davSql = `
-            SELECT * FROM \`services\`
-            WHERE LOWER(\`title\`) LIKE '%digital%'
-            AND (LOWER(\`title\`) LIKE '%verification%' OR LOWER(\`title\`) LIKE '%address%')
-            LIMIT 1`;
+      // Fetch Digital Address Verification service
+      const davSql = `
+              SELECT id FROM \`services\`
+              WHERE LOWER(\`title\`) LIKE '%digital%' 
+              AND (LOWER(\`title\`) LIKE '%verification%' OR LOWER(\`title\`) LIKE '%address%')
+              LIMIT 1`;
 
-        connection.query(davSql, (queryErr, davResults) => {
-          if (queryErr) {
-            console.error("Database query error for DAV services:", queryErr);
-            return callback(queryErr, null);
+      const davResults = await sequelize.query(davSql, { type: QueryTypes.SELECT });
+      const digitalAddressID = davResults.length > 0 ? parseInt(davResults[0].id, 10) : null;
+
+      // Process each candidate application
+      await Promise.all(
+        results.map(async (candidateApp) => {
+          candidateApp.applications_id = `CD-${candidateApp.client_unique_id}-${candidateApp.main_id}`;
+          const servicesResult = { cef: {}, dav: {} };
+          const servicesIds = candidateApp.services ? candidateApp.services.split(",") : [];
+
+          if (servicesIds.length > 0) {
+            // Fetch service titles
+            const servicesQuery = "SELECT title FROM `services` WHERE id IN (?)";
+            try {
+              const servicesResults = await sequelize.query(servicesQuery, {
+                replacements: [servicesIds],
+                type: QueryTypes.SELECT,
+              });
+              candidateApp.serviceNames = servicesResults.map((service) => service.title);
+            } catch (error) {
+              console.error("Error fetching service titles:", error);
+            }
           }
 
-          let digitalAddressID = null;
-          const singleEntry = davResults.length > 0 ? davResults[0] : null;
+          // Check if DAV service exists
+          candidateApp.dav_exist = servicesIds.includes(String(digitalAddressID)) ? 1 : 0;
 
-          if (singleEntry) {
-            digitalAddressID = parseInt(singleEntry.id, 10);
+          // Fetch DAV details
+          if (candidateApp.dav_submitted === 1) {
+            const checkDavSql = `
+                          SELECT identity_proof, home_photo, locality
+                          FROM \`dav_applications\`
+                          WHERE \`candidate_application_id\` = ?`;
+
+            try {
+              const davResults = await sequelize.query(checkDavSql, {
+                replacements: [candidateApp.main_id],
+                type: QueryTypes.SELECT,
+              });
+
+              if (davResults.length > 0) {
+                davResults.forEach((davResult) => {
+                  Object.entries({
+                    identity_proof: "Identity Proof",
+                    home_photo: "Home Photo",
+                    locality: "Locality",
+                  }).forEach(([key, label]) => {
+                    if (davResult[key]) {
+                      servicesResult.dav[label] = davResult[key];
+                    }
+                  });
+                });
+                candidateApp.service_data = servicesResult;
+              }
+            } catch (error) {
+              console.error("Error processing DAV services:", error);
+            }
           }
 
-          const cmtPromises = results.map(async (candidateApp) => {
-            const servicesResult = { cef: {}, dav: {} };
-            const serviceNames = [];
-            const servicesIds = candidateApp.services
-              ? candidateApp.services.split(",")
-              : [];
+          // Fetch CEF details
+          if (candidateApp.cef_submitted === 1) {
+            const checkCefSql = `
+                          SELECT signature, resume_file, govt_id, pan_card_image, aadhar_card_image, passport_photo
+                          FROM \`cef_applications\`
+                          WHERE \`candidate_application_id\` = ?`;
 
-            if (servicesIds.length === 0) {
-              serviceNames.push({ ...candidateApp, serviceNames: "" });
-            } else {
-              // Query for service titles
-              const servicesQuery = "SELECT title FROM `services` WHERE id IN (?)";
-              try {
-                const servicesResults = await new Promise((resolve, reject) => {
-                  connection.query(servicesQuery, [servicesIds], (err, results) => {
-                    if (err) {
-                      console.error("Database query error for services:", err);
-                      return reject(err);
-                    }
-                    resolve(results);
-                  });
-                });
+            try {
+              const cefResults = await sequelize.query(checkCefSql, {
+                replacements: [candidateApp.main_id],
+                type: QueryTypes.SELECT,
+              });
 
-                const servicesTitles = servicesResults.map((service) => service.title);
-                candidateApp.serviceNames = servicesTitles;
-              } catch (error) {
-                console.error("Error fetching service titles:", error);
-              }
-            }
+              if (cefResults.length > 0) {
+                const candidateBasicAttachments = [];
 
-            // Continue with existing processing for DAV and CEF
-            candidateApp.dav_exist = servicesIds.includes(digitalAddressID)
-              ? 1
-              : 0;
-            // Handle DAV submitted cases
-            if (candidateApp.dav_submitted === 1) {
-              const checkDavSql = `
-                            SELECT identity_proof, home_photo, locality
-                            FROM \`dav_applications\`
-                            WHERE \`candidate_application_id\` = ?`;
-
-              try {
-                const davResults = await new Promise((resolve, reject) => {
-                  connection.query(checkDavSql, [candidateApp.main_id], (queryErr, results) => {
-                    if (queryErr) {
-                      console.error("Error querying DAV details:", queryErr);
-                      return reject(queryErr);
-                    }
-                    resolve(results);
-                  });
-                });
-
-                if (davResults.length > 0) {
-                  davResults.forEach((davResult) => {
-                    const mappings = {
-                      identity_proof: "Identity Proof",
-                      home_photo: "Home Photo",
-                      locality: "Locality",
-                    };
-
-                    Object.entries(mappings).forEach(([key, label]) => {
-                      if (davResult[key]) {
-                        servicesResult.dav[label] = davResult[key];
-                      }
-                    });
-                  });
-                  candidateApp.service_data = servicesResult;
-                }
-              } catch (error) {
-                console.error("Error processing DAV services:", error);
-              }
-            }
-
-            // Handle CEF submitted cases
-            if (candidateApp.cef_submitted === 1) {
-              const checkCefSql = `
-                            SELECT 
-                                signature, resume_file, govt_id, 
-                                pan_card_image, aadhar_card_image, passport_photo
-                            FROM 
-                                \`cef_applications\`
-                            WHERE 
-                                \`candidate_application_id\` = ?`;
-
-              try {
-                const cefResults = await new Promise((resolve, reject) => {
-                  connection.query(checkCefSql, [candidateApp.main_id], (queryErr, results) => {
-                    if (queryErr) {
-                      console.error("Error querying CEF details:", queryErr);
-                      return reject(queryErr);
-                    }
-                    resolve(results);
-                  });
-                });
-
-                if (cefResults.length > 0) {
-                  const candidateBasicAttachments = [];
-                  const mappings = {
+                cefResults.forEach((cefResult) => {
+                  Object.entries({
                     signature: "Signature",
                     resume_file: "Resume File",
                     govt_id: "Govt ID",
                     pan_card_image: "Pan Card Image",
                     aadhar_card_image: "Aadhar Card Image",
                     passport_photo: "Passport Photo",
-                  };
-
-                  cefResults.forEach((cefResult) => {
-                    Object.entries(mappings).forEach(([key, label]) => {
-                      if (cefResult[key]) {
-                        candidateBasicAttachments.push({ [label]: cefResult[key] });
-                      }
-                    });
+                  }).forEach(([key, label]) => {
+                    if (cefResult[key]) {
+                      candidateBasicAttachments.push({ [label]: cefResult[key] });
+                    }
                   });
+                });
 
-                  servicesResult.cef["Candidate Basic Attachments"] = candidateBasicAttachments;
-                  candidateApp.service_data = servicesResult;
-                }
-              } catch (error) {
-                console.error("Error processing CEF services:", error);
+                servicesResult.cef["Candidate Basic Attachments"] = candidateBasicAttachments;
+                candidateApp.service_data = servicesResult;
               }
 
               const dbTableFileInputs = {};
               const dbTableColumnLabel = {};
-              let completedQueries = 0;
               const dbTableWithHeadings = {};
 
               try {
+                // Fetch JSON data for all services
                 await Promise.all(
                   servicesIds.map(async (service) => {
-                    const query =
-                      "SELECT `json` FROM `cef_service_forms` WHERE `service_id` = ?";
-                    const result = await new Promise((resolve, reject) => {
-                      connection.query(query, [service], (err, result) => {
-                        if (err) {
-                          return reject(err); // Reject if there is an error in the query
-                        }
-                        resolve(result); // Resolve with query result
-                      });
+                    const query = "SELECT `json` FROM `cef_service_forms` WHERE `service_id` = ?";
+                    const result = await sequelize.query(query, {
+                      replacements: [service],
+                      type: QueryTypes.SELECT,
                     });
 
                     if (result.length > 0) {
@@ -648,182 +618,89 @@ const Customer = {
                   })
                 );
 
-                let tableQueries = 0;
-                const totalTables = Object.keys(dbTableFileInputs).length;
-
-                if (totalTables === 0) {
-                  return; // If no tables to query, resolve immediately
-                }
-
-                await Promise.all(
+                const tableQueries = await Promise.all(
                   Object.entries(dbTableFileInputs).map(async ([dbTable, fileInputNames]) => {
-                    if (fileInputNames.length > 0) {
-                      try {
-                        // Fetch the column names of the table
-                        const existingColumns = await new Promise((resolve, reject) => {
-                          const describeQuery = `DESCRIBE cef_${dbTable}`;
-                          connection.query(describeQuery, (err, results) => {
-                            if (err) {
-                              console.error("Error describing table:", dbTable, err);
-                              return reject(err);
-                            }
-                            resolve(results.map((col) => col.Field)); // Extract column names
-                          });
+                    if (fileInputNames.length === 0) {
+                      console.log(`Skipping table ${dbTable} as fileInputNames is empty 2.`);
+                      return;
+                    }
+
+                    try {
+                      // Fetch existing columns in the table
+                      const describeQuery = `DESCRIBE cef_${dbTable}`;
+                      const existingColumns = await sequelize.query(describeQuery, {
+                        type: QueryTypes.SELECT,
+                      });
+
+                      const columnNames = existingColumns.map((col) => col.Field);
+                      const validColumns = fileInputNames.filter((col) => columnNames.includes(col));
+
+                      if (validColumns.length === 0) {
+                        console.log(`Skipping table ${dbTable} as no valid columns exist.`);
+                        return;
+                      }
+
+                      // Fetch relevant data
+                      const selectQuery = `SELECT ${validColumns.join(", ")} FROM cef_${dbTable} WHERE candidate_application_id = ?`;
+                      const rows = await sequelize.query(selectQuery, {
+                        replacements: [candidateApp.main_id],
+                        type: QueryTypes.SELECT,
+                      });
+
+                      // Map column names to labels
+                      const updatedRows = rows.map((row) => {
+                        const updatedRow = {};
+                        Object.entries(row).forEach(([key, value]) => {
+                          if (value != null && value.trim() !== "") {
+                            updatedRow[dbTableColumnLabel[key] || key] = value;
+                          }
+                        });
+                        return updatedRow;
+                      });
+
+                      if (
+                        updatedRows.length > 0 &&
+                        updatedRows.some((row, index) => {
+                          const isValid = Object.keys(row).length > 0 && Object.values(row).some(value => value !== undefined && value !== null && value !== '');
+                          return isValid;
+                        })
+                      ) {
+
+                        // Filter the rows based on the condition that both the index and value are not empty
+                        const validRows = updatedRows.filter((row, index) => {
+                          const isValid = Object.keys(row).length > 0 &&
+                            Object.values(row).some(value => value !== undefined && value !== null && value !== '');
+                          return isValid;
                         });
 
-                        // Get only the columns that exist in the table
-                        const validColumns = fileInputNames.filter((col) =>
-                          existingColumns.includes(col)
-                        );
 
-                        if (validColumns.length > 0) {
-                          // Create and execute the SELECT query
-                          const selectQuery = `SELECT ${validColumns.join(", ")} FROM cef_${dbTable} WHERE candidate_application_id = ?`;
-                          const rows = await new Promise((resolve, reject) => {
-                            connection.query(
-                              selectQuery,
-                              [candidateApp.main_id],
-                              (err, rows) => {
-                                if (err) {
-                                  console.error(
-                                    "Error querying database for table:",
-                                    dbTable,
-                                    err
-                                  );
-                                  return reject(err);
-                                }
-                                resolve(rows);
-                              }
-                            );
-                          });
-
-                          // Process and map the rows to replace column names with labels
-                          const updatedRows = rows.map((row) => {
-                            const updatedRow = {};
-                            for (const [key, value] of Object.entries(row)) {
-                              if (value != null && value.trim() !== "") {
-                                const label = dbTableColumnLabel[key];
-                                updatedRow[label || key] = value; // Use label if available, else keep original key
-                              }
-                            }
-                            return updatedRow;
-                          });
-
-                          if (
-                            updatedRows.length > 0 &&
-                            updatedRows.some((row) => Object.keys(row).length > 0)
-                          ) {
-                            servicesResult.cef[dbTableWithHeadings[dbTable]] = updatedRows;
-                          }
-                        } else {
-                          console.log(
-                            `Skipping table ${dbTable} as no valid columns exist in the table.`
-                          );
-                        }
-
-                        tableQueries++;
-                        if (tableQueries === totalTables) {
-                          candidateApp.service_data = servicesResult;
-                        }
-                      } catch (error) {
-                        console.error(`Error processing table ${dbTable}:`, error);
+                        servicesResult.cef[dbTableWithHeadings[dbTable]] = validRows;
                       }
-                    } else {
-                      console.log(
-                        `Skipping table ${dbTable} as fileInputNames is empty.`
-                      );
+                    } catch (error) {
+                      console.error(`Error processing table ${dbTable}:`, error);
                     }
                   })
                 );
 
+                if (tableQueries.length > 0) {
+                  candidateApp.service_data = servicesResult;
+                }
               } catch (error) {
-                return Promise.reject(error); // Reject if any errors occur during CEF processing
+                return Promise.reject(error);
               }
+
+            } catch (error) {
+              console.error("Error processing CEF services:", error);
             }
-          });
+          }
+        })
+      );
 
-          Promise.all(cmtPromises)
-            .then(() => {
-              connectionRelease(connection);
-              callback(null, results);
-            })
-            .catch((promiseError) => {
-              console.error("Error processing candidate applications:", promiseError);
-              connectionRelease(connection);
-              callback(promiseError, null);
-            });
-        });
-      });
-    });
-  },
-
-  applicationDataByClientApplicationID: (
-    client_application_id,
-    branch_id,
-    callback
-  ) => {
-    // Start a connection
-    startConnection((err, connection) => {
-      if (err) {
-        return callback(err, null);
-      }
-
-      // Base SQL query with JOINs to fetch client_spoc_name and cmt_applications data if it exists
-      let sql = `
-        SELECT 
-          ca.*, 
-          ca.id AS main_id, 
-          cmt.first_insufficiency_marks,
-          cmt.first_insuff_date,
-          cmt.first_insuff_reopened_date,
-          cmt.second_insufficiency_marks,
-          cmt.second_insuff_date,
-          cmt.second_insuff_reopened_date,
-          cmt.third_insufficiency_marks,
-          cmt.third_insuff_date,
-          cmt.third_insuff_reopened_date,
-          cmt.overall_status,
-          cmt.report_date,
-          cmt.report_status,
-          cmt.report_type,
-          cmt.qc_done_by,
-          qc_admin.name AS qc_done_by_name,
-          cmt.delay_reason,
-          cmt.report_generate_by,
-          report_admin.name AS report_generated_by_name,
-          cmt.case_upload
-        FROM 
-          \`client_applications\` ca
-        LEFT JOIN 
-          \`cmt_applications\` cmt 
-        ON 
-          ca.id = cmt.client_application_id
-        LEFT JOIN 
-          \`admins\` AS qc_admin 
-        ON 
-          qc_admin.id = cmt.qc_done_by
-        LEFT JOIN 
-          \`admins\` AS report_admin 
-        ON 
-          report_admin.id = cmt.report_generate_by
-        WHERE 
-          ca.\`id\` = ? AND
-          ca.\`branch_id\` = ?`;
-
-      const params = [client_application_id, branch_id]; // Start with branch_id
-
-      sql += ` ORDER BY ca.\`created_at\` DESC;`;
-
-      // Execute the query using the connection
-      connection.query(sql, params, (err, results) => {
-        connectionRelease(connection); // Release the connection
-        if (err) {
-          console.error("Database query error: 18", err);
-          return callback(err, null);
-        }
-        callback(null, results[0]);
-      });
-    });
+      callback(null, results);
+    } catch (error) {
+      console.error("Error processing candidate applications:", error);
+      callback(error, null);
+    }
   },
 
   cefApplicationByID: async (application_id, branch_id, callback) => {
@@ -857,45 +734,31 @@ const Customer = {
     }
   },
 
-  davApplicationByID: (application_id, branch_id, callback) => {
-    // Start a connection
-    startConnection((err, connection) => {
-      if (err) {
-        return callback(err, null);
+  davApplicationByID: async (application_id, branch_id, callback) => {
+    try {
+
+      const checkCefSql = `
+            SELECT * 
+            FROM \`dav_applications\` 
+            WHERE 
+                \`candidate_application_id\` = ? 
+                AND \`branch_id\` = ?
+        `;
+
+      const cefResults = await sequelize.query(checkCefSql, {
+        replacements: [application_id, branch_id],
+        type: QueryTypes.SELECT,
+      });
+
+      if (!cefResults.length) {
+        return callback({ message: "Candidate DAV form is not submitted yet" }, null);
       }
 
-      // First, check if an entry exists in cef_applications
-      const checkCefSql = `
-        SELECT * 
-        FROM \`dav_applications\` 
-        WHERE 
-          \`candidate_application_id\` = ? 
-          AND \`branch_id\` = ?
-      `;
-
-      connection.query(
-        checkCefSql,
-        [application_id, branch_id],
-        (err, cefResults) => {
-          if (err) {
-            connectionRelease(connection); // Release the connection
-            console.error("Database query error: Check CEF", err);
-            return callback(err, null);
-          }
-
-          // If no entry in cef_applications, return error
-          if (cefResults.length === 0) {
-            connectionRelease(connection); // Release the connection
-            return callback(
-              { message: "Candidate DAV form is not submitted yet" },
-              null
-            );
-          }
-
-          callback(null, cefResults[0]);
-        }
-      );
-    });
+      callback(null, cefResults[0]);
+    } catch (error) {
+      console.error("Model Step 4: Error occurred while fetching DAV application.", error);
+      callback(error, null);
+    }
   },
 
   applicationByID: async (application_id, branch_id, callback) => {
@@ -964,129 +827,106 @@ const Customer = {
     }
   },
 
-  annexureData: (client_application_id, db_table, callback) => {
-    // Start a connection
-    startConnection((err, connection) => {
-      if (err) {
-        return callback(err, null);
-      }
-
-      // Check if the table exists in the information schema
+  annexureData: async (client_application_id, db_table, callback) => {
+    try {
+      // Check if the table exists
       const checkTableSql = `
-        SELECT COUNT(*) AS count 
-        FROM information_schema.tables 
-        WHERE table_schema = DATABASE() 
-        AND table_name = ?`;
+            SELECT COUNT(*) AS count 
+            FROM information_schema.tables 
+            WHERE table_schema = DATABASE() 
+            AND table_name = ?
+        `;
 
-      connection.query(checkTableSql, [db_table], (err, results) => {
-        if (err) {
-          console.error("Database error while checking table existence:", err);
-          connectionRelease(connection); // Release connection
-          return callback(err, null);
-        }
-        // If the table does not exist, return an error
-        if (results[0].count === 0) {
-          const createTableSql = `
-            CREATE TABLE \`${db_table}\` (
-              \`id\` bigint(20) NOT NULL AUTO_INCREMENT,
-              \`cmt_id\` bigint(20) NOT NULL,
-              \`client_application_id\` bigint(20) NOT NULL,
-              \`branch_id\` int(11) NOT NULL,
-              \`customer_id\` int(11) NOT NULL,
-              \`status\` ENUM(
-                          'nil', 'initiated', 'hold', 'closure_advice', 'wip', 'insuff', 'completed', 
-                          'stopcheck', 'active_employment', 'not_doable', 'candidate_denied', 
-                          'completed_green', 'completed_orange', 'completed_red', 'completed_yellow', 'completed_pink'
-                        ) DEFAULT NULL,
-              \`is_submitted\` TINYINT(1) DEFAULT 0,
-              \`is_billed\` TINYINT(1) DEFAULT 0,
-              \`billed_date\` TIMESTAMP NULL DEFAULT NULL,
-              \`created_at\` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-              \`updated_at\` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-              PRIMARY KEY (\`id\`),
-              KEY \`client_application_id\` (\`client_application_id\`),
-              KEY \`cmt_application_customer_id\` (\`customer_id\`),
-              KEY \`cmt_application_cmt_id\` (\`cmt_id\`),
-              CONSTRAINT \`fk_${db_table}_client_application_id\` FOREIGN KEY (\`client_application_id\`) REFERENCES \`client_applications\` (\`id\`) ON DELETE CASCADE,
-              CONSTRAINT \`fk_${db_table}_customer_id\` FOREIGN KEY (\`customer_id\`) REFERENCES \`customers\` (\`id\`) ON DELETE CASCADE,
-              CONSTRAINT \`fk_${db_table}_cmt_id\` FOREIGN KEY (\`cmt_id\`) REFERENCES \`cmt_applications\` (\`id\`) ON DELETE CASCADE
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;`;
-
-          connection.query(createTableSql, (createErr) => {
-            if (createErr) {
-              console.error(`Error creating table "${db_table}":`, createErr);
-              connectionRelease(connection); // Release connection
-              return callback(createErr);
-            }
-            fetchData();
-          });
-        } else {
-          fetchData();
-        }
-
-        function fetchData() {
-          // Now that we know the table exists, run the original query
-          const sql = `SELECT * FROM \`${db_table}\` WHERE \`client_application_id\` = ?`;
-          connection.query(sql, [client_application_id], (err, results) => {
-            connectionRelease(connection); // Release connection
-            if (err) {
-              console.error("Database query error: 20", err);
-              return callback(err, null);
-            }
-            // Return the first result or null if not found
-            callback(null, results[0] || null);
-          });
-        }
+      const tableCheckResults = await sequelize.query(checkTableSql, {
+        replacements: [db_table],
+        type: QueryTypes.SELECT,
       });
-    });
-  },
 
-  filterOptions: (callback) => {
-    // Start a connection
-    startConnection((err, connection) => {
-      if (err) {
-        return callback(err, null);
+      if (tableCheckResults[0].count === 0) {
+
+        const createTableSql = `
+                CREATE TABLE \`${db_table}\` (
+                    \`id\` bigint(20) NOT NULL AUTO_INCREMENT,
+                    \`cmt_id\` bigint(20) NOT NULL,
+                    \`client_application_id\` bigint(20) NOT NULL,
+                    \`branch_id\` int(11) NOT NULL,
+                    \`customer_id\` int(11) NOT NULL,
+                    \`status\` ENUM(
+                        'nil', 'initiated', 'hold', 'closure_advice', 'wip', 'insuff', 'completed', 
+                        'stopcheck', 'active_employment', 'not_doable', 'candidate_denied', 
+                        'completed_green', 'completed_orange', 'completed_red', 'completed_yellow', 'completed_pink'
+                    ) DEFAULT NULL,
+                    \`is_submitted\` TINYINT(1) DEFAULT 0,
+                    \`is_billed\` TINYINT(1) DEFAULT 0,
+                    \`billed_date\` TIMESTAMP NULL DEFAULT NULL,
+                    \`created_at\` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
+                    \`updated_at\` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                    PRIMARY KEY (\`id\`),
+                    KEY \`client_application_id\` (\`client_application_id\`),
+                    KEY \`cmt_application_customer_id\` (\`customer_id\`),
+                    KEY \`cmt_application_cmt_id\` (\`cmt_id\`),
+                    CONSTRAINT \`fk_${db_table}_client_application_id\` FOREIGN KEY (\`client_application_id\`) REFERENCES \`client_applications\` (\`id\`) ON DELETE CASCADE,
+                    CONSTRAINT \`fk_${db_table}_customer_id\` FOREIGN KEY (\`customer_id\`) REFERENCES \`customers\` (\`id\`) ON DELETE CASCADE,
+                    CONSTRAINT \`fk_${db_table}_cmt_id\` FOREIGN KEY (\`cmt_id\`) REFERENCES \`cmt_applications\` (\`id\`) ON DELETE CASCADE
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+            `;
+
+        await sequelize.query(createTableSql, { type: QueryTypes.RAW });
       }
 
-      const sql = `
-        SELECT \`status\`, COUNT(*) AS \`count\` 
-        FROM \`client_applications\` 
-        GROUP BY \`status\`
-      `;
-      connection.query(sql, (err, results) => {
-        connectionRelease(connection); // Release connection
-        if (err) {
-          console.error("Database query error: 21", err);
-          return callback(err, null);
-        }
-        callback(null, results);
+      const sql = `SELECT * FROM \`${db_table}\` WHERE \`client_application_id\` = ?`;
+      const results = await sequelize.query(sql, {
+        replacements: [client_application_id],
+        type: QueryTypes.SELECT,
       });
-    });
+
+      callback(null, results[0] || null);
+    } catch (error) {
+      console.error(`Error in annexureData: ${error.message}`, error);
+      callback(error, null);
+    }
   },
 
-  filterOptionsForBranch: (branch_id, callback) => {
-    // Start a connection
-    startConnection((err, connection) => {
-      if (err) {
-        return callback(err, null);
-      }
-
+  filterOptions: async (callback) => {
+    try {
       const sql = `
-        SELECT \`status\`, COUNT(*) AS \`count\` 
-        FROM \`client_applications\` 
-        WHERE \`branch_id\` = ?
-        GROUP BY \`status\`, \`branch_id\`
-      `;
-      connection.query(sql, [branch_id], (err, results) => {
-        connectionRelease(connection); // Release connection
-        if (err) {
-          console.error("Database query error: 22", err);
-          return callback(err, null);
-        }
-        callback(null, results);
+            SELECT \`status\`, COUNT(*) AS \`count\` 
+            FROM \`client_applications\` 
+            GROUP BY \`status\`
+        `;
+
+      const results = await sequelize.query(sql, {
+        type: QueryTypes.SELECT,
       });
-    });
+
+      callback(null, results);
+    } catch (error) {
+      console.error("Error fetching filter options:", error);
+      callback(error, null);
+    }
   },
+
+  filterOptionsForBranch: async (branch_id, callback) => {
+    try {
+      const sql = `
+            SELECT \`status\`, COUNT(*) AS \`count\` 
+            FROM \`client_applications\` 
+            WHERE \`branch_id\` = ?
+            GROUP BY \`status\`
+        `;
+
+      const results = await sequelize.query(sql, {
+        replacements: [branch_id],
+        type: QueryTypes.SELECT,
+      });
+
+      callback(null, results);
+    } catch (error) {
+      console.error("Error fetching filter options for branch:", error);
+      callback(error, null);
+    }
+  },
+
 };
 
 module.exports = Customer;
