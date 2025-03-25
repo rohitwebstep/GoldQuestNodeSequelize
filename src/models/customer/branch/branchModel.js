@@ -2,33 +2,26 @@ const { sequelize } = require("../../../config/db");
 const { QueryTypes } = require("sequelize");
 
 const Branch = {
-  isEmailUsedBefore: (email, callback) => {
-    startConnection((err, connection) => {
-      if (err) {
-        return callback(
-          { message: "Failed to connect to the database", error: err },
-          null
-        );
-      }
-
+  isEmailUsedBefore: async (email, callback) => {
+    try {
       const emailCheckSql = `
-        SELECT COUNT(*) as count
-        FROM \`branches\`
-        WHERE \`email\` = ?
-      `;
+            SELECT COUNT(*) as count
+            FROM \`branches\`
+            WHERE \`email\` = ?
+        `;
 
-      connection.query(emailCheckSql, [email], (err, emailCheckResults) => {
-        connectionRelease(connection); // Ensure connection is released
-
-        if (err) {
-          console.error("Error checking email in branch:", err);
-          return callback(err, null);
-        }
-
-        const emailExists = emailCheckResults[0].count > 0;
-        return callback(null, emailExists);
+      const [results] = await sequelize.query(emailCheckSql, {
+        replacements: [email],
+        type: QueryTypes.SELECT,
       });
-    });
+
+      const emailExists = results.count > 0;
+      return callback(null, emailExists);
+
+    } catch (error) {
+      console.error("Error checking email existence:", error);
+      return callback({ message: "Database query failed", error }, null);
+    }
   },
 
   index: async (branch_id, callback) => {
@@ -93,52 +86,30 @@ const Branch = {
     }
   },
 
-  callbackRequest: (branch_id, customer_id, callback) => {
-    // Start a connection to the database
-    startConnection((err, connection) => {
-      if (err) {
-        return callback(
-          {
-            message:
-              "Unable to establish a connection to the database. Please try again later.",
-            error: err,
-          },
-          null
-        );
-      }
-
+  callbackRequest: async (branch_id, customer_id, callback) => {
+    try {
       // SQL query to insert the callback request
       const sqlBranch = `
-        INSERT INTO \`callback_requests\` (
-          \`branch_id\`, \`customer_id\`
-        ) VALUES (?, ?)
-      `;
+            INSERT INTO \`callback_requests\` (\`branch_id\`, \`customer_id\`)
+            VALUES (?, ?)
+        `;
 
-      // Execute the query with provided parameters
-      connection.query(sqlBranch, [branch_id, customer_id], (err, results) => {
-        // Release the database connection after query execution
-        connectionRelease(connection);
-
-        if (err) {
-          console.error("Error while inserting callback request:", err);
-          return callback(
-            {
-              message:
-                "An error occurred while processing the callback request. Please contact support.",
-              error: err,
-            },
-            null
-          );
-        }
-
-        // Respond with the insert ID if the query is successful
-        const insertId = results.insertId;
-        callback(null, {
-          message: "Callback request successfully registered.",
-          insertId: insertId,
-        });
+      const [results] = await sequelize.query(sqlBranch, {
+        replacements: [branch_id, customer_id],
+        type: QueryTypes.INSERT,
       });
-    });
+
+      // Respond with the insert ID if the query is successful
+      const insertId = results; // `results` contains insertId in Sequelize
+      callback(null, {
+        message: "Callback request successfully registered.",
+        insertId: insertId,
+      });
+
+    } catch (error) {
+      console.error("Error inserting callback request:", error);
+      callback({ message: "Database query failed", error }, null);
+    }
   },
 
   create: async (BranchData, callback) => {
@@ -176,80 +147,62 @@ const Branch = {
       );
     }
   },
-  list: (callback) => {
-    startConnection((err, connection) => {
-      if (err) {
-        return callback(
-          { message: "Failed to connect to the database", error: err },
-          null
-        );
-      }
 
+  list: async (callback) => {
+    try {
       const sql = `SELECT * FROM \`branches\``;
-      connection.query(sql, (err, results) => {
-        connectionRelease(connection); // Ensure connection is released
 
-        if (err) {
-          console.error("Database query error: 84", err);
-          return callback(err, null);
-        }
-        callback(null, results);
+      const results = await sequelize.query(sql, {
+        type: QueryTypes.SELECT,
       });
-    });
+
+      callback(null, results);
+    } catch (error) {
+      console.error("Error fetching branch list:", error);
+      callback({ message: "Database query failed", error }, null);
+    }
   },
 
-  filterOptionsForClientApplications: (branch_id, callback) => {
-    startConnection((err, connection) => {
-      if (err) {
-        return callback(
-          { message: "Failed to connect to the database", error: err },
-          null
-        );
-      }
-
+  filterOptionsForClientApplications: async (branch_id, callback) => {
+    try {
       const sql = `
-        SELECT \`status\`, COUNT(*) AS \`count\` 
-        FROM \`client_applications\` 
-        WHERE \`branch_id\` = ?
-        GROUP BY \`status\`, \`branch_id\`
-      `;
-      connection.query(sql, [branch_id], (err, results) => {
-        connectionRelease(connection); // Ensure connection is released
+            SELECT \`status\`, COUNT(*) AS \`count\` 
+            FROM \`client_applications\` 
+            WHERE \`branch_id\` = ?
+            GROUP BY \`status\`, \`branch_id\`
+        `;
 
-        if (err) {
-          console.error("Database query error: 85", err);
-          return callback(err, null);
-        }
-        callback(null, results);
+      const results = await sequelize.query(sql, {
+        replacements: [branch_id],
+        type: QueryTypes.SELECT,
       });
-    });
+
+      callback(null, results);
+    } catch (error) {
+      console.error("Error fetching client application filters:", error);
+      callback({ message: "Database query failed", error }, null);
+    }
   },
 
-  filterOptionsForCandidateApplications: (branch_id, callback) => {
-    startConnection((err, connection) => {
-      if (err) {
-        return callback(
-          { message: "Failed to connect to the database", error: err },
-          null
-        );
-      }
-
+  filterOptionsForCandidateApplications: async (branch_id, callback) => {
+    try {
       const sql = `
-        SELECT \`status\`, COUNT(*) AS \`count\` 
-        FROM \`candidate_applications\` 
-        WHERE \`branch_id\` = ?
-        GROUP BY \`status\`, \`branch_id\`
-      `;
-      connection.query(sql, [branch_id], (err, results) => {
-        connectionRelease(connection); // Ensure connection is released
+            SELECT \`status\`, COUNT(*) AS \`count\` 
+            FROM \`candidate_applications\` 
+            WHERE \`branch_id\` = ?
+            GROUP BY \`status\`, \`branch_id\`
+        `;
 
-        if (err) {
-          console.error("Database query error: 86", err);
-          return callback(err, null);
-        }
-        callback(null, results);
+      const results = await sequelize.query(sql, {
+        replacements: [branch_id],
+        type: QueryTypes.SELECT,
       });
-    });
+
+      callback(null, results);
+    } catch (error) {
+      console.error("Error fetching candidate application filters:", error);
+      callback({ message: "Database query failed", error }, null);
+    }
   },
 
   isEmailUsed: async (email, callback) => {
@@ -469,30 +422,28 @@ const Branch = {
     }
   },
 
-  update: (id, name, email, password, callback) => {
-    startConnection((err, connection) => {
-      if (err) {
-        return callback(
-          { message: "Failed to connect to the database", error: err },
-          null
-        );
+  update: async (id, name, email, password, callback) => {
+    try {
+      const sql = `
+            UPDATE \`branches\`
+            SET \`name\` = ?, \`email\` = ?, \`password\` = ?
+            WHERE \`id\` = ?
+        `;
+
+      const [results] = await sequelize.query(sql, {
+        replacements: [name, email, password, id],
+        type: QueryTypes.UPDATE,
+      });
+
+      if (results.affectedRows === 0) {
+        return callback({ message: "No branch found or no update made." }, null);
       }
 
-      const sql = `
-        UPDATE \`branches\`
-        SET \`name\` = ?, \`email\` = ?, \`password\` = ?
-        WHERE \`id\` = ?
-      `;
-      connection.query(sql, [name, email, password, id], (err, results) => {
-        connectionRelease(connection); // Ensure connection is released
-
-        if (err) {
-          console.error("Database query error: 94", err);
-          return callback(err, null);
-        }
-        callback(null, results);
-      });
-    });
+      callback(null, { message: "Branch updated successfully.", affectedRows: results.affectedRows });
+    } catch (error) {
+      console.error("Error updating branch:", error);
+      callback({ message: "Database query failed", error }, null);
+    }
   },
 
   updateHeadBranchEmail: async (customer_id, name, email, callback) => {
@@ -515,79 +466,74 @@ const Branch = {
     }
   },
 
-  active: (id, callback) => {
-    startConnection((err, connection) => {
-      if (err) {
-        return callback(
-          { message: "Failed to connect to the database", error: err },
-          null
-        );
+  active: async (id, callback) => {
+    try {
+      const sql = `
+            UPDATE \`branches\`
+            SET \`status\` = ?
+            WHERE \`id\` = ?
+        `;
+
+      const [results] = await sequelize.query(sql, {
+        replacements: ["1", id],
+        type: QueryTypes.UPDATE,
+      });
+
+      if (results.affectedRows === 0) {
+        return callback({ message: "No branch found or status not changed." }, null);
       }
 
-      const sql = `
-        UPDATE \`branches\`
-        SET \`status\` = ?
-        WHERE \`id\` = ?
-      `;
-      connection.query(sql, ["1", id], (err, results) => {
-        connectionRelease(connection); // Ensure connection is released
-
-        if (err) {
-          console.error("Database query error: 96", err);
-          return callback(err, null);
-        }
-        callback(null, results);
-      });
-    });
+      callback(null, { message: "Branch activated successfully.", affectedRows: results.affectedRows });
+    } catch (error) {
+      console.error("Error activating branch:", error);
+      callback({ message: "Database query failed", error }, null);
+    }
   },
 
-  inactive: (id, callback) => {
-    startConnection((err, connection) => {
-      if (err) {
-        return callback(
-          { message: "Failed to connect to the database", error: err },
-          null
-        );
+  inactive: async (id, callback) => {
+    try {
+      const sql = `
+            UPDATE \`branches\`
+            SET \`status\` = ?
+            WHERE \`id\` = ?
+        `;
+
+      const [results] = await sequelize.query(sql, {
+        replacements: ["0", id],
+        type: QueryTypes.UPDATE,
+      });
+
+      if (results.affectedRows === 0) {
+        return callback({ message: "No branch found or status not changed." }, null);
       }
 
-      const sql = `
-        UPDATE \`branches\`
-        SET \`status\` = ?
-        WHERE \`id\` = ?
-      `;
-      connection.query(sql, ["0", id], (err, results) => {
-        connectionRelease(connection); // Ensure connection is released
-
-        if (err) {
-          console.error("Database query error: 97", err);
-          return callback(err, null);
-        }
-        callback(null, results);
-      });
-    });
+      callback(null, { message: "Branch deactivated successfully.", affectedRows: results.affectedRows });
+    } catch (error) {
+      console.error("Error deactivating branch:", error);
+      callback({ message: "Database query failed", error }, null);
+    }
   },
 
-  delete: (id, callback) => {
-    startConnection((err, connection) => {
-      if (err) {
-        return callback(
-          { message: "Failed to connect to the database", error: err },
-          null
-        );
-      }
-
+  delete: async (id, callback) => {
+    try {
       const sql = `DELETE FROM \`branches\` WHERE \`id\` = ?`;
-      connection.query(sql, [id], (err, results) => {
-        connectionRelease(connection); // Ensure connection is released
 
-        if (err) {
-          console.error("Database query error: 98", err);
-          return callback(err, null);
-        }
-        callback(null, results);
+      const [results] = await sequelize.query(sql, {
+        replacements: [id],
+        type: QueryTypes.DELETE,
       });
-    });
+
+      if (results.affectedRows === 0) {
+        return callback({ message: "Branch not found or already deleted." }, null);
+      }
+
+      callback(null, { message: "Branch deleted successfully.", affectedRows: results.affectedRows });
+    } catch (error) {
+      console.error("Error deleting branch:", error);
+      callback({ message: "Database query failed", error }, null);
+    }
   },
+
 };
 
 module.exports = Branch;
