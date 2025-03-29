@@ -399,7 +399,6 @@ const cef = {
         })
         .catch((alterErr) => {
           console.error("Error executing ALTER statements:", alterErr);
-          connectionRelease(connection);
           callback(alterErr, null);
         });
     } else {

@@ -94,11 +94,4 @@ const tatDelay = {
 
 };
 
-// Helper function to handle query errors and release connection
-function handleQueryError(err, connection, callback) {
-  console.error("Query error:", err);
-  connectionRelease(connection);
-  callback(err, null);
-}
-
 module.exports = tatDelay;
