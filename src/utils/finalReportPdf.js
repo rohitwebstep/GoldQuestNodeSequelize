@@ -748,8 +748,6 @@ module.exports = {
 
                         let yPosition = 20;
 
-                        console.log(`service - `, service);
-
                         if (!service.reportFormJson || !service.reportFormJson.json) {
                           console.error("reportFormJson or reportFormJson.json does not exist.");
                           continue;

@@ -113,7 +113,7 @@ const common = {
 
   branchActivityLog: async (
     branch_id,
-    mailModule,
+    module,
     action,
     result,
     update,

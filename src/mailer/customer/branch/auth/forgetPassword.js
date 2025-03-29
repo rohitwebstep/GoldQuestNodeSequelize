@@ -3,7 +3,7 @@ const { sequelize } = require("../../../../config/db"); // Import the existing M
 const { QueryTypes } = require("sequelize");
 
 // Function to send password reset email
-async function forgetPassword(module, action, branch_name, reset_link, toArr) {
+async function forgetPassword(mailModule, action, branch_name, reset_link, toArr) {
   
   try {
     const [emailRows] = await sequelize.query("SELECT * FROM emails WHERE module = ? AND action = ? AND status = 1", {

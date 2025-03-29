@@ -3,7 +3,7 @@ const { sequelize } = require("../../../config/db"); // Import the existing MySQ
 const { QueryTypes } = require("sequelize");
 
 // Function to send email for password reset
-async function forgetPassword(module, action, admin_name, reset_link, toArr) {
+async function forgetPassword(mailModule, action, admin_name, reset_link, toArr) {
   
 
   try {

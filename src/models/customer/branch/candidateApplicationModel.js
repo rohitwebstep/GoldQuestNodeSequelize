@@ -334,7 +334,11 @@ const candidateApplication = {
 
             if (serviceJson.length) {
               try {
-                const jsonData = JSON.parse(serviceJson[0].json);
+                const rawJson = serviceJson[0].json;
+                const sanitizedJson = rawJson
+                  .replace(/\\"/g, '"')
+                  .replace(/\\'/g, "'");
+                const jsonData = JSON.parse(sanitizedJson);
                 const dbTable = jsonData.db_table;
                 const heading = jsonData.heading;
 

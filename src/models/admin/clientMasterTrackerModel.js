@@ -1073,12 +1073,17 @@ const Customer = {
 
 
           sqlQueries.push(new Promise(async (resolve, reject) => {
-            const result = await sequelize.query(SQL, {
-              replacements: [customer_id, branch_id],
-              type: QueryTypes.SELECT,
-            });
-            filterOptions[key] = result[0] ? result[0].count : 0;
-            resolve();
+            try {
+              const result = await sequelize.query(SQL, {
+                replacements: [customer_id, branch_id],
+                type: QueryTypes.SELECT,
+              });
+
+              filterOptions[key] = result[0]?.count || 0;
+              resolve();
+            } catch (error) {
+              reject(error);
+            }
           }));
         }
       }
@@ -1117,6 +1122,24 @@ const Customer = {
     } catch (err) {
       console.error("Error fetching filter options:", err);
       callback(err, null);
+    }
+  },
+
+  applicationByRefID: async (ref_id, callback) => {
+
+    try {
+      const sql =
+        "SELECT CA.*, C.name AS customer_name FROM `client_applications` AS CA INNER JOIN `customers` AS C ON C.id = CA.customer_id WHERE CA.`application_id` = ? ORDER BY `created_at` DESC";
+
+      const results = await sequelize.query(sql, {
+        replacements: [ref_id],  // No need to convert to a string
+        type: QueryTypes.SELECT,
+      });
+
+      callback(null, results.length > 0 ? results[0] : null);
+    } catch (error) {
+      console.error("Error in getCMTApplicationById:", error);
+      callback(error, null);
     }
   },
 

@@ -3,7 +3,7 @@ const { sequelize } = require("../../../config/db"); // Import the existing MySQ
 const { QueryTypes } = require("sequelize");
 
 // Function to send email
-async function readyForReport(module, action, application_id, toArr, ccArr) {
+async function readyForReport(mailModule, action, application_id, toArr, ccArr) {
 
   try {
     const [emailRows] = await sequelize.query("SELECT * FROM emails WHERE module = ? AND action = ? AND status = 1", {

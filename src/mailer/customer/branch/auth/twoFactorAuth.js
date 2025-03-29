@@ -3,7 +3,7 @@ const { sequelize } = require("../../../../config/db"); // Import the existing M
 const { QueryTypes } = require("sequelize");
 
 // Function to send email for password reset
-async function twoFactorAuth(module, action, otp, name, toArr) {
+async function twoFactorAuth(mailModule, action, otp, name, toArr) {
   
 
   try {

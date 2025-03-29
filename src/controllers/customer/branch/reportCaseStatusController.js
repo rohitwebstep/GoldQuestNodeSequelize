@@ -124,7 +124,8 @@ exports.list = (req, res) => {
                   )
                 ),
                 new Promise((resolve) =>
-                  ClientMasterTrackerModel.filterOptionsForBranch(
+                  ClientMasterTrackerModel.filterOptionsForApplicationListing(
+                    currentCustomer.id,
                     branch_id,
                     (err, result) => {
                       if (err) return resolve([]);
