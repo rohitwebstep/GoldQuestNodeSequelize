@@ -206,7 +206,7 @@ const Branch = {
 
       const [affectedRows] = await sequelize.query(sql, {
         replacements: [new_password, branch_id],
-        type: QueryTypes.SELECT,
+        type: QueryTypes.UPDATE,
       });
 
       // Check if the password was updated
