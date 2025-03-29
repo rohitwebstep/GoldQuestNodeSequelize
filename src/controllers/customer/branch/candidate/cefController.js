@@ -378,7 +378,7 @@ exports.unsubmittedApplications = (req, res) => {
                     }
 
                     // Fetch and process digital address service
-                    Service.digitlAddressService((err, serviceEntry) => {
+                    Service.digitalAddressService((err, serviceEntry) => {
                       if (err) {
                         console.error("Database error:", err);
                         return reject({

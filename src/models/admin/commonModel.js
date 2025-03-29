@@ -126,7 +126,7 @@ const common = {
    */
   adminActivityLog: async (
     admin_id,
-    module,
+    mailModule,
     action,
     result,
     update,

@@ -468,7 +468,7 @@ const candidateApplication = {
     try {
       const sql = "DELETE FROM `candidate_applications` WHERE `id` = ?";
 
-      const [results] = await sequelize.query(sql, {
+      const results = await sequelize.query(sql, {
         replacements: [id],
         type: QueryTypes.DELETE,
       });

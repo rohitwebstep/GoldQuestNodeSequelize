@@ -124,7 +124,7 @@ const common = {
    */
   customerActivityLog: async (
     customer_id,
-    module,
+    mailModule,
     action,
     result,
     update,

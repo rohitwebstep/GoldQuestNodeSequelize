@@ -430,12 +430,12 @@ const Branch = {
             WHERE \`id\` = ?
         `;
 
-      const [results] = await sequelize.query(sql, {
+      const results = await sequelize.query(sql, {
         replacements: [name, email, password, id],
         type: QueryTypes.UPDATE,
       });
-
-      if (results.affectedRows === 0) {
+       const affectedRows = results[0];
+      if (affectedRows === 0) {
         return callback({ message: "No branch found or no update made." }, null);
       }
 

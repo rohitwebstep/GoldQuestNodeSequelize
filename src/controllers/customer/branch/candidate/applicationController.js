@@ -289,9 +289,9 @@ exports.create = (req, res) => {
 
                                 const dav_href = `${appHost}/digital-form?${base64_link_with_ids}`;
                                 const bgv_href = `${appHost}/background-form?${base64_link_with_ids}`;
-
+                                
                                 // Fetch and process digital address service
-                                Service.digitlAddressService(
+                                Service.digitalAddressService(
                                   (err, serviceEntry) => {
                                     if (err) {
                                       console.error("Database error:", err);
@@ -1183,7 +1183,7 @@ function sendNotificationEmails(
                         let createMailCCArr = [];
 
                         // Fetch and process digital address service for DAV mail
-                        Service.digitlAddressService((err, serviceEntry) => {
+                        Service.digitalAddressService((err, serviceEntry) => {
                           if (err) {
                             console.error("Database error:", err);
                             return res.status(500).json({
