@@ -5,8 +5,8 @@ const cefController = require("../controllers/customer/branch/candidate/cefContr
 // Log to indicate that the cron job script has started
 console.log("Cron job initialized...");
 
-// Schedule a cron job to run at 8 AM, 12 PM, 4 PM, 8 PM, and 11 PM daily
-cron.schedule("0 8,12,16,20,23 * * *", () => {
+// Function to execute cron job logic
+const executeCronJob = () => {
     console.log("Executing cron job for unsubmitted applications...");
 
     // Call the unsubmittedApplications function from the controller
@@ -19,10 +19,16 @@ cron.schedule("0 8,12,16,20,23 * * *", () => {
             headersSent: false, // Ensure response headers are not sent prematurely
         }
     );
-});
+};
+
+// **Run immediately when the script starts**
+// executeCronJob();
+
+// **Schedule a cron job to run at specific times daily**
+cron.schedule("0 8,12,16,20,23 * * *", executeCronJob);
 
 // Uncomment the following line to run the cron job every 5 seconds for testing/debugging
-// cron.schedule("*/5 * * * * *", () => { console.log("Running every 5 seconds..."); });
+// cron.schedule("*/5 * * * * *", executeCronJob);
 
 /*
 PM2

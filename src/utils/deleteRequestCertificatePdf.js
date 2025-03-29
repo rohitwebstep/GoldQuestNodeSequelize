@@ -453,7 +453,7 @@ module.exports = {
             pdfTargetDirectory
           );
           // doc.save(pdfPath);
-          resolve(`${appHost + '/' + pdfPathCloud}`);
+          resolve(`${appHost + pdfPathCloud}`);
         } catch (error) {
           console.error("PDF generation error:", error);
           reject(new Error("Error generating PDF"));

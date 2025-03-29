@@ -220,7 +220,7 @@ exports.updateStatus = (req, res) => {
                             console.error("Database error updating status:", err);
                             return res.status(500).json({
                                 status: false,
-                                message: err.message ?? "Failed to update status. Please try again.",
+                                message: "Failed to update status. Please try again.",
                                 token: newToken,
                             });
                         }
