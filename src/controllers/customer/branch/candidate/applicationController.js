@@ -289,7 +289,7 @@ exports.create = (req, res) => {
 
                                 const dav_href = `${appHost}/digital-form?${base64_link_with_ids}`;
                                 const bgv_href = `${appHost}/background-form?${base64_link_with_ids}`;
-                                
+
                                 // Fetch and process digital address service
                                 Service.digitalAddressService(
                                   (err, serviceEntry) => {
