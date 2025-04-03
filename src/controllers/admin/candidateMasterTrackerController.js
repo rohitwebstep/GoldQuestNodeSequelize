@@ -96,7 +96,7 @@ exports.list = (req, res) => {
 
 exports.test = async (req, res) => {
   try {
-    const candidate_application_id = 134;
+    const candidate_application_id = 729;
     const client_unique_id = "GQ-INDV";
     const application_id = "GQ-INDV-1";
     const branch_id = 43;
