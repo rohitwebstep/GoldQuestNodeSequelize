@@ -55,6 +55,9 @@ const Customer = {
   list: async (filter_status, callback) => {
     try {
 
+      let client_application_ids_query_condition = '';
+      let customer_ids_query_condition = '';
+
       // Get the current date
       const now = new Date();
       const yearMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
@@ -314,18 +317,16 @@ const Customer = {
         });
 
         // Generate client_application_ids query condition if the array is not empty
-        let client_application_ids_query_condition = '';
+
         if (client_application_ids.length > 0) {
-          client_application_ids_query_condition = `ca.id IN (${client_application_ids.join(",")})`;
+          client_application_ids_query_condition = `WHERE ca.id IN (${client_application_ids.join(",")})`;
         }
 
         // Generate customer_ids query condition if the array is not empty
-        let customer_ids_query_condition = '';
         if (customer_ids.length > 0) {
           customer_ids_query_condition = `AND customers.id IN (${customer_ids.join(",")})`;
         }
       }
-
       // If no filter_status is provided, proceed with the final SQL query without filters
       const finalSql = `WITH BranchesCTE AS (
                             SELECT
@@ -366,8 +367,7 @@ const Customer = {
                                 BranchesCTE b
                             INNER JOIN
                                 client_applications ca ON b.branch_id = ca.branch_id
-                            WHERE
-                                ${client_application_ids_query_condition}
+                              ${client_application_ids_query_condition}
                             GROUP BY
                                 b.customer_id
                         ) AS application_counts ON customers.id = application_counts.customer_id
@@ -404,7 +404,6 @@ const Customer = {
                         ORDER BY
                             application_counts.latest_application_date DESC;
                         `;
-
       const results = await sequelize.query(finalSql, {
         type: QueryTypes.SELECT,
       });
