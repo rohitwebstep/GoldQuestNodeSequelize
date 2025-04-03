@@ -158,8 +158,16 @@ const Customer = {
                   dav.created_at AS dav_filled_date,
                   dav.id AS dav_id,
                   c.client_unique_id,
-                  cef.is_submitted AS cef_submitted,
-                  dav.is_submitted AS dav_submitted,
+                  CASE 
+                      WHEN cef.is_submitted = '1' OR cef.is_submitted = 1 THEN 1
+                      WHEN cef.is_submitted = '0' OR cef.is_submitted = 0 THEN 0
+                      ELSE 0
+                  END AS cef_submitted,
+                  CASE 
+                      WHEN dav.is_submitted = '1' OR dav.is_submitted = 1 THEN 1
+                      WHEN dav.is_submitted = '0' OR dav.is_submitted = 0 THEN 0
+                      ELSE 0
+                  END AS dav_submitted,
                   CASE 
                     WHEN cef.is_submitted = 0 
                       AND ca.reminder_sent = 5 
