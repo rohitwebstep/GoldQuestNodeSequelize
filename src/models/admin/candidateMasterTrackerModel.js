@@ -169,7 +169,6 @@ const Customer = {
                       WHEN dav.is_submitted = '1' OR dav.is_submitted = 1 THEN dav.id
                       ELSE NULL
                   END AS dav_id,
-
                   c.client_unique_id,
                   CASE 
                       WHEN cef.is_submitted = '1' OR cef.is_submitted = 1 THEN 1
