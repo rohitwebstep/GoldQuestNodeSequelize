@@ -1060,6 +1060,12 @@ module.exports = {
                                                                     head: [[{ content: 'Declaration and Authorization', colSpan: 2, styles: { halign: 'center', fontSize: 16, bold: true } }],
                                                                     ], // Table headers
                                                                     body: [
+                                                                        [
+                                                                            {
+                                                                                content: 'I hereby authorize GoldQuest Global HR Services Private Limited and its representative to verify information provided in my application for employment and this employee background verification form, and to conduct enquiries as may be necessary, at the company’s discretion. I authorize all persons who may have information relevant to this enquiry to disclose it to GoldQuest Global HR Services Pvt Ltd or its representative. I release all persons from liability on account of such disclosure. I confirm that the above information is correct to the best of my knowledge. I agree that in the event of my obtaining employment, my probationary appointment, confirmation as well as continued employment in the services of the company are subject to clearance of medical test and background verification check done by the company.',
+                                                                                colSpan: 2, styles: { halign: 'center', fontSize: 9, cellPadding: 5 }
+                                                                            }
+                                                                        ],
                                                                         ['Name', cefData.name_declaration],
                                                                         ['Date', cefData.declaration_date],
                                                                     ],
@@ -1731,6 +1737,59 @@ module.exports = {
                                                                         }
 
                                                                     }
+
+                                                                    doc.addPage();
+
+                                                                    doc.setFontSize(14);
+                                                                    doc.setFont("helvetica", "bold");
+                                                                    const pageWidth = doc.internal.pageSize.width; // Get the page width
+                                                                    const textWidth = doc.getTextWidth("Documents (Mandatory)"); // Get the width of the text
+
+                                                                    doc.text("Documents (Mandatory)", (pageWidth - textWidth) / 2, 15); // Center-align text
+
+                                                                    // Define table columns
+                                                                    const columns = [
+                                                                        { content: "Education", styles: { fontStyle: "bold" } },
+                                                                        { content: "Employment", styles: { fontStyle: "bold" } },
+                                                                        { content: "Government ID / Address Proof", styles: { fontStyle: "bold" } }
+                                                                    ];
+
+                                                                    // Define table rows
+                                                                    const rows = [
+                                                                        [
+                                                                            "Photocopy of degree certificate and final mark sheet of all examinations.",
+                                                                            "Photocopy of relieving / experience letter for each employer mentioned in the form.",
+                                                                            "Aadhaar Card / Bank Passbook / Passport Copy / Driving License / Voter ID."
+                                                                        ]
+                                                                    ];
+
+                                                                    // Generate table
+                                                                    doc.autoTable({
+                                                                        startY: 20,
+                                                                        head: [columns],
+                                                                        headStyles: {
+                                                                            lineWidth: 0.3,
+                                                                        },
+                                                                        body: rows,
+                                                                        styles: { fontSize: 10, cellPadding: 4 },
+                                                                        theme: "grid",
+                                                                        columnStyles: {
+                                                                            0: { halign: "center", minCellWidth: 60 },
+                                                                            1: { halign: "center", minCellWidth: 60 },
+                                                                            2: { halign: "center", minCellWidth: 60 }
+                                                                        }
+                                                                    });
+
+                                                                    // Footer Note
+                                                                    doc.setFontSize(10);
+                                                                    doc.setTextColor(0, 0, 0);
+                                                                    doc.setFont("helvetica", "normal");
+                                                                    doc.text(
+                                                                        "NOTE: If you experience any issues or difficulties with submitting the form, please take screenshots of all pages, including attachments and error messages, and email them to onboarding@goldquestglobal.in. Additionally, you can reach out to us at onboarding@goldquestglobal.in.",
+                                                                        14,
+                                                                        doc.lastAutoTable.finalY + 10,
+                                                                        { maxWidth: 180 }
+                                                                    );
                                                                     // Save PDF
                                                                     // console.log(`pdfFileName - `, pdfFileName);
                                                                     // doc.save(`123.pdf`);
