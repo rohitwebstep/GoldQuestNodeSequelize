@@ -157,12 +157,19 @@ const Customer = {
                   cef.is_employment_gap,
                   cef.is_education_gap,
                   cef.created_at,
-                  cef.id AS cef_id,
+                  CASE 
+                      WHEN cef.is_submitted = '1' OR cef.is_submitted = 1 THEN cef.id
+                      ELSE NULL
+                  END AS cef_id,
                   CASE 
                       WHEN dav.is_submitted = '1' OR dav.is_submitted = 1 THEN dav.created_at
                       ELSE NULL
                   END AS dav_filled_date,
-                  dav.id AS dav_id,
+                  CASE 
+                      WHEN dav.is_submitted = '1' OR dav.is_submitted = 1 THEN dav.id
+                      ELSE NULL
+                  END AS dav_id,
+
                   c.client_unique_id,
                   CASE 
                       WHEN cef.is_submitted = '1' OR cef.is_submitted = 1 THEN 1
