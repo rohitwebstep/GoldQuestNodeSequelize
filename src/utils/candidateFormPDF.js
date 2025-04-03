@@ -1054,79 +1054,7 @@ module.exports = {
                                                                 yPosition = doc.autoTable.previous.finalY + 10;
 
 
-                                                                doc.addPage();
-                                                                let newYPosition = 20
-                                                                doc.autoTable({
-                                                                    head: [[{ content: 'Declaration and Authorization', colSpan: 2, styles: { halign: 'center', fontSize: 16, bold: true } }],
-                                                                    ], // Table headers
-                                                                    body: [
-                                                                        [
-                                                                            {
-                                                                                content: 'I hereby authorize GoldQuest Global HR Services Private Limited and its representative to verify information provided in my application for employment and this employee background verification form, and to conduct enquiries as may be necessary, at the company’s discretion. I authorize all persons who may have information relevant to this enquiry to disclose it to GoldQuest Global HR Services Pvt Ltd or its representative. I release all persons from liability on account of such disclosure. I confirm that the above information is correct to the best of my knowledge. I agree that in the event of my obtaining employment, my probationary appointment, confirmation as well as continued employment in the services of the company are subject to clearance of medical test and background verification check done by the company.',
-                                                                                colSpan: 2, styles: { halign: 'center', fontSize: 9, cellPadding: 5 }
-                                                                            }
-                                                                        ],
-                                                                        ['Name', cefData.name_declaration],
-                                                                        ['Date', cefData.declaration_date],
-                                                                    ],
-                                                                    startY: newYPosition, // Starting Y position
-                                                                    margin: { top: 20 }, // Margin for the table
-                                                                    theme: 'grid', // You can change the table theme (grid, stripes, etc.)
-                                                                });
 
-
-
-
-                                                                newYPosition = doc.autoTable.previous.finalY + 20; // Adjusting for space from the last table
-
-                                                                doc.text("Attach Signature.", doc.internal.pageSize.width / 2, newYPosition, { align: 'center' });
-
-                                                                const lineHeight = 10;
-                                                                const margin = 10;
-                                                                const DocHeight = 100; // Height for images (adjust as needed)
-
-                                                                // Check if the signature exists
-                                                                if (cefData && cefData.signature) {
-                                                                    // Check if the signature is an image
-                                                                    const validImageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'];
-                                                                    const isImage = validImageExtensions.some(ext => cefData.signature.toLowerCase().endsWith(ext));
-
-                                                                    if (isImage) {
-                                                                        // Fetch the base64 image
-                                                                        const imageBases = await fetchImageToBase([cefData.signature]);
-
-                                                                        // Assuming imageBases[0] exists and contains the base64 string
-                                                                        if (imageBases && imageBases[0] && imageBases[0].base64) {
-                                                                            const imageBase64 = imageBases[0].base64;
-                                                                            const imageWidth = doc.internal.pageSize.width - 10; // 20px padding for margins
-
-                                                                            // Add the image to the PDF
-                                                                            doc.addImage(imageBase64, 'PNG', 5, newYPosition + 20, imageWidth, DocHeight);
-                                                                            newYPosition += DocHeight + 20; // Update the position after the image
-                                                                        }
-                                                                    } else {
-                                                                        // If not an image, show a clickable button to view the document
-                                                                        const buttonText = "Click to view attached document";
-                                                                        const textWidth = doc.getTextWidth(buttonText);
-                                                                        const centerX = (doc.internal.pageSize.width - textWidth) / 2;
-
-                                                                        // Add the text at the center
-                                                                        doc.setFont("helvetica", "normal");
-                                                                        doc.setFontSize(10);
-                                                                        doc.setTextColor(255, 0, 0); // Red color for the button text
-                                                                        doc.text(buttonText, centerX + 10, newYPosition + 10);
-
-                                                                        // Create the clickable link to open the document (e.g., cefData.signature could be a URL to the document)
-                                                                        doc.link(centerX, newYPosition + 10, textWidth, 10, { url: cefData.signature });
-
-                                                                        // Update the position after the link
-                                                                        newYPosition += lineHeight + 20; // Adjust space for next content
-                                                                    }
-                                                                } else {
-                                                                    // If no signature exists, add a message or alternative content
-                                                                    doc.text("No Signature uploaded.", 10, newYPosition + 10);
-                                                                    newYPosition += lineHeight + 20; // Adjust space for next content
-                                                                }
 
                                                                 (async () => {
                                                                     if (!serviceDataMain.length) return; // If no services, return early
@@ -1736,6 +1664,79 @@ module.exports = {
 
                                                                         }
 
+                                                                    }
+                                                                    doc.addPage();
+                                                                    let newYPosition = 20
+                                                                    doc.autoTable({
+                                                                        head: [[{ content: 'Declaration and Authorization', colSpan: 2, styles: { halign: 'center', fontSize: 16, bold: true } }],
+                                                                        ], // Table headers
+                                                                        body: [
+                                                                            [
+                                                                                {
+                                                                                    content: 'I hereby authorize GoldQuest Global HR Services Private Limited and its representative to verify information provided in my application for employment and this employee background verification form, and to conduct enquiries as may be necessary, at the company’s discretion. I authorize all persons who may have information relevant to this enquiry to disclose it to GoldQuest Global HR Services Pvt Ltd or its representative. I release all persons from liability on account of such disclosure. I confirm that the above information is correct to the best of my knowledge. I agree that in the event of my obtaining employment, my probationary appointment, confirmation as well as continued employment in the services of the company are subject to clearance of medical test and background verification check done by the company.',
+                                                                                    colSpan: 2, styles: { halign: 'center', fontSize: 9, cellPadding: 5 }
+                                                                                }
+                                                                            ],
+                                                                            ['Name', cefData.name_declaration],
+                                                                            ['Date', cefData.declaration_date],
+                                                                        ],
+                                                                        startY: newYPosition, // Starting Y position
+                                                                        margin: { top: 20 }, // Margin for the table
+                                                                        theme: 'grid', // You can change the table theme (grid, stripes, etc.)
+                                                                    });
+
+
+
+
+                                                                    newYPosition = doc.autoTable.previous.finalY + 20; // Adjusting for space from the last table
+
+                                                                    doc.text("Attach Signature.", doc.internal.pageSize.width / 2, newYPosition, { align: 'center' });
+
+                                                                    const lineHeight = 10;
+                                                                    const margin = 10;
+                                                                    const DocHeight = 100; // Height for images (adjust as needed)
+
+                                                                    // Check if the signature exists
+                                                                    if (cefData && cefData.signature) {
+                                                                        // Check if the signature is an image
+                                                                        const validImageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'];
+                                                                        const isImage = validImageExtensions.some(ext => cefData.signature.toLowerCase().endsWith(ext));
+
+                                                                        if (isImage) {
+                                                                            // Fetch the base64 image
+                                                                            const imageBases = await fetchImageToBase([cefData.signature]);
+
+                                                                            // Assuming imageBases[0] exists and contains the base64 string
+                                                                            if (imageBases && imageBases[0] && imageBases[0].base64) {
+                                                                                const imageBase64 = imageBases[0].base64;
+                                                                                const imageWidth = doc.internal.pageSize.width - 10; // 20px padding for margins
+
+                                                                                // Add the image to the PDF
+                                                                                doc.addImage(imageBase64, 'PNG', 5, newYPosition + 20, imageWidth, DocHeight);
+                                                                                newYPosition += DocHeight + 20; // Update the position after the image
+                                                                            }
+                                                                        } else {
+                                                                            // If not an image, show a clickable button to view the document
+                                                                            const buttonText = "Click to view attached document";
+                                                                            const textWidth = doc.getTextWidth(buttonText);
+                                                                            const centerX = (doc.internal.pageSize.width - textWidth) / 2;
+
+                                                                            // Add the text at the center
+                                                                            doc.setFont("helvetica", "normal");
+                                                                            doc.setFontSize(10);
+                                                                            doc.setTextColor(255, 0, 0); // Red color for the button text
+                                                                            doc.text(buttonText, centerX + 10, newYPosition + 10);
+
+                                                                            // Create the clickable link to open the document (e.g., cefData.signature could be a URL to the document)
+                                                                            doc.link(centerX, newYPosition + 10, textWidth, 10, { url: cefData.signature });
+
+                                                                            // Update the position after the link
+                                                                            newYPosition += lineHeight + 20; // Adjust space for next content
+                                                                        }
+                                                                    } else {
+                                                                        // If no signature exists, add a message or alternative content
+                                                                        doc.text("No Signature uploaded.", 10, newYPosition + 10);
+                                                                        newYPosition += lineHeight + 20; // Adjust space for next content
                                                                     }
 
                                                                     doc.addPage();
