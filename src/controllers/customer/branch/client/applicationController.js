@@ -1,5 +1,6 @@
 const ClientApplication = require("../../../../models/customer/branch/clientApplicationModel");
 const CandidateMasterTrackerModel = require("../../../../models/admin/candidateMasterTrackerModel");
+const ClientMasterTrackerModel = require("../../../../models/admin/clientMasterTrackerModel");
 const BranchCommon = require("../../../../models/customer/branch/commonModel");
 const Branch = require("../../../../models/customer/branch/branchModel");
 const Service = require("../../../../models/admin/serviceModel");
@@ -167,88 +168,103 @@ exports.convertToClient = (req, res) => {
 
                 const finalUrls = extractUrls(attachmentResult?.service_data ?? {});
 
-                CandidateMasterTrackerModel.cefApplicationByID(
-                  candidate_application_id,
-                  branch_id,
-                  (err, CEFApplicationData) => {
+                // Create client application
+                ClientApplication.create(
+                  {
+                    name: currentCandidateApplication.name,
+                    employee_id: currentCandidateApplication.employee_id || null,
+                    spoc: null,
+                    batch_number: null,
+                    sub_client: null,
+                    location: null,
+                    branch_id,
+                    services: currentCandidateApplication.services,
+                    packages: currentCandidateApplication.package,
+                    customer_id,
+                    purpose_of_application: currentCandidateApplication.purpose_of_application,
+                    nationality: currentCandidateApplication.nationality,
+                    attach_documents: finalUrls || null,
+                  },
+                  (err, result) => {
                     if (err) {
-                      console.error("Database error:", err);
+                      console.error(
+                        "Database error during client application creation:",
+                        err
+                      );
+                      BranchCommon.branchActivityLog(
+                        branch_id,
+                        "Client Application",
+                        "Create",
+                        "0",
+                        null,
+                        err,
+                        () => { }
+                      );
                       return res.status(500).json({
                         status: false,
-                        message: err.message,
+                        message:
+                          "Failed to create client application. Please try again.",
                         token: newToken,
+                        err,
                       });
                     }
-                    
-                    const { dob, gender, father_name, husband_name, marital_status, mb_no, emergency_details_contact_number, insurance_details_contact_number, current_address, current_prominent_landmark, current_address_landline_number, current_address_state, current_address_pin_code, permanent_address, permanent_prominent_landmark, permanent_address_landline_number, permanent_pin_code, permanent_address_state} = CEFApplicationData;
-                    console.log(`All - `, { dob, gender, father_name, husband_name, marital_status, mb_no, emergency_details_contact_number, insurance_details_contact_number, current_address, current_prominent_landmark, current_address_landline_number, current_address_state, current_address_pin_code, permanent_address, permanent_prominent_landmark, permanent_address_landline_number, permanent_pin_code, permanent_address_state});
-                    return;
-                    // Create client application
-                    ClientApplication.create(
-                      {
-                        name: currentCandidateApplication.name,
-                        employee_id: currentCandidateApplication.employee_id || null,
-                        spoc: null,
-                        batch_number: null,
-                        sub_client: null,
-                        location: null,
-                        branch_id,
-                        services: currentCandidateApplication.services,
-                        packages: currentCandidateApplication.package,
-                        customer_id,
-                        purpose_of_application: currentCandidateApplication.purpose_of_application,
-                        nationality: currentCandidateApplication.nationality,
-                        attach_documents: finalUrls || null,
-                      },
-                      (err, result) => {
+
+                    CandidateMasterTrackerModel.cefApplicationByID(
+                      candidate_application_id,
+                      branch_id,
+                      (err, CEFApplicationData) => {
                         if (err) {
-                          console.error(
-                            "Database error during client application creation:",
-                            err
-                          );
-                          BranchCommon.branchActivityLog(
-                            branch_id,
-                            "Client Application",
-                            "Create",
-                            "0",
-                            null,
-                            err,
-                            () => { }
-                          );
+                          console.error("Database error:", err);
                           return res.status(500).json({
                             status: false,
-                            message:
-                              "Failed to create client application. Please try again.",
+                            message: err.message,
                             token: newToken,
-                            err,
                           });
                         }
 
-                        CandidateMasterTrackerModel.cefApplicationByID(
-                          candidate_application_id,
+                        const { dob, gender, father_name, husband_name, marital_status, mb_no, emergency_details_contact_number, insurance_details_contact_number, current_address, current_prominent_landmark, current_address_landline_number, current_address_state, current_address_pin_code, permanent_address, permanent_prominent_landmark, permanent_address_landline_number, permanent_pin_code, permanent_address_state } = CEFApplicationData;
+                        const mainJson = {
+                          dob,
+                          gender,
+                          father_name,
+                          husband_name,
+                          marital_status,
+                          contact_number: mb_no,
+                          contact_number2: emergency_details_contact_number,
+                          address: current_address,
+                          landmark: current_prominent_landmark,
+                          residence_mobile_number: current_address_landline_number,
+                          state: current_address_state,
+                          pincode: current_address_pin_code,
+                          permanent_address,
+                          permanent_landmark: permanent_prominent_landmark,
+                          permanent_address_landline_number,
+                          permanent_pin_code: permanent_pin_code,
+                          permanent_state: permanent_address_state,
+                        };
+
+                        BranchCommon.branchActivityLog(
                           branch_id,
-                          (err, CEFApplicationData) => {
+                          "Client Application",
+                          "Create",
+                          "1",
+                          `{id: ${result.results.insertId}}`,
+                          null,
+                          () => { }
+                        );
+
+                        ClientMasterTrackerModel.generateReport(
+                          mainJson,
+                          result.results.insertId,
+                          branch_id,
+                          customer_id,
+                          (err, cmtResult) => {
                             if (err) {
-                              console.error("Database error:", err);
-                              return res.status(500).json({
-                                status: false,
-                                message: err.message,
-                                token: newToken,
-                              });
+                              console.error(
+                                "Database error during CMT application update:",
+                                err
+                              );
                             }
-
-                            console.log(`CEFApplicationData - `, CEFApplicationData);
-
-
-                            BranchCommon.branchActivityLog(
-                              branch_id,
-                              "Client Application",
-                              "Create",
-                              "1",
-                              `{id: ${result.results.insertId}}`,
-                              null,
-                              () => { }
-                            );
 
                             let newAttachedDocsString = finalUrls || '';
 
@@ -345,13 +361,12 @@ exports.convertToClient = (req, res) => {
                                                 }
 
                                                 const { branch, customer } = emailData;
-                                                Admin.list((err, adminResult) => {
+                                                Admin.filterAdmins({ status: "active", role: "admin" }, (err, adminResult) => {
                                                   if (err) {
                                                     console.error("Database error:", err);
                                                     return res.status(500).json({
                                                       status: false,
-                                                      message:
-                                                        "Error retrieving admin details.",
+                                                      message: "Error retrieving admin details.",
                                                       token: newToken,
                                                     });
                                                   }
@@ -482,11 +497,11 @@ exports.convertToClient = (req, res) => {
                                 );
                               }
                             );
-                          }
-                        );
+                          });
                       }
                     );
-                  });
+                  }
+                );
               });
           });
       }
