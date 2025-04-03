@@ -159,7 +159,14 @@ const Customer = {
                   dav.id AS dav_id,
                   c.client_unique_id,
                   CASE WHEN cef.id IS NOT NULL THEN 1 ELSE 0 END AS cef_submitted,
-                  CASE WHEN dav.id IS NOT NULL THEN 1 ELSE 0 END AS dav_submitted
+                  CASE WHEN dav.id IS NOT NULL THEN 1 ELSE 0 END AS dav_submitted,
+                  CASE 
+                    WHEN cef.is_submitted = 0 
+                      AND ca.reminder_sent = 5 
+                      AND GREATEST(COALESCE(cef_last_reminder_sent_at, '0000-00-00'), COALESCE(dav_last_reminder_sent_at, '0000-00-00')) < DATE_SUB(CURDATE(), INTERVAL 1 DAY) 
+                    THEN 1 
+                    ELSE 0 
+                  END AS is_expired
               FROM 
                   \`candidate_applications\` ca
               INNER JOIN 

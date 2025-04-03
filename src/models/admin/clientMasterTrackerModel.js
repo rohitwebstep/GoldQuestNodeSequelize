@@ -1132,50 +1132,40 @@ const Customer = {
       downloadReportCount: `AND (b.overall_status = 'completed')`
     };
 
-    let sqlQueries = [];
-
-    // Build SQL queries for each filter option
-    for (let key in filterOptions) {
-      if (filterOptions.hasOwnProperty(key)) {
-        let condition = conditions[key];
-        if (condition) {
-          const SQL = `
-              SELECT count(*) AS count
+    let sqlQueries = Object.entries(filterOptions).map(([key]) => {
+      let condition = conditions[key];
+      if (condition) {
+        const SQL = `
+              SELECT COUNT(*) AS count
               FROM client_applications a
               JOIN customers c ON a.customer_id = c.id
               JOIN cmt_applications b ON a.id = b.client_application_id
-              WHERE a.branch_id = ? 
+              WHERE a.branch_id = ?
               ${condition}
               AND c.status = 1
-            `;
-          sqlQueries.push(new Promise((resolve, reject) => {
-            connection.query(SQL, [branch_id], (err, result) => {
-              if (err) {
-                console.error("Database query error:", err);
-                return reject(err);
-              }
-              filterOptions[key] = result[0] ? result[0].count : 0;
-              resolve();
-            });
-          }));
-        }
-      }
-    }
+          `;
 
-    // After all queries finish, execute the callback
+        return sequelize.query(SQL, {
+          replacements: [branch_id],
+          type: QueryTypes.SELECT,
+        }).then(result => {
+          filterOptions[key] = result[0]?.count || 0;
+        });
+      }
+    });
+
+    console.log(`Executing SQL queries...`);
+
+    // Execute all queries
     Promise.all(sqlQueries)
       .then(() => {
-        const transformedFilterOptions = Object.entries(filterOptions).map(([status, count]) => ({
-          status,
-          count
-        }));
-
+        console.log(`Final Filter Options:`, filterOptions);
+        const transformedFilterOptions = Object.entries(filterOptions).map(([status, count]) => ({ status, count }));
         callback(null, transformedFilterOptions);
-        connectionRelease(connection); // Release connection here
       })
-      .catch((err) => {
+      .catch(err => {
+        console.error(`Error fetching filter options:`, err);
         callback(err, null);
-        connectionRelease(connection); // Ensure connection is released even on error
       });
   },
 
