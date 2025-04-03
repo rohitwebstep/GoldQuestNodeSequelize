@@ -871,6 +871,7 @@ const sendNotificationEmails = (
                       pdfFileName,
                       candidateFormPdfTargetDirectory
                     );
+                    /*
                     const pdfPath = await cdfDataPDF(
                       candidateAppId,
                       branch_id,
@@ -878,6 +879,8 @@ const sendNotificationEmails = (
                       pdfFileName,
                       pdfTargetDirectory
                     );
+                    */
+                    const pdfPath = '';
                     let newAttachments = [];
 
                     if (pdfPath) newAttachments.push(`${imageHost}/${pdfPath}`);
