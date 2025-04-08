@@ -85,9 +85,68 @@ const Admin = {
     }
   },
 
+  filterAdminsForReport: async ({ status, type }, callback) => {
+    if (!type) {
+      return callback({ message: "Type is required" }, null);
+    }
+
+    let column;
+    switch (type) {
+      case 'QCVerificationTeam':
+        column = 'is_qc_verifier';
+        break;
+      case 'ReportGenerationTeam':
+        column = 'is_report_generator';
+        break;
+      default:
+        return callback({ message: "Invalid type provided" }, null);
+    }
+
+    try {
+      let sql = `
+        SELECT 
+          id, emp_id, name, role, profile_picture, email, 
+          service_ids, status, mobile 
+        FROM admins
+      `;
+
+      const conditions = [];
+      const values = [];
+
+      // Handle status filter
+      if (status !== undefined) {
+        const statusValue = (status === "active" || status === "1") ? "1" : "0";
+        conditions.push("status = ?");
+        values.push(statusValue);
+      }
+
+      // Add type-specific column filter
+      if (column) {
+        conditions.push(`${column} = ?`);
+        values.push("1");
+      }
+
+      // Append conditions if any
+      if (conditions.length > 0) {
+        sql += " WHERE " + conditions.join(" AND ");
+      }
+
+      const results = await sequelize.query(sql, {
+        replacements: values,
+        type: QueryTypes.SELECT,
+      });
+
+      return callback(null, results);
+    } catch (err) {
+      console.error("Database query error:", err);
+      return callback({ message: "Database query error", error: err }, null);
+    }
+  },
+
+
   create: async (data, callback) => {
     try {
-      const { name, mobile, email, employee_id, role, password, service_ids } = data;
+      const { name, mobile, email, employee_id, role, password, service_ids, is_qc_verifier, is_report_generator } = data;
 
       // SQL query to check if any field already exists in the admins table
       const checkExistingQuery = `
@@ -121,15 +180,15 @@ const Admin = {
       // If role is 'admin', exclude service_ids
       const sql =
         role.toLowerCase() === "admin"
-          ? `INSERT INTO \`admins\` (\`name\`, \`emp_id\`, \`mobile\`, \`email\`, \`role\`, \`status\`, \`password\`) 
+          ? `INSERT INTO \`admins\` (\`name\`, \`emp_id\`, \`mobile\`, \`email\`, \`role\`, \`is_qc_verifier\`, \`is_report_generator\`, \`status\`, \`password\`) 
              VALUES (?, ?, ?, ?, ?, ?, md5(?))`
-          : `INSERT INTO \`admins\` (\`name\`, \`emp_id\`, \`mobile\`, \`email\`, \`role\`, \`service_ids\`, \`status\`, \`password\`) 
+          : `INSERT INTO \`admins\` (\`name\`, \`emp_id\`, \`mobile\`, \`email\`, \`role\`, \`is_qc_verifier\`, \`is_report_generator\`, \`service_ids\`, \`status\`, \`password\`) 
              VALUES (?, ?, ?, ?, ?, ?, ?, md5(?))`;
 
       const queryParams =
         role.toLowerCase() === "admin"
-          ? [name, employee_id, mobile, email, role, "1", password]
-          : [name, employee_id, mobile, email, role, service_ids, "1", password];
+          ? [name, employee_id, mobile, email, role, is_qc_verifier, is_report_generator, "1", password]
+          : [name, employee_id, mobile, email, role, is_qc_verifier, is_report_generator, service_ids, "1", password];
 
       const results = await sequelize.query(sql, {
         replacements: queryParams,
@@ -145,7 +204,7 @@ const Admin = {
 
   update: async (data, callback) => {
     try {
-      const { id, name, mobile, email, employee_id, role, status, service_ids } = data;
+      const { id, name, mobile, email, employee_id, role, status, service_ids, is_qc_verifier, is_report_generator } = data;
 
       // SQL query to check if any field already exists in the admins table (excluding current ID)
       const checkExistingQuery = `
@@ -181,16 +240,16 @@ const Admin = {
       const sql =
         role.toLowerCase() === "admin"
           ? `UPDATE \`admins\` 
-             SET \`name\` = ?, \`emp_id\` = ?, \`mobile\` = ?, \`email\` = ?, \`role\` = ?, \`status\` = ? 
+             SET \`name\` = ?, \`emp_id\` = ?, \`mobile\` = ?, \`email\` = ?, \`role\` = ?, \`is_qc_verifier\` = ?, \`is_report_generator\` = ?, \`status\` = ? 
              WHERE \`id\` = ?`
           : `UPDATE \`admins\` 
-             SET \`name\` = ?, \`emp_id\` = ?, \`mobile\` = ?, \`email\` = ?, \`role\` = ?, \`service_ids\` = ?, \`status\` = ? 
+             SET \`name\` = ?, \`emp_id\` = ?, \`mobile\` = ?, \`email\` = ?, \`role\` = ?, \`is_qc_verifier\` = ?, \`is_report_generator\` = ?, \`service_ids\` = ?, \`status\` = ? 
              WHERE \`id\` = ?`;
 
       const queryParams =
         role.toLowerCase() === "admin"
-          ? [name, employee_id, mobile, email, role, status, id]
-          : [name, employee_id, mobile, email, role, service_ids, status, id];
+          ? [name, employee_id, mobile, email, role, is_qc_verifier, is_report_generator, status, id]
+          : [name, employee_id, mobile, email, role, is_qc_verifier, is_report_generator, service_ids, status, id];
 
       const results = await sequelize.query(sql, {
         replacements: queryParams,

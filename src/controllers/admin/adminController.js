@@ -268,6 +268,8 @@ exports.create = (req, res) => {
     employee_id,
     send_mail,
     service_ids,
+    is_qc_verifier,
+    is_report_generator
   } = req.body;
 
   // Define required fields for creating a new admin
@@ -342,6 +344,8 @@ exports.create = (req, res) => {
           role: role.toLowerCase(),
           password,
           service_ids: service_ids || "",
+          is_qc_verifier,
+          is_report_generator
         },
         (err, result) => {
           if (err) {
@@ -430,6 +434,8 @@ exports.update = (req, res) => {
     status,
     service_ids,
     employee_id,
+    is_qc_verifier,
+    is_report_generator
   } = req.body;
 
   // Define required fields for creating a new admin
@@ -527,6 +533,8 @@ exports.update = (req, res) => {
             role: role.toLowerCase(),
             status,
             service_ids: service_ids || "",
+            is_qc_verifier,
+            is_report_generator
           },
           (err, result) => {
             if (err) {

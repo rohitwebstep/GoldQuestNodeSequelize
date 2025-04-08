@@ -414,7 +414,6 @@ exports.convertToClient = (req, res) => {
                                                     ccArr
                                                   )
                                                     .then(() => {
-                                                      /*
                                                       candidateApplication.updateConvertClientStatus(
                                                         candidate_application_id,
                                                         (err, result) => {
@@ -434,7 +433,6 @@ exports.convertToClient = (req, res) => {
                                                           });
                                                         }
                                                       );
-                                                      */
                                                       return res.status(201).json({
                                                         status: true,
                                                         message:
