@@ -52,7 +52,7 @@ const Branch = {
     try {
       // Query the branches table first
       const sqlBranches = `
-            SELECT 'branch' AS type, id, customer_id, name, email, mobile_number, is_head, head_id, password, two_factor_enabled, reset_password_token, password_reset_requested_at, password_reset_request_count, can_request_password_reset, otp, login_token, token_expiry, password_token_expiry, otp_expiry, permission, status, created_at, updated_at
+            SELECT 'branch' AS type, id, customer_id, name, email, mobile_number, is_head, head_id, password, two_factor_enabled, reset_password_token, password_reset_requested_at, password_reset_request_count, can_request_password_reset, otp, login_token, token_expiry, password_token_expiry, otp_expiry, permissions, status, created_at, updated_at
             FROM \`branches\` 
             WHERE \`email\` = ?
         `;
