@@ -603,7 +603,7 @@ exports.applicationByID = (req, res) => {
                   });
                 }
 
-                Admin.filterAdminsForReport({ status: "active", type: "QCVerificationTeam" }, (err, QCVerificationTeam) => {
+                Admin.filterAdminsForReport({ status: "active", type: "QCVerificationTeam" }, (err, qcVerificationTeam) => {
                   if (err) {
                     console.error("Database error:", err);
                     return res.status(500).json({
@@ -612,7 +612,7 @@ exports.applicationByID = (req, res) => {
                       token: newToken,
                     });
                   }
-                  Admin.filterAdminsForReport({ status: "active", type: "ReportGenerationTeam" }, (err, ReportGenerationTeam) => {
+                  Admin.filterAdminsForReport({ status: "active", type: "ReportGenerationTeam" }, (err, reportGenerationTeam) => {
                     if (err) {
                       console.error("Database error:", err);
                       return res.status(500).json({
@@ -652,8 +652,8 @@ exports.applicationByID = (req, res) => {
                             application,
                             branchInfo: currentBranch,
                             customerInfo: currentCustomer,
-                            QCVerificationTeam,
-                            ReportGenerationTeam,
+                            qcVerificationTeam,
+                            reportGenerationTeam,
                             token: newToken,
                           });
                         } else {
@@ -664,8 +664,8 @@ exports.applicationByID = (req, res) => {
                             CMTData: CMTApplicationData,
                             branchInfo: currentBranch,
                             customerInfo: currentCustomer,
-                            QCVerificationTeam,
-                            ReportGenerationTeam,
+                            qcVerificationTeam,
+                            reportGenerationTeam,
                             token: newToken,
                           });
                         }
