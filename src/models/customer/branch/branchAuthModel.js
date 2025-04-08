@@ -52,7 +52,7 @@ const Branch = {
     try {
       // Query the branches table first
       const sqlBranches = `
-            SELECT 'branch' AS type, * 
+            SELECT 'branch' AS type, id, customer_id, name, email, mobile_number, is_head, head_id, password, two_factor_enabled, reset_password_token, password_reset_requested_at, password_reset_request_count, can_request_password_reset, otp, login_token, token_expiry, password_token_expiry, otp_expiry, permission, status, created_at, updated_at
             FROM \`branches\` 
             WHERE \`email\` = ?
         `;
@@ -68,7 +68,7 @@ const Branch = {
 
       // If not found in branches, query the branch_sub_users table
       const sqlSubUsers = `
-            SELECT 'sub_user' AS type, * 
+            SELECT 'sub_user' AS type, id, branch_id, customer_id, email, password, reset_password_token, login_token, token_expiry, password_token_expiry, status, created_at, updated_at 
             FROM \`branch_sub_users\` 
             WHERE \`email\` = ?
         `;
