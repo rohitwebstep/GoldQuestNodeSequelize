@@ -27,7 +27,7 @@ const Admin = {
   list: async (callback) => {
     try {
       const sql = `
-        SELECT id, emp_id, name, role, profile_picture, email, service_ids, status, mobile 
+        SELECT id, emp_id, name, role, profile_picture, email, service_ids, status, mobile, is_qc_verifier, is_report_generator 
         FROM admins
       `;
 
