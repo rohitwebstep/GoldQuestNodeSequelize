@@ -100,7 +100,7 @@ exports.connectionCheck = (req, res) => {
 
   // Database check function
   console.log("Step 6: Initiating database check with Test.connectionCheck.");
-  Test.connectionCheck((err, result) => {
+  Test.testCheck((err, result) => {
     if (err) {
       console.error("Step 7: Database error occurred:", err);
       return res.status(500).json({
@@ -125,6 +125,7 @@ exports.connectionCheck = (req, res) => {
       status: true,
       message: "Customers fetched successfully",
       ipAddress,
+      result
     });
   });
 };

@@ -1705,7 +1705,32 @@ const Customer = {
       // Step 4: Fetch file attachments from each table
       let finalAttachments = [];
       const tableQueries = Object.entries(dbTableFileInputs).map(async ([dbTable, fileInputNames]) => {
-        const selectQuery = `SELECT ${fileInputNames.length > 0 ? fileInputNames.join(", ") : "*"} FROM ${dbTable} WHERE client_application_id = ?`;
+
+        // Check if table exists
+        const tableExistsSql = `
+    SELECT COUNT(*) as count 
+    FROM information_schema.tables 
+    WHERE table_schema = DATABASE() 
+    AND table_name = ?`;
+
+        const [tableExistsResult] = await sequelize.query(tableExistsSql, {
+          replacements: [dbTable],
+          type: QueryTypes.SELECT,
+        });
+
+        if (tableExistsResult.count === 0) {
+          console.warn(`Table "${dbTable}" does not exist.`);
+          return;
+        }
+
+        // 1. Check for existing columns in cmt_applications
+        const checkColumnsSql = `SHOW COLUMNS FROM \`${dbTable}\``;
+        const [results] = await sequelize.query(checkColumnsSql, { type: QueryTypes.SHOW });
+
+        const existingColumns = results.map((row) => row.Field);
+        const existingColumnsFromFileInoutNames = fileInputNames.filter((field) => existingColumns.includes(field));
+
+        const selectQuery = `SELECT ${existingColumnsFromFileInoutNames.length > 0 ? existingColumnsFromFileInoutNames.join(", ") : "*"} FROM ${dbTable} WHERE client_application_id = ?`;
         const rows = await sequelize.query(selectQuery, {
           replacements: [client_application_id],
           type: QueryTypes.SELECT,
