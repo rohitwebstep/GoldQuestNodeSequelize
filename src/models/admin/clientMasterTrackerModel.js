@@ -1334,7 +1334,9 @@ const Customer = {
       const [results] = await sequelize.query(checkColumnsSql, { type: QueryTypes.SHOW });
 
       const existingColumns = results.map((row) => row.Field);
-      const missingColumns = fields.filter((field) => !existingColumns.includes(field));
+      const existingColumnsLower = existingColumns.map(col => col.toLowerCase());
+      const missingColumns = fields.filter((field) => !existingColumnsLower.includes(field.toLowerCase()));
+      
       // 2. Add missing columns if any
       const addMissingColumns = async () => {
         if (missingColumns.length > 0) {
