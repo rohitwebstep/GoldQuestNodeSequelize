@@ -425,75 +425,83 @@ const cef = {
     customer_id,
     callback
   ) => {
-    const checkEntrySql =
-      "SELECT * FROM cef_applications WHERE candidate_application_id = ?";
-
-    const entryResults = await sequelize.query(checkEntrySql, {
-      replacements: [candidate_application_id],
-      type: QueryTypes.SELECT,
-    });
-
-    personal_information.is_employment_gap = is_employment_gap;
-    personal_information.is_education_gap = is_education_gap;
-
-    if (entryResults.length > 0) {
-      // Entry exists, so update it
-      personal_information.branch_id = branch_id;
-      personal_information.customer_id = customer_id;
-
-      // Function to filter out undefined, null, or empty values
-      const filteredInformation = Object.fromEntries(
-        Object.entries(personal_information).filter(
-          ([key, value]) => key !== 'customer_id' && key !== 'branch_id' && value !== undefined && value !== null && value !== ''
-        )
-      );
-      // Create a string of key-value pairs in the required format
-      const updateSqlHelper = Object.entries(filteredInformation)
-        .map(([key, value]) => `\`${key}\` = '${value}'`)
-        .join(', ');
-      const updateSql =
-        `UPDATE cef_applications SET ${updateSqlHelper} WHERE candidate_application_id = ?`;
-      const updateResult = await sequelize.query(updateSql, {
+    try {
+      const checkEntrySql = "SELECT * FROM cef_applications WHERE candidate_application_id = ?";
+      const entryResults = await sequelize.query(checkEntrySql, {
         replacements: [candidate_application_id],
-        type: QueryTypes.UPDATE,
+        type: QueryTypes.SELECT,
       });
-      // Return the id (primary key) of the updated row
-      const updatedId = entryResults[0].id; // Get the existing `id` from the SELECT result
-      callback(null, { insertId: updatedId, result: updateResult });
-    } else {
-      const replacements = {
-        ...personal_information,
-        candidate_application_id,
-        branch_id,
-        customer_id,
-      };
 
-      // Function to filter out undefined, null, or empty values
-      const filteredInformation = Object.fromEntries(
-        Object.entries(replacements).filter(
-          ([key, value]) => value !== undefined && value !== null && value !== ''
-        )
-      );
-      // console.log(`filteredInformation - `, filteredInformation);
+      personal_information.is_employment_gap = is_employment_gap;
+      personal_information.is_education_gap = is_education_gap;
 
-      // Get keys (indexes) and values
-      const indexes = Object.keys(filteredInformation);
-      const values = Object.values(filteredInformation);
+      if (entryResults.length > 0) {
+        // Entry exists, so update it
+        personal_information.branch_id = branch_id;
+        personal_information.customer_id = customer_id;
 
-      // Build the SQL query dynamically
-      const insertSql = `INSERT INTO cef_applications (${indexes.join(', ')}) VALUES (${indexes.map(() => '?').join(', ')})`;
+        // Filter out undefined, null, or empty values and avoid updating primary keys
+        const filteredInformation = Object.fromEntries(
+          Object.entries(personal_information).filter(
+            ([key, value]) =>
+              key !== "candidate_application_id" &&
+              value !== undefined &&
+              value !== null &&
+              value !== ""
+          )
+        );
 
-      const insertResult = await sequelize.query(insertSql, {
-        replacements: values,
-        type: QueryTypes.INSERT,
-      });
-      // console.log(`insertResult - `, insertResult);
-      const insertId = insertResult[0];
+        // Generate SET clause with named bindings
+        const setClause = Object.keys(filteredInformation)
+          .map((key) => `\`${key}\` = :${key}`)
+          .join(", ");
 
-      callback(null, { insertId });
+        const updateSql = `UPDATE cef_applications SET ${setClause} WHERE candidate_application_id = :candidate_application_id`;
+
+        const updateResult = await sequelize.query(updateSql, {
+          replacements: {
+            ...filteredInformation,
+            candidate_application_id,
+          },
+          type: QueryTypes.UPDATE,
+        });
+
+        const updatedId = entryResults[0].id;
+        callback(null, { insertId: updatedId, result: updateResult });
+      } else {
+        // Combine insert data
+        const replacements = {
+          ...personal_information,
+          candidate_application_id,
+          branch_id,
+          customer_id,
+        };
+
+        // Filter out undefined, null, or empty values
+        const filteredInformation = Object.fromEntries(
+          Object.entries(replacements).filter(
+            ([_, value]) => value !== undefined && value !== null && value !== ""
+          )
+        );
+
+        const keys = Object.keys(filteredInformation);
+        const values = Object.values(filteredInformation);
+
+        const insertSql = `INSERT INTO cef_applications (${keys.join(", ")}) VALUES (${keys
+          .map(() => "?")
+          .join(", ")})`;
+
+        const insertResult = await sequelize.query(insertSql, {
+          replacements: values,
+          type: QueryTypes.INSERT,
+        });
+
+        const insertId = insertResult[0];
+        callback(null, { insertId });
+      }
+    } catch (error) {
+      callback(error);
     }
-
-
   },
 
   createOrUpdateAnnexure: async (
@@ -615,52 +623,45 @@ const cef = {
         type: QueryTypes.SELECT,
       });
 
-      // 6. Insert or update the entry
       if (entryResults.length > 0) {
+        // Use named replacements
+        const setKeys = Object.keys(mainJson);
+        const setClause = setKeys.map((key) => `\`${key}\` = :${key}`).join(', ');
 
-        // Create a string of key-value pairs in the required format
-        const updateSqlHelper = Object.entries(mainJson)
-          .map(([key, value]) => `\`${key}\` = '${value}'`)
-          .join(', ');
+        const updateSql = `UPDATE \`${db_table}\` SET ${setClause} WHERE candidate_application_id = :candidate_application_id`;
 
-        const updateSql = `UPDATE \`${db_table}\` SET ${updateSqlHelper} WHERE candidate_application_id = ?`;
         const updateResult = await sequelize.query(updateSql, {
-          replacements: [candidate_application_id],
+          replacements: {
+            ...mainJson,
+            candidate_application_id,
+          },
           type: QueryTypes.UPDATE,
         });
+
         callback(null, updateResult);
       } else {
-
         const replacements = {
           ...mainJson,
           candidate_application_id,
           branch_id,
           customer_id,
-          cef_id, // Include cef_id in the insert statement
+          cef_id,
         };
 
-        // console.log(`replacements - `, replacements);
-
-        // Get keys (indexes) and values
-        const indexes = Object.keys(replacements);
+        const keys = Object.keys(replacements);
         const values = Object.values(replacements);
 
-        // Build the SQL query dynamically
-        const insertSql = `INSERT INTO \`${db_table}\` (${indexes.join(', ')}) VALUES (${indexes.map(() => '?').join(', ')})`;
+        const insertSql = `INSERT INTO \`${db_table}\` (${keys.join(', ')}) VALUES (${keys.map(() => '?').join(', ')})`;
 
         const insertResult = await sequelize.query(insertSql, {
           replacements: values,
           type: QueryTypes.INSERT,
         });
-        // console.log(`insertResult - `, insertResult);
-        const insertId = insertResult[0];
 
+        const insertId = insertResult[0];
         callback(null, { insertId });
       }
-
     }
-
-
   },
 
   upload: async (
