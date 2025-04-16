@@ -344,8 +344,8 @@ exports.create = (req, res) => {
           role: role.toLowerCase(),
           password,
           service_ids: service_ids || "",
-          is_qc_verifier,
-          is_report_generator
+          is_qc_verifier: is_qc_verifier || 0,
+          is_report_generator: is_report_generator || 0
         },
         (err, result) => {
           if (err) {
@@ -533,8 +533,8 @@ exports.update = (req, res) => {
             role: role.toLowerCase(),
             status,
             service_ids: service_ids || "",
-            is_qc_verifier,
-            is_report_generator
+            is_qc_verifier: is_qc_verifier || 0,
+            is_report_generator: is_report_generator || 0
           },
           (err, result) => {
             if (err) {
