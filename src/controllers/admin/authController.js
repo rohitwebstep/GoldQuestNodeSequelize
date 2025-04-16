@@ -13,7 +13,7 @@ const generateOTP = () => Math.floor(100000 + Math.random() * 900000);
 
 // Utility function to get token expiry time (15 minutes from the current time)
 const getTokenExpiry = () => {
-  const expiryDurationInMinutes = 3; // Duration for token expiry in minutes
+  const expiryDurationInMinutes = 120; // Duration for token expiry in minutes
   return new Date(getCurrentTime().getTime() + expiryDurationInMinutes * 60000);
 };
 
@@ -46,7 +46,7 @@ exports.login = (req, res) => {
     if (err) {
       return res.status(500).json({ status: false, message: err.message });
     }
-console.log(`Step - 1`);
+    console.log(`Step - 1`);
     if (result.length === 0) {
       return res.status(404).json({
         status: false,
