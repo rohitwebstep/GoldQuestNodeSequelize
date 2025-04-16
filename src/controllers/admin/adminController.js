@@ -249,6 +249,7 @@ exports.createListing = (req, res) => {
           console.error("Error fetching data:", error);
           res.status(500).json({
             status: false,
+            token: newToken,
             message: "Error fetching required data",
           });
         });
@@ -733,7 +734,6 @@ exports.upload = async (req, res) => {
           return res.status(500).json({
             status: false,
             message: "Database error.",
-            token: newToken,
           });
         }
 
@@ -741,7 +741,6 @@ exports.upload = async (req, res) => {
           return res.status(404).json({
             status: false,
             message: "Admin not found.",
-            token: newToken,
           });
         }
         const action = "internal_login_credentials";
