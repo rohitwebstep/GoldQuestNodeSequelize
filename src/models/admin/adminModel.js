@@ -181,9 +181,9 @@ const Admin = {
       const sql =
         role.toLowerCase() === "admin"
           ? `INSERT INTO \`admins\` (\`name\`, \`emp_id\`, \`mobile\`, \`email\`, \`role\`, \`is_qc_verifier\`, \`is_report_generator\`, \`status\`, \`password\`) 
-             VALUES (?, ?, ?, ?, ?, ?, md5(?))`
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, md5(?))`
           : `INSERT INTO \`admins\` (\`name\`, \`emp_id\`, \`mobile\`, \`email\`, \`role\`, \`is_qc_verifier\`, \`is_report_generator\`, \`service_ids\`, \`status\`, \`password\`) 
-             VALUES (?, ?, ?, ?, ?, ?, ?, md5(?))`;
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, md5(?))`;
 
       const queryParams =
         role.toLowerCase() === "admin"
