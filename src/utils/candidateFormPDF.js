@@ -466,7 +466,7 @@ module.exports = {
                                                             cefData = data.CEFData || {};
                                                             nationality = data.application?.nationality || '';
                                                             isSameAsPermanent = false
-
+                                                            console.log(`Step 1: Data fetched successfully`);
                                                             const parsedData = data?.serviceData || [];
 
                                                             let allJsonData = [];
@@ -480,6 +480,8 @@ module.exports = {
 
                                                                 }
                                                             };
+
+                                                            console.log(`Step 2: Data parsed successfully`);
                                                             annexureData = initialAnnexureData;
 
                                                             // Sorting and restructuring the parsed data
@@ -546,6 +548,8 @@ module.exports = {
                                                                 }
 
                                                             });
+
+                                                            console.log(`Step 3: Annexure data constructed successfully`);
 
                                                             const serviceDataMain = allJsonData;
                                                             try {
@@ -1055,442 +1059,352 @@ module.exports = {
 
 
 
-
+                                                                console.log("serviceDataMain.length - ", serviceDataMain.length);
                                                                 (async () => {
-                                                                    if (!serviceDataMain.length) return; // If no services, return early
+                                                                    if (!serviceDataMain.length) {
+                                                                        const pageWidth = doc.internal.pageSize.width;
+                                                                        doc.text("No service data available.", pageWidth / 2, yPosition + 10, { align: 'center' });
+                                                                        yPosition += 20;
+                                                                    } else {
+                                                                        // const selectedServices = serviceDataMain.slice(0, 2); // Get only the first 2 services
 
-                                                                    // const selectedServices = serviceDataMain.slice(0, 2); // Get only the first 2 services
+                                                                        for (let i = 0; i < serviceDataMain.length; i++) {
+                                                                            const service = serviceDataMain[i];
+                                                                            const tableData = [];
 
-                                                                    for (let i = 0; i < serviceDataMain.length; i++) {
-                                                                        const service = serviceDataMain[i];
-                                                                        const tableData = [];
-
-                                                                        if (serviceDataMain.length > 1) {
-                                                                            doc.addPage();
-                                                                            yPosition = 20;
-                                                                        }
-                                                                        // Reset yPosition before each service
-
-                                                                        function renderGapMessageNew(gap) {
-                                                                            if (!gap) {
-                                                                                return 'No Gap'; // Return 'N/A' if gap is undefined or null
-                                                                            }
-                                                                            const { years, months } = gap; // Safely destructure if gap is valid
-                                                                            return `${years} years and ${months} months`;
-                                                                        }
-
-
-                                                                        if (service.db_table === "gap_validation") {
-
-
-                                                                            doc.setFontSize(12);
-                                                                            doc.setTextColor(0, 0, 0);
-                                                                            if (annexureData?.gap_validation?.highest_education_gap === 'phd') {
-                                                                                const { employGaps, gaps } = calculateGaps(annexureData);
-                                                                                // console.log(`gaps - `, gaps);
-                                                                                // Table for PhD information
-                                                                                yPosition += 10;
-                                                                                doc.autoTable({
-                                                                                    startY: yPosition,
-                                                                                    head: [[{ content: 'PHD', colSpan: 2, styles: { halign: 'center', fontSize: 12, bold: true } }],
-                                                                                    ],
-                                                                                    body: [
-                                                                                        ['Institute Name', annexureData?.gap_validation?.education_fields?.phd_1?.phd_institute_name_gap || 'N/A'],
-                                                                                        ['School Name', annexureData?.gap_validation?.education_fields?.phd_1?.phd_school_name_gap || 'N/A'],
-                                                                                        ['Start Date', annexureData?.gap_validation?.education_fields?.phd_1?.phd_start_date_gap || 'N/A'],
-                                                                                        ['End Date', annexureData?.gap_validation?.education_fields?.phd_1?.phd_end_date_gap || 'N/A'],
-                                                                                        ['Specialization', annexureData?.gap_validation?.education_fields?.phd_1?.phd_specialization_gap || 'N/A'],
-                                                                                        ["Gap Status", renderGapMessageNew(gaps?.gapPostGradToPhd) || 'N/A']
-                                                                                    ],
-                                                                                    theme: 'grid',
-                                                                                    margin: { top: 10 },
-                                                                                    styles: { fontSize: 10, cellPadding: 3 }
-                                                                                });
-
-                                                                                let index = 1;
-                                                                                let phdSections = [];
-
-                                                                                while (true) {
-                                                                                    const key = `phd_corespondence_${index}`;
-
-                                                                                    // Check if the key exists in annexureData
-                                                                                    if (!annexureData?.gap_validation?.education_fields?.[key]) {
-                                                                                        break; // Exit loop if the key is missing
-                                                                                    }
-
-                                                                                    const phdSection = annexureData.gap_validation.education_fields[key];
-
-                                                                                    // Log the current phdSection to ensure data is being read correctly
-
-                                                                                    phdSections.push([
-                                                                                        `Correspondence Phd ${index}`,
-                                                                                        phdSection?.phd_institute_name_gap || 'N/A',
-                                                                                        phdSection?.phd_school_name_gap || 'N/A',
-                                                                                        phdSection?.phd_start_date_gap || 'N/A',
-                                                                                        phdSection?.phd_end_date_gap || 'N/A',
-                                                                                        phdSection?.phd_specialization_gap || 'N/A'
-                                                                                    ]);
-
-                                                                                    index++; // Move to the next phd_corespondence_*
-                                                                                }
-
-                                                                                // Check if phdSections is populated before attempting to render
-
-                                                                                if (phdSections.length > 0) {
-                                                                                    doc.setFontSize(16);
-                                                                                    const textWidth = doc.internal.pageSize.width;
-                                                                                    doc.text("Correspondence Phd Details", doc.internal.pageSize.width / 2, doc.autoTable.previous.finalY + 10, {
-                                                                                        align: 'center'
-                                                                                    });
-                                                                                    // Add the table data
-                                                                                    doc.autoTable({
-                                                                                        head: [['Correspondence', 'Institute Name', 'School Name', 'Start Date', 'End Date', 'Specialization']],
-                                                                                        body: phdSections,
-                                                                                        startY: doc.autoTable.previous.finalY + 20, // Start below the title
-                                                                                        theme: 'grid',
-                                                                                        styles: {
-                                                                                            cellPadding: 4,
-                                                                                            fontSize: 10
-                                                                                        }
-                                                                                    });
-                                                                                } else {
-                                                                                }
-
-                                                                            }
-                                                                            yPosition = doc.autoTable.previous.finalY + 10;
-                                                                            // Post Graduation
-                                                                            if (annexureData?.gap_validation?.highest_education_gap === 'post_graduation' || annexureData?.gap_validation?.highest_education_gap === 'phd') {
+                                                                            if (serviceDataMain.length > 1) {
                                                                                 doc.addPage();
                                                                                 yPosition = 20;
-                                                                                const { employGaps, gaps } = calculateGaps(annexureData);
-                                                                                const postGradData = [
-                                                                                    ["University / Institute Name", annexureData?.gap_validation?.education_fields?.post_graduation_1?.post_graduation_university_institute_name_gap || 'N/A'],
-                                                                                    ["Course", annexureData?.gap_validation?.education_fields?.post_graduation_1?.post_graduation_course_gap || 'N/A'],
-                                                                                    ["Specialization Major", annexureData?.gap_validation?.education_fields?.post_graduation_1?.post_graduation_specialization_major_gap || 'N/A'],
-                                                                                    ["Start Date", annexureData?.gap_validation?.education_fields?.post_graduation_1?.post_graduation_start_date_gap || 'N/A'],
-                                                                                    ["End Date", annexureData?.gap_validation?.education_fields?.post_graduation_1?.post_graduation_end_date_gap || 'N/A'],
-                                                                                    ["Gap Status", renderGapMessageNew(gaps?.gapGradToPostGrad) || 'N/A']
-                                                                                ];
+                                                                            }
+                                                                            // Reset yPosition before each service
 
-
-                                                                                doc.autoTable({
-                                                                                    head: [[{ content: 'POST GRADUATION', colSpan: 2, styles: { halign: 'center', fontSize: 12, bold: true } }],
-                                                                                    ],
-                                                                                    body: postGradData,
-                                                                                    startY: yPosition + 5,
-                                                                                    theme: 'grid',
-                                                                                    styles: {
-                                                                                        cellPadding: 4,
-                                                                                        fontSize: 10
-                                                                                    }
-                                                                                });
-
-                                                                                let index = 1;
-                                                                                let postGradSections = [];
-                                                                                while (true) {
-                                                                                    const key = `post_graduation_corespondence_${index}`;
-
-                                                                                    // Check if the key exists in the annexureData
-                                                                                    if (!annexureData?.gap_validation?.education_fields?.[key]) {
-                                                                                        break; // Exit loop if the key is missing
-                                                                                    }
-
-                                                                                    const postGradSection = annexureData.gap_validation.education_fields[key];
-
-                                                                                    // Push the section data into postGradSections array
-                                                                                    postGradSections.push([
-                                                                                        `Correspondence Post Graduation ${index}`,
-                                                                                        postGradSection?.post_graduation_university_institute_name_gap || 'N/A',
-                                                                                        postGradSection?.post_graduation_course_gap || 'N/A',
-                                                                                        postGradSection?.post_graduation_specialization_major_gap || 'N/A',
-                                                                                        postGradSection?.post_graduation_start_date_gap || 'N/A',
-                                                                                        postGradSection?.post_graduation_end_date_gap || 'N/A'
-                                                                                    ]);
-
-                                                                                    index++; // Move to the next post_graduation_corespondence_*
+                                                                            function renderGapMessageNew(gap) {
+                                                                                if (!gap) {
+                                                                                    return 'No Gap'; // Return 'N/A' if gap is undefined or null
                                                                                 }
+                                                                                const { years, months } = gap; // Safely destructure if gap is valid
+                                                                                return `${years} years and ${months} months`;
+                                                                            }
 
-                                                                                // Add a title for the table
-                                                                                yPosition += 20;
 
-                                                                                if (postGradSections.length > 0) {
-                                                                                    doc.setFontSize(16);
-                                                                                    doc.text("Correspondence Post Graduation Details", doc.internal.pageSize.width / 2, doc.autoTable.previous.finalY + 10, {
-                                                                                        align: 'center'
+                                                                            if (service.db_table === "gap_validation") {
+
+
+                                                                                doc.setFontSize(12);
+                                                                                doc.setTextColor(0, 0, 0);
+                                                                                if (annexureData?.gap_validation?.highest_education_gap === 'phd') {
+                                                                                    const { employGaps, gaps } = calculateGaps(annexureData);
+                                                                                    // console.log(`gaps - `, gaps);
+                                                                                    // Table for PhD information
+                                                                                    yPosition += 10;
+                                                                                    doc.autoTable({
+                                                                                        startY: yPosition,
+                                                                                        head: [[{ content: 'PHD', colSpan: 2, styles: { halign: 'center', fontSize: 12, bold: true } }],
+                                                                                        ],
+                                                                                        body: [
+                                                                                            ['Institute Name', annexureData?.gap_validation?.education_fields?.phd_1?.phd_institute_name_gap || 'N/A'],
+                                                                                            ['School Name', annexureData?.gap_validation?.education_fields?.phd_1?.phd_school_name_gap || 'N/A'],
+                                                                                            ['Start Date', annexureData?.gap_validation?.education_fields?.phd_1?.phd_start_date_gap || 'N/A'],
+                                                                                            ['End Date', annexureData?.gap_validation?.education_fields?.phd_1?.phd_end_date_gap || 'N/A'],
+                                                                                            ['Specialization', annexureData?.gap_validation?.education_fields?.phd_1?.phd_specialization_gap || 'N/A'],
+                                                                                            ["Gap Status", renderGapMessageNew(gaps?.gapPostGradToPhd) || 'N/A']
+                                                                                        ],
+                                                                                        theme: 'grid',
+                                                                                        margin: { top: 10 },
+                                                                                        styles: { fontSize: 10, cellPadding: 3 }
                                                                                     });
 
+                                                                                    let index = 1;
+                                                                                    let phdSections = [];
+
+                                                                                    while (true) {
+                                                                                        const key = `phd_corespondence_${index}`;
+
+                                                                                        // Check if the key exists in annexureData
+                                                                                        if (!annexureData?.gap_validation?.education_fields?.[key]) {
+                                                                                            break; // Exit loop if the key is missing
+                                                                                        }
+
+                                                                                        const phdSection = annexureData.gap_validation.education_fields[key];
+
+                                                                                        // Log the current phdSection to ensure data is being read correctly
+
+                                                                                        phdSections.push([
+                                                                                            `Correspondence Phd ${index}`,
+                                                                                            phdSection?.phd_institute_name_gap || 'N/A',
+                                                                                            phdSection?.phd_school_name_gap || 'N/A',
+                                                                                            phdSection?.phd_start_date_gap || 'N/A',
+                                                                                            phdSection?.phd_end_date_gap || 'N/A',
+                                                                                            phdSection?.phd_specialization_gap || 'N/A'
+                                                                                        ]);
+
+                                                                                        index++; // Move to the next phd_corespondence_*
+                                                                                    }
+
+                                                                                    // Check if phdSections is populated before attempting to render
+
+                                                                                    if (phdSections.length > 0) {
+                                                                                        doc.setFontSize(16);
+                                                                                        const textWidth = doc.internal.pageSize.width;
+                                                                                        doc.text("Correspondence Phd Details", doc.internal.pageSize.width / 2, doc.autoTable.previous.finalY + 10, {
+                                                                                            align: 'center'
+                                                                                        });
+                                                                                        // Add the table data
+                                                                                        doc.autoTable({
+                                                                                            head: [['Correspondence', 'Institute Name', 'School Name', 'Start Date', 'End Date', 'Specialization']],
+                                                                                            body: phdSections,
+                                                                                            startY: doc.autoTable.previous.finalY + 20, // Start below the title
+                                                                                            theme: 'grid',
+                                                                                            styles: {
+                                                                                                cellPadding: 4,
+                                                                                                fontSize: 10
+                                                                                            }
+                                                                                        });
+                                                                                    } else {
+                                                                                    }
+
+                                                                                }
+                                                                                yPosition = doc.autoTable.previous.finalY + 10;
+                                                                                // Post Graduation
+                                                                                if (annexureData?.gap_validation?.highest_education_gap === 'post_graduation' || annexureData?.gap_validation?.highest_education_gap === 'phd') {
+                                                                                    doc.addPage();
+                                                                                    yPosition = 20;
+                                                                                    const { employGaps, gaps } = calculateGaps(annexureData);
+                                                                                    const postGradData = [
+                                                                                        ["University / Institute Name", annexureData?.gap_validation?.education_fields?.post_graduation_1?.post_graduation_university_institute_name_gap || 'N/A'],
+                                                                                        ["Course", annexureData?.gap_validation?.education_fields?.post_graduation_1?.post_graduation_course_gap || 'N/A'],
+                                                                                        ["Specialization Major", annexureData?.gap_validation?.education_fields?.post_graduation_1?.post_graduation_specialization_major_gap || 'N/A'],
+                                                                                        ["Start Date", annexureData?.gap_validation?.education_fields?.post_graduation_1?.post_graduation_start_date_gap || 'N/A'],
+                                                                                        ["End Date", annexureData?.gap_validation?.education_fields?.post_graduation_1?.post_graduation_end_date_gap || 'N/A'],
+                                                                                        ["Gap Status", renderGapMessageNew(gaps?.gapGradToPostGrad) || 'N/A']
+                                                                                    ];
+
+
                                                                                     doc.autoTable({
-                                                                                        head: [['Correspondence', 'University/Institute Name', 'Course', 'Specialization Major', 'Start Date', 'End Date']],
-                                                                                        body: postGradSections,
-                                                                                        startY: doc.autoTable.previous.finalY + 20, // Start below the title
+                                                                                        head: [[{ content: 'POST GRADUATION', colSpan: 2, styles: { halign: 'center', fontSize: 12, bold: true } }],
+                                                                                        ],
+                                                                                        body: postGradData,
+                                                                                        startY: yPosition + 5,
                                                                                         theme: 'grid',
                                                                                         styles: {
                                                                                             cellPadding: 4,
                                                                                             fontSize: 10
                                                                                         }
                                                                                     });
-                                                                                }
 
-                                                                            }
+                                                                                    let index = 1;
+                                                                                    let postGradSections = [];
+                                                                                    while (true) {
+                                                                                        const key = `post_graduation_corespondence_${index}`;
 
-                                                                            // Graduation
-                                                                            yPosition = yPosition += 30;
-                                                                            if (annexureData?.gap_validation?.highest_education_gap === 'graduation' || annexureData?.gap_validation?.highest_education_gap === 'post_graduation' || annexureData?.gap_validation?.highest_education_gap === 'phd') {
-                                                                                const { employGaps, gaps } = calculateGaps(annexureData);
+                                                                                        // Check if the key exists in the annexureData
+                                                                                        if (!annexureData?.gap_validation?.education_fields?.[key]) {
+                                                                                            break; // Exit loop if the key is missing
+                                                                                        }
 
-                                                                                const gradData = [
-                                                                                    ["University / Institute Name", annexureData?.gap_validation?.education_fields?.graduation_1?.graduation_university_institute_name_gap || 'N/A'],
-                                                                                    ["Course", annexureData?.gap_validation?.education_fields?.graduation_1?.graduation_course_gap || 'N/A'],
-                                                                                    ["Specialization Major", annexureData?.gap_validation?.education_fields?.graduation_1?.graduation_specialization_major_gap || 'N/A'],
-                                                                                    ["Start Date", annexureData?.gap_validation?.education_fields?.graduation_1?.graduation_start_date_gap || 'N/A'],
-                                                                                    ["End Date", annexureData?.gap_validation?.education_fields?.graduation_1?.graduation_end_date_gap || 'N/A'],
-                                                                                    ["Gap Status", renderGapMessageNew(gaps?.gapSrSecToGrad) || 'N/A']
+                                                                                        const postGradSection = annexureData.gap_validation.education_fields[key];
 
-                                                                                ];
+                                                                                        // Push the section data into postGradSections array
+                                                                                        postGradSections.push([
+                                                                                            `Correspondence Post Graduation ${index}`,
+                                                                                            postGradSection?.post_graduation_university_institute_name_gap || 'N/A',
+                                                                                            postGradSection?.post_graduation_course_gap || 'N/A',
+                                                                                            postGradSection?.post_graduation_specialization_major_gap || 'N/A',
+                                                                                            postGradSection?.post_graduation_start_date_gap || 'N/A',
+                                                                                            postGradSection?.post_graduation_end_date_gap || 'N/A'
+                                                                                        ]);
 
-                                                                                doc.autoTable({
-                                                                                    head: [[{ content: 'GRADUATION', colSpan: 2, styles: { halign: 'center', fontSize: 12, bold: true } }],
-                                                                                    ],
-                                                                                    body: gradData,
-                                                                                    startY: doc.autoTable.previous.finalY + 10,
-                                                                                    theme: 'grid',
-                                                                                    styles: {
-                                                                                        cellPadding: 4,
-                                                                                        fontSize: 10
-                                                                                    }
-                                                                                });
-
-                                                                                let index = 1;
-                                                                                let Graduation = [];
-                                                                                while (true) {
-                                                                                    const key = `graduation_corespondence_${index}`;
-
-                                                                                    // Check if the key exists in the annexureData
-                                                                                    if (!annexureData?.gap_validation?.education_fields?.[key]) {
-                                                                                        break; // Exit loop if the key is missing
+                                                                                        index++; // Move to the next post_graduation_corespondence_*
                                                                                     }
 
-                                                                                    const GradSec = annexureData.gap_validation.education_fields[key];
-
-                                                                                    // Push the section data into Graduation array
-                                                                                    Graduation.push([
-                                                                                        `Correspondence Graduation ${index}`,
-                                                                                        GradSec?.graduation_university_institute_name_gap || 'N/A',
-                                                                                        GradSec?.graduation_course_gap || 'N/A',
-                                                                                        GradSec?.graduation_specialization_major_gap || 'N/A',
-                                                                                        GradSec?.graduation_start_date_gap || 'N/A',
-                                                                                        GradSec?.graduation_end_date_gap || 'N/A'
-                                                                                    ]);
-
-                                                                                    index++; // Move to the next post_graduation_corespondence_*
-                                                                                }
-
-                                                                                if (Graduation.length > 0) {
                                                                                     // Add a title for the table
-                                                                                    doc.setFontSize(16);
-                                                                                    doc.text("Correspondence Graduation Details", doc.internal.pageSize.width / 2, doc.autoTable.previous.finalY + 10, {
-                                                                                        align: 'center'
-                                                                                    });
-                                                                                    // Add the table data
-                                                                                    doc.autoTable({
-                                                                                        head: [['Correspondence', 'University/Institute Name', 'Course', 'Specialization Major', 'Start Date', 'End Date']],
-                                                                                        body: Graduation,
-                                                                                        startY: doc.autoTable.previous.finalY + 30, // Start below the title
-                                                                                        theme: 'grid',
-                                                                                        styles: {
-                                                                                            cellPadding: 4,
-                                                                                            fontSize: 10
-                                                                                        }
-                                                                                    });
+                                                                                    yPosition += 20;
 
-                                                                                }
+                                                                                    if (postGradSections.length > 0) {
+                                                                                        doc.setFontSize(16);
+                                                                                        doc.text("Correspondence Post Graduation Details", doc.internal.pageSize.width / 2, doc.autoTable.previous.finalY + 10, {
+                                                                                            align: 'center'
+                                                                                        });
 
-                                                                                // Call this function separately if required for gap message
-                                                                            }
-
-                                                                            if (annexureData?.gap_validation?.highest_education_gap === 'senior_secondary' || annexureData?.gap_validation?.highest_education_gap === 'graduation' || annexureData?.gap_validation?.highest_education_gap === 'phd' || annexureData?.gap_validation?.highest_education_gap === 'post_graduation') {
-                                                                                const { employGaps, gaps } = calculateGaps(annexureData);
-                                                                                const seniorSecondaryData = [
-                                                                                    ["School Name", annexureData?.gap_validation?.education_fields?.senior_secondary?.senior_secondary_school_name_gap || 'N/A'],
-                                                                                    ["Start Date", annexureData?.gap_validation?.education_fields?.senior_secondary?.senior_secondary_start_date_gap || 'N/A'],
-                                                                                    ["End Date", annexureData?.gap_validation?.education_fields?.senior_secondary?.senior_secondary_end_date_gap || 'N/A'],
-                                                                                    ["Gap Status", renderGapMessageNew(gaps?.gapSecToSrSec) || 'N/A']
-                                                                                ];
-
-                                                                                doc.autoTable({
-                                                                                    head: [[{ content: 'SENIOR SECONDARY', colSpan: 2, styles: { halign: 'center', fontSize: 12, bold: true } }],
-                                                                                    ],
-                                                                                    body: seniorSecondaryData,
-                                                                                    startY: doc.autoTable.previous.finalY + 30,
-                                                                                    theme: 'grid',
-                                                                                    styles: {
-                                                                                        cellPadding: 4,
-                                                                                        fontSize: 10
-                                                                                    }
-                                                                                });
-
-                                                                                let index = 1;
-                                                                                let seniorSecondarySections = [];
-
-                                                                                while (true) {
-                                                                                    const key = `senior_secondary_corespondence_${index}`;
-
-                                                                                    // Check if the key exists in annexureData
-                                                                                    if (!annexureData?.gap_validation?.education_fields?.[key]) {
-                                                                                        break; // Exit loop if the key is missing
+                                                                                        doc.autoTable({
+                                                                                            head: [['Correspondence', 'University/Institute Name', 'Course', 'Specialization Major', 'Start Date', 'End Date']],
+                                                                                            body: postGradSections,
+                                                                                            startY: doc.autoTable.previous.finalY + 20, // Start below the title
+                                                                                            theme: 'grid',
+                                                                                            styles: {
+                                                                                                cellPadding: 4,
+                                                                                                fontSize: 10
+                                                                                            }
+                                                                                        });
                                                                                     }
 
-                                                                                    const seniorSecondarySection = annexureData.gap_validation.education_fields[key];
-
-                                                                                    // Push the section data into seniorSecondarySections array
-                                                                                    seniorSecondarySections.push([
-                                                                                        `Correspondence SENIOR SECONDARY ${index}`,
-                                                                                        seniorSecondarySection?.senior_secondary_school_name_gap || 'N/A',
-                                                                                        seniorSecondarySection?.senior_secondary_start_date_gap || 'N/A',
-                                                                                        seniorSecondarySection?.senior_secondary_end_date_gap || 'N/A'
-                                                                                    ]);
-
-                                                                                    index++; // Move to the next senior_secondary_corespondence_*
                                                                                 }
 
-                                                                                // Add a title for the table
-                                                                                if (seniorSecondarySections.length > 0) {
-                                                                                    doc.setFontSize(16);
-                                                                                    doc.text("Correspondence Senior Secondary Details", doc.internal.pageSize.width / 2, doc.autoTable.previous.finalY + 10, {
-                                                                                        align: 'center'
-                                                                                    });
-                                                                                    // Add the table data
-                                                                                    doc.autoTable({
-                                                                                        head: [['Correspondence', 'School Name', 'Start Date', 'End Date']],
-                                                                                        body: seniorSecondarySections,
-                                                                                        startY: doc.autoTable.previous.finalY + 20, // Start below the title
-                                                                                        theme: 'grid',
-                                                                                        styles: {
-                                                                                            cellPadding: 4,
-                                                                                            fontSize: 10
-                                                                                        }
-                                                                                    });
+                                                                                // Graduation
+                                                                                yPosition = yPosition += 30;
+                                                                                if (annexureData?.gap_validation?.highest_education_gap === 'graduation' || annexureData?.gap_validation?.highest_education_gap === 'post_graduation' || annexureData?.gap_validation?.highest_education_gap === 'phd') {
+                                                                                    const { employGaps, gaps } = calculateGaps(annexureData);
 
-                                                                                }
+                                                                                    const gradData = [
+                                                                                        ["University / Institute Name", annexureData?.gap_validation?.education_fields?.graduation_1?.graduation_university_institute_name_gap || 'N/A'],
+                                                                                        ["Course", annexureData?.gap_validation?.education_fields?.graduation_1?.graduation_course_gap || 'N/A'],
+                                                                                        ["Specialization Major", annexureData?.gap_validation?.education_fields?.graduation_1?.graduation_specialization_major_gap || 'N/A'],
+                                                                                        ["Start Date", annexureData?.gap_validation?.education_fields?.graduation_1?.graduation_start_date_gap || 'N/A'],
+                                                                                        ["End Date", annexureData?.gap_validation?.education_fields?.graduation_1?.graduation_end_date_gap || 'N/A'],
+                                                                                        ["Gap Status", renderGapMessageNew(gaps?.gapSrSecToGrad) || 'N/A']
 
-                                                                                ;  // Call this function separately if required for gap message
-                                                                            }
-
-                                                                            doc.addPage();
-                                                                            yPosition = 10;
-                                                                            // Secondary Education Section
-                                                                            if (
-                                                                                annexureData["gap_validation"].highest_education_gap === 'secondary' ||
-                                                                                annexureData["gap_validation"].highest_education_gap === 'senior_secondary' ||
-                                                                                annexureData["gap_validation"].highest_education_gap === 'graduation' ||
-                                                                                annexureData["gap_validation"].highest_education_gap === 'phd' ||
-                                                                                annexureData["gap_validation"].highest_education_gap === 'post_graduation'
-                                                                            ) {
-
-                                                                                const secondaryData = [
-                                                                                    ["School Name", annexureData?.gap_validation?.education_fields?.secondary?.secondary_school_name_gap || 'N/A'],
-                                                                                    ["Start Date", annexureData?.gap_validation?.education_fields?.secondary?.secondary_start_date_gap || 'N/A'],
-                                                                                    ["End Date", annexureData?.gap_validation?.education_fields?.secondary?.secondary_end_date_gap || 'N/A']
-                                                                                ];
-
-                                                                                // Generate the table for secondary education
-                                                                                doc.autoTable({
-                                                                                    head: [[{ content: 'SECONDARY', colSpan: 2, styles: { halign: 'center', fontSize: 12, bold: true } }],
-                                                                                    ],
-                                                                                    body: secondaryData,
-                                                                                    startY: yPosition,
-                                                                                    theme: 'grid',
-                                                                                    styles: {
-                                                                                        cellPadding: 4,
-                                                                                        fontSize: 10
-                                                                                    }
-                                                                                });
-
-                                                                                let index = 1;
-                                                                                let SecondarySections = [];
-
-                                                                                // Loop through to find any "secondary_corespondence_*" sections and add them
-                                                                                while (true) {
-                                                                                    const key = `secondary_corespondence_${index}`;
-
-                                                                                    // Check if the key exists in annexureData
-                                                                                    if (!annexureData?.gap_validation?.education_fields?.[key]) {
-                                                                                        break; // Exit loop if the key is missing
-                                                                                    }
-
-                                                                                    const secondarySection = annexureData.gap_validation.education_fields[key];
-
-                                                                                    // Push the section data into SecondarySections array
-                                                                                    SecondarySections.push([
-                                                                                        `Correspondence SECONDARY ${index}`,
-                                                                                        secondarySection?.secondary_school_name_gap || 'N/A',
-                                                                                        secondarySection?.secondary_start_date_gap || 'N/A',
-                                                                                        secondarySection?.secondary_end_date_gap || 'N/A'
-                                                                                    ]);
-
-                                                                                    index++; // Move to the next secondary_corespondence_*
-                                                                                }
-
-                                                                                // Add a title for the table if there are any secondary sections
-                                                                                if (SecondarySections.length > 0) {
-                                                                                    doc.setFontSize(16);
-                                                                                    doc.text("Correspondence Secondary Education Details", doc.internal.pageSize.width / 2, doc.autoTable.previous.finalY + 10, {
-                                                                                        align: 'center'
-                                                                                    });
-                                                                                    // Add the table data
-                                                                                    doc.autoTable({
-                                                                                        head: [['Secondary No.', 'School Name', 'Start Date', 'End Date']],
-                                                                                        body: SecondarySections,
-                                                                                        startY: doc.autoTable.previous.finalY + 20, // Start below the title
-                                                                                        theme: 'grid',
-                                                                                        styles: {
-                                                                                            cellPadding: 4,
-                                                                                            fontSize: 10
-                                                                                        }
-                                                                                    });
-
-
-                                                                                }
-                                                                            }
-
-
-                                                                            yPosition = doc.autoTable.previous.finalY + 10;
-
-                                                                            // Employment Section
-                                                                            doc.setFontSize(18);
-                                                                            const employmentData = [
-                                                                                ["Years of Experience", annexureData["gap_validation"].years_of_experience_gap || ''],
-                                                                                ["No of Employment", annexureData["gap_validation"].no_of_employment || '']
-                                                                            ];
-
-                                                                            doc.autoTable({
-                                                                                head: [[{ content: `Employment Deails`, colSpan: 2, styles: { halign: 'center', fontSize: 12, bold: true } }],
-                                                                                ],
-                                                                                body: employmentData,
-                                                                                startY: doc.autoTable.previous.finalY + 10,
-                                                                                theme: 'grid',
-                                                                                styles: {
-                                                                                    cellPadding: 4,
-                                                                                    fontSize: 10
-                                                                                }
-                                                                            });
-
-                                                                            doc.setFontSize(12);
-                                                                            // Dynamically render Employment Forms
-                                                                            if (annexureData["gap_validation"].no_of_employment > 0) {
-                                                                                let yPosition = doc.autoTable.previous.finalY + 10;
-                                                                                const { employGaps, gaps } = calculateGaps(annexureData);
-                                                                                Array.from({ length: annexureData["gap_validation"].no_of_employment || 0 }, (_, index) => {
-                                                                                    const employmentFormData = [
-                                                                                        ["Employment Type", annexureData["gap_validation"]?.employment_fields?.[`employment_${index + 1}`]?.[`employment_type_gap`] || ''],
-                                                                                        ["Start Date", annexureData["gap_validation"]?.employment_fields?.[`employment_${index + 1}`]?.[`employment_start_date_gap`] || ''],
-                                                                                        ["End Date", annexureData["gap_validation"]?.employment_fields?.[`employment_${index + 1}`]?.[`employment_end_date_gap`] || '']
                                                                                     ];
 
                                                                                     doc.autoTable({
-                                                                                        head: [[{ content: `Employment (${index + 1})`, colSpan: 2, styles: { halign: 'center', fontSize: 12, bold: true } }],
+                                                                                        head: [[{ content: 'GRADUATION', colSpan: 2, styles: { halign: 'center', fontSize: 12, bold: true } }],
                                                                                         ],
-                                                                                        body: employmentFormData,
+                                                                                        body: gradData,
+                                                                                        startY: doc.autoTable.previous.finalY + 10,
+                                                                                        theme: 'grid',
+                                                                                        styles: {
+                                                                                            cellPadding: 4,
+                                                                                            fontSize: 10
+                                                                                        }
+                                                                                    });
+
+                                                                                    let index = 1;
+                                                                                    let Graduation = [];
+                                                                                    while (true) {
+                                                                                        const key = `graduation_corespondence_${index}`;
+
+                                                                                        // Check if the key exists in the annexureData
+                                                                                        if (!annexureData?.gap_validation?.education_fields?.[key]) {
+                                                                                            break; // Exit loop if the key is missing
+                                                                                        }
+
+                                                                                        const GradSec = annexureData.gap_validation.education_fields[key];
+
+                                                                                        // Push the section data into Graduation array
+                                                                                        Graduation.push([
+                                                                                            `Correspondence Graduation ${index}`,
+                                                                                            GradSec?.graduation_university_institute_name_gap || 'N/A',
+                                                                                            GradSec?.graduation_course_gap || 'N/A',
+                                                                                            GradSec?.graduation_specialization_major_gap || 'N/A',
+                                                                                            GradSec?.graduation_start_date_gap || 'N/A',
+                                                                                            GradSec?.graduation_end_date_gap || 'N/A'
+                                                                                        ]);
+
+                                                                                        index++; // Move to the next post_graduation_corespondence_*
+                                                                                    }
+
+                                                                                    if (Graduation.length > 0) {
+                                                                                        // Add a title for the table
+                                                                                        doc.setFontSize(16);
+                                                                                        doc.text("Correspondence Graduation Details", doc.internal.pageSize.width / 2, doc.autoTable.previous.finalY + 10, {
+                                                                                            align: 'center'
+                                                                                        });
+                                                                                        // Add the table data
+                                                                                        doc.autoTable({
+                                                                                            head: [['Correspondence', 'University/Institute Name', 'Course', 'Specialization Major', 'Start Date', 'End Date']],
+                                                                                            body: Graduation,
+                                                                                            startY: doc.autoTable.previous.finalY + 30, // Start below the title
+                                                                                            theme: 'grid',
+                                                                                            styles: {
+                                                                                                cellPadding: 4,
+                                                                                                fontSize: 10
+                                                                                            }
+                                                                                        });
+
+                                                                                    }
+
+                                                                                    // Call this function separately if required for gap message
+                                                                                }
+
+                                                                                if (annexureData?.gap_validation?.highest_education_gap === 'senior_secondary' || annexureData?.gap_validation?.highest_education_gap === 'graduation' || annexureData?.gap_validation?.highest_education_gap === 'phd' || annexureData?.gap_validation?.highest_education_gap === 'post_graduation') {
+                                                                                    const { employGaps, gaps } = calculateGaps(annexureData);
+                                                                                    const seniorSecondaryData = [
+                                                                                        ["School Name", annexureData?.gap_validation?.education_fields?.senior_secondary?.senior_secondary_school_name_gap || 'N/A'],
+                                                                                        ["Start Date", annexureData?.gap_validation?.education_fields?.senior_secondary?.senior_secondary_start_date_gap || 'N/A'],
+                                                                                        ["End Date", annexureData?.gap_validation?.education_fields?.senior_secondary?.senior_secondary_end_date_gap || 'N/A'],
+                                                                                        ["Gap Status", renderGapMessageNew(gaps?.gapSecToSrSec) || 'N/A']
+                                                                                    ];
+
+                                                                                    doc.autoTable({
+                                                                                        head: [[{ content: 'SENIOR SECONDARY', colSpan: 2, styles: { halign: 'center', fontSize: 12, bold: true } }],
+                                                                                        ],
+                                                                                        body: seniorSecondaryData,
+                                                                                        startY: doc.autoTable.previous.finalY + 30,
+                                                                                        theme: 'grid',
+                                                                                        styles: {
+                                                                                            cellPadding: 4,
+                                                                                            fontSize: 10
+                                                                                        }
+                                                                                    });
+
+                                                                                    let index = 1;
+                                                                                    let seniorSecondarySections = [];
+
+                                                                                    while (true) {
+                                                                                        const key = `senior_secondary_corespondence_${index}`;
+
+                                                                                        // Check if the key exists in annexureData
+                                                                                        if (!annexureData?.gap_validation?.education_fields?.[key]) {
+                                                                                            break; // Exit loop if the key is missing
+                                                                                        }
+
+                                                                                        const seniorSecondarySection = annexureData.gap_validation.education_fields[key];
+
+                                                                                        // Push the section data into seniorSecondarySections array
+                                                                                        seniorSecondarySections.push([
+                                                                                            `Correspondence SENIOR SECONDARY ${index}`,
+                                                                                            seniorSecondarySection?.senior_secondary_school_name_gap || 'N/A',
+                                                                                            seniorSecondarySection?.senior_secondary_start_date_gap || 'N/A',
+                                                                                            seniorSecondarySection?.senior_secondary_end_date_gap || 'N/A'
+                                                                                        ]);
+
+                                                                                        index++; // Move to the next senior_secondary_corespondence_*
+                                                                                    }
+
+                                                                                    // Add a title for the table
+                                                                                    if (seniorSecondarySections.length > 0) {
+                                                                                        doc.setFontSize(16);
+                                                                                        doc.text("Correspondence Senior Secondary Details", doc.internal.pageSize.width / 2, doc.autoTable.previous.finalY + 10, {
+                                                                                            align: 'center'
+                                                                                        });
+                                                                                        // Add the table data
+                                                                                        doc.autoTable({
+                                                                                            head: [['Correspondence', 'School Name', 'Start Date', 'End Date']],
+                                                                                            body: seniorSecondarySections,
+                                                                                            startY: doc.autoTable.previous.finalY + 20, // Start below the title
+                                                                                            theme: 'grid',
+                                                                                            styles: {
+                                                                                                cellPadding: 4,
+                                                                                                fontSize: 10
+                                                                                            }
+                                                                                        });
+
+                                                                                    }
+
+                                                                                    ;  // Call this function separately if required for gap message
+                                                                                }
+
+                                                                                doc.addPage();
+                                                                                yPosition = 10;
+                                                                                // Secondary Education Section
+                                                                                if (
+                                                                                    annexureData["gap_validation"].highest_education_gap === 'secondary' ||
+                                                                                    annexureData["gap_validation"].highest_education_gap === 'senior_secondary' ||
+                                                                                    annexureData["gap_validation"].highest_education_gap === 'graduation' ||
+                                                                                    annexureData["gap_validation"].highest_education_gap === 'phd' ||
+                                                                                    annexureData["gap_validation"].highest_education_gap === 'post_graduation'
+                                                                                ) {
+
+                                                                                    const secondaryData = [
+                                                                                        ["School Name", annexureData?.gap_validation?.education_fields?.secondary?.secondary_school_name_gap || 'N/A'],
+                                                                                        ["Start Date", annexureData?.gap_validation?.education_fields?.secondary?.secondary_start_date_gap || 'N/A'],
+                                                                                        ["End Date", annexureData?.gap_validation?.education_fields?.secondary?.secondary_end_date_gap || 'N/A']
+                                                                                    ];
+
+                                                                                    // Generate the table for secondary education
+                                                                                    doc.autoTable({
+                                                                                        head: [[{ content: 'SECONDARY', colSpan: 2, styles: { halign: 'center', fontSize: 12, bold: true } }],
+                                                                                        ],
+                                                                                        body: secondaryData,
                                                                                         startY: yPosition,
                                                                                         theme: 'grid',
                                                                                         styles: {
@@ -1499,171 +1413,265 @@ module.exports = {
                                                                                         }
                                                                                     });
 
-                                                                                    yPosition = doc.autoTable.previous.finalY + 10;
-                                                                                    for (let idx = 0; idx < employGaps.length; idx++) {
-                                                                                        const item = employGaps[idx];  // Fix: Use idx directly, not idx - 1
+                                                                                    let index = 1;
+                                                                                    let SecondarySections = [];
+
+                                                                                    // Loop through to find any "secondary_corespondence_*" sections and add them
+                                                                                    while (true) {
+                                                                                        const key = `secondary_corespondence_${index}`;
+
+                                                                                        // Check if the key exists in annexureData
+                                                                                        if (!annexureData?.gap_validation?.education_fields?.[key]) {
+                                                                                            break; // Exit loop if the key is missing
+                                                                                        }
+
+                                                                                        const secondarySection = annexureData.gap_validation.education_fields[key];
+
+                                                                                        // Push the section data into SecondarySections array
+                                                                                        SecondarySections.push([
+                                                                                            `Correspondence SECONDARY ${index}`,
+                                                                                            secondarySection?.secondary_school_name_gap || 'N/A',
+                                                                                            secondarySection?.secondary_start_date_gap || 'N/A',
+                                                                                            secondarySection?.secondary_end_date_gap || 'N/A'
+                                                                                        ]);
+
+                                                                                        index++; // Move to the next secondary_corespondence_*
+                                                                                    }
+
+                                                                                    // Add a title for the table if there are any secondary sections
+                                                                                    if (SecondarySections.length > 0) {
+                                                                                        doc.setFontSize(16);
+                                                                                        doc.text("Correspondence Secondary Education Details", doc.internal.pageSize.width / 2, doc.autoTable.previous.finalY + 10, {
+                                                                                            align: 'center'
+                                                                                        });
+                                                                                        // Add the table data
+                                                                                        doc.autoTable({
+                                                                                            head: [['Secondary No.', 'School Name', 'Start Date', 'End Date']],
+                                                                                            body: SecondarySections,
+                                                                                            startY: doc.autoTable.previous.finalY + 20, // Start below the title
+                                                                                            theme: 'grid',
+                                                                                            styles: {
+                                                                                                cellPadding: 4,
+                                                                                                fontSize: 10
+                                                                                            }
+                                                                                        });
 
 
-                                                                                        if (item) {
-                                                                                            const isNoGap = item.difference.toLowerCase().includes("no") && item.difference.toLowerCase().includes("gap");
+                                                                                    }
+                                                                                }
 
-                                                                                            const isMatchingEndDate = item.endValue === annexureData["gap_validation"]?.employment_fields?.[`employment_${index}`]?.[`employment_end_date_gap`];
 
-                                                                                            if (isMatchingEndDate) {
-                                                                                                // Prepare the text to be shown in the document
-                                                                                                const textToDisplay = `${isNoGap ? item.difference : `GAP:${item.difference || 'No gap Found'}`}`;
+                                                                                yPosition = doc.autoTable.previous.finalY + 10;
 
-                                                                                                // Log the text that will be displayed
+                                                                                // Employment Section
+                                                                                doc.setFontSize(18);
+                                                                                const employmentData = [
+                                                                                    ["Years of Experience", annexureData["gap_validation"].years_of_experience_gap || ''],
+                                                                                    ["No of Employment", annexureData["gap_validation"].no_of_employment || '']
+                                                                                ];
 
-                                                                                                // Display the text in the document
-                                                                                                doc.text(
-                                                                                                    textToDisplay,
-                                                                                                    14,
-                                                                                                    doc.autoTable.previous.finalY + 7
-                                                                                                );
+                                                                                doc.autoTable({
+                                                                                    head: [[{ content: `Employment Deails`, colSpan: 2, styles: { halign: 'center', fontSize: 12, bold: true } }],
+                                                                                    ],
+                                                                                    body: employmentData,
+                                                                                    startY: doc.autoTable.previous.finalY + 10,
+                                                                                    theme: 'grid',
+                                                                                    styles: {
+                                                                                        cellPadding: 4,
+                                                                                        fontSize: 10
+                                                                                    }
+                                                                                });
 
-                                                                                                // Update yPosition for next table or text
-                                                                                                yPosition = doc.autoTable.previous.finalY + 10;
+                                                                                doc.setFontSize(12);
+                                                                                // Dynamically render Employment Forms
+                                                                                if (annexureData["gap_validation"].no_of_employment > 0) {
+                                                                                    let yPosition = doc.autoTable.previous.finalY + 10;
+                                                                                    const { employGaps, gaps } = calculateGaps(annexureData);
+                                                                                    Array.from({ length: annexureData["gap_validation"].no_of_employment || 0 }, (_, index) => {
+                                                                                        const employmentFormData = [
+                                                                                            ["Employment Type", annexureData["gap_validation"]?.employment_fields?.[`employment_${index + 1}`]?.[`employment_type_gap`] || ''],
+                                                                                            ["Start Date", annexureData["gap_validation"]?.employment_fields?.[`employment_${index + 1}`]?.[`employment_start_date_gap`] || ''],
+                                                                                            ["End Date", annexureData["gap_validation"]?.employment_fields?.[`employment_${index + 1}`]?.[`employment_end_date_gap`] || '']
+                                                                                        ];
 
+                                                                                        doc.autoTable({
+                                                                                            head: [[{ content: `Employment (${index + 1})`, colSpan: 2, styles: { halign: 'center', fontSize: 12, bold: true } }],
+                                                                                            ],
+                                                                                            body: employmentFormData,
+                                                                                            startY: yPosition,
+                                                                                            theme: 'grid',
+                                                                                            styles: {
+                                                                                                cellPadding: 4,
+                                                                                                fontSize: 10
+                                                                                            }
+                                                                                        });
+
+                                                                                        yPosition = doc.autoTable.previous.finalY + 10;
+                                                                                        for (let idx = 0; idx < employGaps.length; idx++) {
+                                                                                            const item = employGaps[idx];  // Fix: Use idx directly, not idx - 1
+
+
+                                                                                            if (item) {
+                                                                                                const isNoGap = item.difference.toLowerCase().includes("no") && item.difference.toLowerCase().includes("gap");
+
+                                                                                                const isMatchingEndDate = item.endValue === annexureData["gap_validation"]?.employment_fields?.[`employment_${index}`]?.[`employment_end_date_gap`];
+
+                                                                                                if (isMatchingEndDate) {
+                                                                                                    // Prepare the text to be shown in the document
+                                                                                                    const textToDisplay = `${isNoGap ? item.difference : `GAP:${item.difference || 'No gap Found'}`}`;
+
+                                                                                                    // Log the text that will be displayed
+
+                                                                                                    // Display the text in the document
+                                                                                                    doc.text(
+                                                                                                        textToDisplay,
+                                                                                                        14,
+                                                                                                        doc.autoTable.previous.finalY + 7
+                                                                                                    );
+
+                                                                                                    // Update yPosition for next table or text
+                                                                                                    yPosition = doc.autoTable.previous.finalY + 10;
+
+                                                                                                }
                                                                                             }
                                                                                         }
-                                                                                    }
 
 
-                                                                                });
+                                                                                    });
+                                                                                }
+
+
+
                                                                             }
+                                                                            else {
+                                                                                service.rows.forEach((row, rowIndex) => {
+                                                                                    row.inputs.forEach((input) => {
+                                                                                        const isCheckbox = input.type === 'checkbox';
+                                                                                        const isDoneCheckbox = isCheckbox && (input.name.startsWith('done_or_not') || input.name.startsWith('has_not_done'));
+                                                                                        const isChecked = ["1", 1, true, "true"].includes(annexureData[service.db_table]?.[input.name] ?? false);
 
-
-
-                                                                        }
-                                                                        else {
-                                                                            service.rows.forEach((row, rowIndex) => {
-                                                                                row.inputs.forEach((input) => {
-                                                                                    const isCheckbox = input.type === 'checkbox';
-                                                                                    const isDoneCheckbox = isCheckbox && (input.name.startsWith('done_or_not') || input.name.startsWith('has_not_done'));
-                                                                                    const isChecked = ["1", 1, true, "true"].includes(annexureData[service.db_table]?.[input.name] ?? false);
-
-                                                                                    // Handle logic for checkbox checked state
-                                                                                    if (isDoneCheckbox && isChecked) {
-                                                                                        // Hide all rows except the one with the checked checkbox
-                                                                                    }
-                                                                                    if (input.type === 'file') return; // Skip file inputs
-
-                                                                                    const inputValue = annexureData[service.db_table]?.[input.name] || "NIL";
-                                                                                    tableData.push([input.label, inputValue]);
-                                                                                });
-                                                                            });
-
-                                                                            // Add service heading
-                                                                            doc.setFontSize(16);
-                                                                            yPosition += 10;
-                                                                            doc.autoTable({
-                                                                                startY: yPosition,
-                                                                                head: [[{ content: service.heading, colSpan: 2, styles: { halign: 'center', fontSize: 16, bold: true } }],
-                                                                                ],
-                                                                                body: tableData,
-                                                                                theme: 'grid',
-                                                                                margin: { horizontal: 10 },
-                                                                                styles: { fontSize: 10 },
-                                                                            });
-
-                                                                            yPosition = doc.lastAutoTable.finalY + 10; // Update yPosition after table
-
-
-                                                                            // Process and add images for this service
-                                                                            const fileInputs = service.rows.flatMap(row =>
-                                                                                row.inputs.filter(({ type }) => type === "file").map(input => input.name)
-                                                                            );
-
-                                                                            if (fileInputs.length > 0) {
-                                                                                const filePromises = fileInputs.map(async (inputName) => {
-                                                                                    const annexureFilesStr = annexureData[service.db_table]?.[inputName];
-                                                                                    let annexureDataImageHeight = 220;
-
-                                                                                    if (annexureFilesStr) {
-                                                                                        const fileUrls = annexureFilesStr.split(",").map(url => url.trim());
-                                                                                        if (fileUrls.length === 0) {
-                                                                                            doc.setFont("helvetica", "italic");
-                                                                                            doc.setFontSize(10);
-                                                                                            doc.setTextColor(150, 150, 150);
-                                                                                            doc.text("No annexure files available.", 10, yPosition + 10);
-                                                                                            yPosition += 10;
-                                                                                            return;
+                                                                                        // Handle logic for checkbox checked state
+                                                                                        if (isDoneCheckbox && isChecked) {
+                                                                                            // Hide all rows except the one with the checked checkbox
                                                                                         }
+                                                                                        if (input.type === 'file') return; // Skip file inputs
 
-                                                                                        // Filter out non-image URLs (pdf, xls, etc.)
-                                                                                        const imageUrlsToProcess = fileUrls.filter(url => {
-                                                                                            const validImageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'];
-                                                                                            return validImageExtensions.some(ext => url.toLowerCase().endsWith(ext));
-                                                                                        });
+                                                                                        const inputValue = annexureData[service.db_table]?.[input.name] || "NIL";
+                                                                                        tableData.push([input.label, inputValue]);
+                                                                                    });
+                                                                                });
 
-                                                                                        // Filter out URLs that are not images
-                                                                                        const nonImageUrlsToProcess = fileUrls.filter(url => {
-                                                                                            const validNonImageExtensions = ['pdf', 'xls', 'xlsx'];
-                                                                                            return validNonImageExtensions.some(ext => url.toLowerCase().endsWith(ext));
-                                                                                        });
+                                                                                // Add service heading
+                                                                                doc.setFontSize(16);
+                                                                                yPosition += 10;
+                                                                                doc.autoTable({
+                                                                                    startY: yPosition,
+                                                                                    head: [[{ content: service.heading, colSpan: 2, styles: { halign: 'center', fontSize: 16, bold: true } }],
+                                                                                    ],
+                                                                                    body: tableData,
+                                                                                    theme: 'grid',
+                                                                                    margin: { horizontal: 10 },
+                                                                                    styles: { fontSize: 10 },
+                                                                                });
 
-                                                                                        // Handle image files
-                                                                                        if (imageUrlsToProcess.length > 0) {
-                                                                                            const imageBases = await fetchImageToBase(imageUrlsToProcess);
-                                                                                            if (imageBases) {
-                                                                                                for (const image of imageBases) {
-                                                                                                    if (!image.base64.startsWith('data:image/')) continue;
+                                                                                yPosition = doc.lastAutoTable.finalY + 10; // Update yPosition after table
 
-                                                                                                    doc.addPage();
-                                                                                                    yPosition = 20;
 
-                                                                                                    try {
-                                                                                                        const imageWidth = doc.internal.pageSize.width - 10;
-                                                                                                        // Adjust height if needed based on image dimensions or conditions
-                                                                                                        doc.addImage(image.base64, image.type, 5, yPosition + 20, imageWidth, annexureDataImageHeight);
-                                                                                                        yPosition += (annexureDataImageHeight + 30);
-                                                                                                    } catch (error) {
-                                                                                                        // console.error(`Error adding image:`, error);
+                                                                                // Process and add images for this service
+                                                                                const fileInputs = service.rows.flatMap(row =>
+                                                                                    row.inputs.filter(({ type }) => type === "file").map(input => input.name)
+                                                                                );
+
+                                                                                if (fileInputs.length > 0) {
+                                                                                    const filePromises = fileInputs.map(async (inputName) => {
+                                                                                        const annexureFilesStr = annexureData[service.db_table]?.[inputName];
+                                                                                        let annexureDataImageHeight = 220;
+
+                                                                                        if (annexureFilesStr) {
+                                                                                            const fileUrls = annexureFilesStr.split(",").map(url => url.trim());
+                                                                                            if (fileUrls.length === 0) {
+                                                                                                doc.setFont("helvetica", "italic");
+                                                                                                doc.setFontSize(10);
+                                                                                                doc.setTextColor(150, 150, 150);
+                                                                                                doc.text("No annexure files available.", 10, yPosition + 10);
+                                                                                                yPosition += 10;
+                                                                                                return;
+                                                                                            }
+
+                                                                                            // Filter out non-image URLs (pdf, xls, etc.)
+                                                                                            const imageUrlsToProcess = fileUrls.filter(url => {
+                                                                                                const validImageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'];
+                                                                                                return validImageExtensions.some(ext => url.toLowerCase().endsWith(ext));
+                                                                                            });
+
+                                                                                            // Filter out URLs that are not images
+                                                                                            const nonImageUrlsToProcess = fileUrls.filter(url => {
+                                                                                                const validNonImageExtensions = ['pdf', 'xls', 'xlsx'];
+                                                                                                return validNonImageExtensions.some(ext => url.toLowerCase().endsWith(ext));
+                                                                                            });
+
+                                                                                            // Handle image files
+                                                                                            if (imageUrlsToProcess.length > 0) {
+                                                                                                const imageBases = await fetchImageToBase(imageUrlsToProcess);
+                                                                                                if (imageBases) {
+                                                                                                    for (const image of imageBases) {
+                                                                                                        if (!image.base64.startsWith('data:image/')) continue;
+
+                                                                                                        doc.addPage();
+                                                                                                        yPosition = 20;
+
+                                                                                                        try {
+                                                                                                            const imageWidth = doc.internal.pageSize.width - 10;
+                                                                                                            // Adjust height if needed based on image dimensions or conditions
+                                                                                                            doc.addImage(image.base64, image.type, 5, yPosition + 20, imageWidth, annexureDataImageHeight);
+                                                                                                            yPosition += (annexureDataImageHeight + 30);
+                                                                                                        } catch (error) {
+                                                                                                            // console.error(`Error adding image:`, error);
+                                                                                                        }
                                                                                                     }
                                                                                                 }
                                                                                             }
+
+                                                                                            // Handle non-image files (PDF, XLS, etc.)
+                                                                                            const pageHeight = doc.internal.pageSize.height;
+                                                                                            const margin = 10; // margin from top and bottom
+                                                                                            let lineHeight = 10; // space between lines
+
+                                                                                            if (nonImageUrlsToProcess.length > 0) {
+                                                                                                nonImageUrlsToProcess.forEach(url => {
+                                                                                                    // Calculate available space on the current page
+                                                                                                    if (yPosition + lineHeight > pageHeight - margin) {
+                                                                                                        doc.addPage(); // Add a new page if there's not enough space
+                                                                                                        yPosition = margin; // Reset yPosition after adding a new page
+                                                                                                    }
+
+                                                                                                    // Add a button to open the file in a new tab
+                                                                                                    doc.setFont("helvetica", "normal");
+                                                                                                    doc.setFontSize(10);
+                                                                                                    doc.setTextColor(255, 0, 0);
+                                                                                                    const buttonText = `Click to open the file`;
+                                                                                                    const textWidth = doc.getTextWidth(buttonText);
+                                                                                                    const centerX = (doc.internal.pageSize.width - textWidth) / 2;
+
+                                                                                                    // Add the text at the center and create the link
+                                                                                                    doc.text(buttonText, centerX, yPosition + 10);
+                                                                                                    doc.link(centerX, yPosition + 10, textWidth, 10, { url: url });
+
+                                                                                                    // Adjust yPosition for the next line
+                                                                                                    yPosition += lineHeight + 2; // Adjust for button space
+                                                                                                });
+                                                                                            }
+
                                                                                         }
+                                                                                    });
 
-                                                                                        // Handle non-image files (PDF, XLS, etc.)
-                                                                                        const pageHeight = doc.internal.pageSize.height;
-                                                                                        const margin = 10; // margin from top and bottom
-                                                                                        let lineHeight = 10; // space between lines
+                                                                                    await Promise.all(filePromises);
+                                                                                }
 
-                                                                                        if (nonImageUrlsToProcess.length > 0) {
-                                                                                            nonImageUrlsToProcess.forEach(url => {
-                                                                                                // Calculate available space on the current page
-                                                                                                if (yPosition + lineHeight > pageHeight - margin) {
-                                                                                                    doc.addPage(); // Add a new page if there's not enough space
-                                                                                                    yPosition = margin; // Reset yPosition after adding a new page
-                                                                                                }
 
-                                                                                                // Add a button to open the file in a new tab
-                                                                                                doc.setFont("helvetica", "normal");
-                                                                                                doc.setFontSize(10);
-                                                                                                doc.setTextColor(255, 0, 0);
-                                                                                                const buttonText = `Click to open the file`;
-                                                                                                const textWidth = doc.getTextWidth(buttonText);
-                                                                                                const centerX = (doc.internal.pageSize.width - textWidth) / 2;
-
-                                                                                                // Add the text at the center and create the link
-                                                                                                doc.text(buttonText, centerX, yPosition + 10);
-                                                                                                doc.link(centerX, yPosition + 10, textWidth, 10, { url: url });
-
-                                                                                                // Adjust yPosition for the next line
-                                                                                                yPosition += lineHeight + 2; // Adjust for button space
-                                                                                            });
-                                                                                        }
-
-                                                                                    }
-                                                                                });
-
-                                                                                await Promise.all(filePromises);
                                                                             }
 
-
                                                                         }
-
                                                                     }
                                                                     doc.addPage();
                                                                     let newYPosition = 20
@@ -1684,9 +1692,6 @@ module.exports = {
                                                                         margin: { top: 20 }, // Margin for the table
                                                                         theme: 'grid', // You can change the table theme (grid, stripes, etc.)
                                                                     });
-
-
-
 
                                                                     newYPosition = doc.autoTable.previous.finalY + 20; // Adjusting for space from the last table
 
@@ -1795,7 +1800,7 @@ module.exports = {
                                                                     // console.log(`pdfFileName - `, pdfFileName);
                                                                     // doc.save(`123.pdf`);
 
-                                                                    // console.log(`targetDirectory - `, targetDirectory);
+                                                                    console.log(`targetDirectory - `, targetDirectory);
                                                                     const pdfPathCloud = await savePdf(
                                                                         doc,
                                                                         pdfFileName,
