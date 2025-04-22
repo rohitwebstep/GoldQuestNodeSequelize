@@ -156,6 +156,10 @@ const Customer = {
                   END AS cef_filled_date,
                   cef.is_employment_gap,
                   cef.is_education_gap,
+                  cef.current_prominent_landmark,
+                  cef.current_address_pin_code,
+                  cef.permanent_prominent_landmark,
+                  cef.permanent_pin_code,
                   cef.created_at,
                   CASE 
                       WHEN cef.is_submitted = '1' OR cef.is_submitted = 1 THEN cef.id
