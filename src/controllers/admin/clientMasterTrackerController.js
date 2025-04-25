@@ -246,12 +246,12 @@ exports.delete = (req, res) => {
 
 exports.test = async (req, res) => {
   try {
-    const client_application_id = 3;
-    const client_unique_id = "GQ-INDV";
-    const application_id = "GQ-INDV-1";
-    const branch_id = 3;
-    const customer_id = 2;
-    const name = "Rohit Sisodia";
+    const client_application_id = 1365;
+    const client_unique_id = "GQ-VPI";
+    const application_id = "GQ-VPI-3";
+    const branch_id = 61;
+    const customer_id = 45;
+    const name = "Kumar Krishnamurthy";
 
     const today = new Date();
     const formattedDate = `${today.getFullYear()}-${String(
@@ -264,10 +264,9 @@ exports.test = async (req, res) => {
     const pdfFileName = `${name}_${formattedDate}.pdf`
       .replace(/\s+/g, "-")
       .toLowerCase();
-    const pdfPath = await cdfDataPDF(
+    const pdfPath = await generatePDF(
       client_application_id,
       branch_id,
-      customer_id,
       pdfFileName,
       pdfTargetDirectory
     );

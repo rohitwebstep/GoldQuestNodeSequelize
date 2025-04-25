@@ -632,11 +632,33 @@ const Customer = {
 
   applicationDataByClientApplicationID: async (client_application_id, branch_id, callback) => {
     try {
+      // Fetch holidays
+      const holidaysQuery = `SELECT id AS holiday_id, title AS holiday_title, date AS holiday_date FROM holidays;`;
+      const holidayResults = await sequelize.query(holidaysQuery, { type: QueryTypes.SELECT });
+
+      // Prepare holiday dates for calculations
+      const holidayDates = holidayResults.map(holiday => moment(holiday.holiday_date).startOf("day"));
+
+      // Fetch weekends
+      const weekendsQuery = `SELECT weekends FROM company_info WHERE status = 1;`;
+      const weekendResults = await sequelize.query(weekendsQuery, { type: QueryTypes.SELECT });
+
+      const weekends = weekendResults[0]?.weekends ? JSON.parse(weekendResults[0].weekends) : [];
+      const weekendsSet = new Set(weekends.map(day => day.toLowerCase()));
+
+      // Get the current date and month
+      const now = new Date();
+      const month = `${String(now.getMonth() + 1).padStart(2, '0')}`;
+      const yearMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+      const monthYear = `${String(now.getMonth() + 1).padStart(2, '0')}-${now.getFullYear()}`;
+
       // SQL query with JOINs to fetch required data
       let sql = `
         SELECT 
           ca.*, 
           ca.id AS main_id, 
+          cmt.is_verify,
+          cmt.dob,
           cmt.first_insufficiency_marks,
           cmt.first_insuff_date,
           cmt.first_insuff_reopened_date,
@@ -647,6 +669,7 @@ const Customer = {
           cmt.third_insuff_date,
           cmt.third_insuff_reopened_date,
           cmt.overall_status,
+          cmt.final_verification_status,
           cmt.report_date,
           cmt.report_status,
           cmt.report_type,
@@ -655,13 +678,18 @@ const Customer = {
           cmt.delay_reason,
           cmt.report_generate_by,
           report_admin.name AS report_generated_by_name,
-          cmt.case_upload
+          cmt.case_upload,
+          customer_metas.tat_days
         FROM 
           \`client_applications\` ca
         LEFT JOIN 
           \`cmt_applications\` cmt 
         ON 
           ca.id = cmt.client_application_id
+        LEFT JOIN 
+          \`customer_metas\` AS customer_metas 
+        ON 
+          customer_metas.customer_id = ca.customer_id
         LEFT JOIN 
           \`admins\` AS qc_admin 
         ON 
@@ -680,7 +708,18 @@ const Customer = {
         type: QueryTypes.SELECT,
       });
 
-      callback(null, results[0] || null); // Return the first result or null if empty
+      const formattedResults = results.map(result => ({
+        ...result,
+        created_at: new Date(result.created_at).toISOString(),
+        deadline_date: calculateDueDate(
+          moment(result.created_at),
+          result.tat_days,
+          holidayDates,
+          weekendsSet
+        )
+      }));
+
+      callback(null, formattedResults[0] || null); // Return the first formatted result or null
     } catch (error) {
       console.error("Error fetching application data:", error);
       callback(error, null);
@@ -1336,7 +1375,7 @@ const Customer = {
       const existingColumns = results.map((row) => row.Field);
       const existingColumnsLower = existingColumns.map(col => col.toLowerCase());
       const missingColumns = fields.filter((field) => !existingColumnsLower.includes(field.toLowerCase()));
-      
+
       // 2. Add missing columns if any
       const addMissingColumns = async () => {
         if (missingColumns.length > 0) {
