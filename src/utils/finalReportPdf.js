@@ -435,7 +435,6 @@ module.exports = {
                         try {
                           const applicationInfo = CMTApplicationData;
                           const servicesDataRaw = fetchServicesData;
-                          console.log('servicesDataRaw -', servicesDataRaw);
 
                           const servicesData = servicesDataRaw.filter(service => {
                             const status = service?.annexureData?.status;
@@ -447,8 +446,6 @@ module.exports = {
                               lowerStatus !== '' &&
                               lowerStatus !== undefined;
                           });
-
-                          console.log('servicesData -', servicesData);
 
                           const doc = new jsPDF();
                           const pageWidth = doc.internal.pageSize.getWidth();
@@ -466,7 +463,6 @@ module.exports = {
 
                           if (applicationInfo?.photo) {
                             const imageBases = await fetchImageAsBase64([applicationInfo?.photo.trim()]);
-                            console.log(`Second LAST CALL - 1`);
                             doc.addImage(imageBases?.[0]?.base64 || "https://static-00.iconduck.com/assets.00/profile-circle-icon-512x512-zxne30hp.png", 'PNG', rightImageX, yPosition, 25, 25);
 
                           } else {
@@ -641,7 +637,6 @@ module.exports = {
 
 
                           // Filter secondTableData if report type is "Final"
-                          console.log(`secondTableData - `, secondTableData);
                           const filteredSecondTableData = applicationInfo?.report_type.toLowerCase().includes('final')
                             ? secondTableData.filter(row =>
                               row.status?.toLowerCase().includes("completed") // Check if the status includes "completed"
@@ -1132,8 +1127,6 @@ module.exports = {
                                   yPosition += 10;
                                 } else {
                                   let rawImageBases = await fetchImageAsBase64(annexureImagesStr.trim());
-                                  console.log(`Second LAST CALL`);
-                                  console.log(`rawImageBases - `, rawImageBases);
 
                                   if (!Array.isArray(rawImageBases)) {
                                     rawImageBases = [rawImageBases];
@@ -1178,7 +1171,6 @@ module.exports = {
 
                                       try {
                                         doc.addImage(image.base64, image.type, centerX, centerY, width, height);
-                                        console.log(`LAST CALL`);
                                       } catch (error) {
                                         console.error(`❌ Error adding image ${index + 1}:`, error);
                                       }
