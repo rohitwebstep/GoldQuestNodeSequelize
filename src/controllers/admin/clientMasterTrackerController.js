@@ -1419,6 +1419,9 @@ exports.generateReport = (req, res) => {
                             const toArr = [
                               { name: branch.name, email: branch.email },
                             ];
+                            const toQCTeam = [
+                              { name: 'QC Team', email: 'qc@goldquestglobal.in' }
+                            ]
                             const ccArr = customer.emails
                               .split(",")
                               .map((email) => ({
@@ -1645,8 +1648,8 @@ exports.generateReport = (req, res) => {
                                                   application.name,
                                                   application.application_id,
                                                   attachments,
-                                                  toArr,
-                                                  ccArr
+                                                  toQCTeam,
+                                                  []
                                                 )
                                                   .then(() => {
                                                     return res
