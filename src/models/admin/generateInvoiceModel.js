@@ -171,8 +171,7 @@ const generateInvoiceModel = {
                                   FROM ${dbTable}
                                   WHERE client_application_id = ?
                                     AND (
-                                      billed_date IS NULL 
-                                      OR billed_date = '' 
+                                      billed_date IS NULL
                                       OR (MONTH(billed_date) = ? AND YEAR(billed_date) = ?)
                                     )
                                     AND status IN (${completeStatusGroups.map(() => "?").join(", ")});
@@ -195,7 +194,7 @@ const generateInvoiceModel = {
                                   UPDATE ${dbTable} 
                                   SET is_billed = 1, billed_date = NOW() 
                                   WHERE client_application_id = ?
-                                    AND (billed_date IS NULL OR billed_date = '' OR billed_date = 0)
+                                    AND (billed_date IS NULL)
                                     AND (is_billed IS NULL OR is_billed = '');
                                 `;
 
