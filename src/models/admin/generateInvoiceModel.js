@@ -156,6 +156,7 @@ const generateInvoiceModel = {
               "completed_orange",
             ];
 
+            /*
             const statusQuery = `
               SELECT status${additionalFeeColumn ? `, ${additionalFeeColumn}` : ""}
               FROM ${dbTable}
@@ -163,9 +164,22 @@ const generateInvoiceModel = {
               AND is_billed != 1 
               AND status IN (${completeStatusGroups.map(() => "?").join(", ")});
             `;
+            */
+
+            const statusQuery = `
+                                  SELECT status${additionalFeeColumn ? `, ${additionalFeeColumn}` : ""}
+                                  FROM ${dbTable}
+                                  WHERE client_application_id = ?
+                                    AND (
+                                      billed_date IS NULL 
+                                      OR billed_date = '' 
+                                      OR (MONTH(billed_date) = ? AND YEAR(billed_date) = ?)
+                                    )
+                                    AND status IN (${completeStatusGroups.map(() => "?").join(", ")});
+                                `;
 
             const statusResults = await sequelize.query(statusQuery, {
-              replacements: [application.id, ...completeStatusGroups],
+              replacements: [application.id, month, year, ...completeStatusGroups],
               type: QueryTypes.SELECT,
             });
 
@@ -178,10 +192,12 @@ const generateInvoiceModel = {
 
               // Update billed status
               const updateQuery = `
-                UPDATE ${dbTable} 
-                SET is_billed = 1, billed_date = NOW() 
-                WHERE client_application_id = ?;
-              `;
+                                  UPDATE ${dbTable} 
+                                  SET is_billed = 1, billed_date = NOW() 
+                                  WHERE client_application_id = ?
+                                    AND (billed_date IS NULL OR billed_date = '' OR billed_date = 0)
+                                    AND (is_billed IS NULL OR is_billed = '');
+                                `;
 
               await sequelize.query(updateQuery, {
                 replacements: [application.id],
