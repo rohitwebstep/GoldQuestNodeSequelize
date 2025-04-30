@@ -182,11 +182,27 @@ exports.isApplicationExist = (req, res) => {
                       });
                     }
 
+                    const services = currentCandidateApplication.services;
+
+                    // Check if services exists and is not empty
+                    if (!services || services.trim() === "") {
+                      return res.status(200).json({
+                        status: true,
+                        data: {
+                          application: currentCandidateApplication,
+                          cefApplication: currentCEFApplication,
+                          serviceData: [],
+                          customer: currentCustomer,
+                        },
+                        message: "Application exists.",
+                      });
+                    }
+
                     const service_ids = Array.isArray(
-                      currentCandidateApplication.services
+                      services
                     )
-                      ? currentCandidateApplication.services
-                      : currentCandidateApplication.services
+                      ? services
+                      : services
                         .split(",")
                         .map((item) => item.trim());
                     CEF.formJsonWithData(
