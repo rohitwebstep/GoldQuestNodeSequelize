@@ -803,54 +803,59 @@ const cef = {
         }
       }
 
-      // Process services
-      const services = results[0].services.split(",");
-      const dbTableFileInputs = {};
+      const servicesString = results[0].services;
 
-      for (const service of services) {
-        const query = "SELECT `json` FROM `cef_service_forms` WHERE `service_id` = ?";
-        const result = await sequelize.query(query, {
-          replacements: [service],
-          type: QueryTypes.SELECT,
-        });
+      // Check if services exists and is not empty
+      if (servicesString && servicesString.trim() !== "") {
+        // Process services
+        const services = servicesString.split(",");
+        const dbTableFileInputs = {};
 
-        if (result.length > 0) {
-          try {
-            const rawJson = result[0].json.replace(/\\"/g, '"').replace(/\\'/g, "'");
-            const jsonData = JSON.parse(rawJson);
-            const dbTable = jsonData.db_table;
+        for (const service of services) {
+          const query = "SELECT `json` FROM `cef_service_forms` WHERE `service_id` = ?";
+          const result = await sequelize.query(query, {
+            replacements: [service],
+            type: QueryTypes.SELECT,
+          });
 
-            if (!dbTableFileInputs[dbTable]) {
-              dbTableFileInputs[dbTable] = [];
-            }
+          if (result.length > 0) {
+            try {
+              const rawJson = result[0].json.replace(/\\"/g, '"').replace(/\\'/g, "'");
+              const jsonData = JSON.parse(rawJson);
+              const dbTable = jsonData.db_table;
 
-            for (const row of jsonData.rows) {
-              for (const input of row.inputs) {
-                if (input.type === "file") {
-                  dbTableFileInputs[dbTable].push(input.name);
+              if (!dbTableFileInputs[dbTable]) {
+                dbTableFileInputs[dbTable] = [];
+              }
+
+              for (const row of jsonData.rows) {
+                for (const input of row.inputs) {
+                  if (input.type === "file") {
+                    dbTableFileInputs[dbTable].push(input.name);
+                  }
                 }
               }
+            } catch (parseErr) {
+              console.error("Error parsing JSON for service:", service, parseErr);
             }
-          } catch (parseErr) {
-            console.error("Error parsing JSON for service:", service, parseErr);
           }
         }
-      }
 
-      // Fetch attachments from related tables
-      for (const [dbTable, fileInputNames] of Object.entries(dbTableFileInputs)) {
-        if (fileInputNames.length === 0) continue;
+        // Fetch attachments from related tables
+        for (const [dbTable, fileInputNames] of Object.entries(dbTableFileInputs)) {
+          if (fileInputNames.length === 0) continue;
 
-        const selectQuery = `SELECT ${fileInputNames.join(", ")} FROM cef_${dbTable} WHERE candidate_application_id = ?`;
-        const rows = await sequelize.query(selectQuery, {
-          replacements: [candidate_application_id],
-          type: QueryTypes.SELECT,
-        });
+          const selectQuery = `SELECT ${fileInputNames.join(", ")} FROM cef_${dbTable} WHERE candidate_application_id = ?`;
+          const rows = await sequelize.query(selectQuery, {
+            replacements: [candidate_application_id],
+            type: QueryTypes.SELECT,
+          });
 
-        for (const row of rows) {
-          for (const value of Object.values(row)) {
-            if (value) {
-              finalAttachments.push(value);
+          for (const row of rows) {
+            for (const value of Object.values(row)) {
+              if (value) {
+                finalAttachments.push(value);
+              }
             }
           }
         }
