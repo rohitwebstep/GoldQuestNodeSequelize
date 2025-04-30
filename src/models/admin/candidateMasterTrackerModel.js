@@ -876,7 +876,7 @@ const Customer = {
       let digitalAddressID = davResults.length > 0 ? parseInt(davResults[0].id, 10) : null;
 
       // Ensure services field is valid before splitting
-      const services = typeof candidateApp.services === 'string' ? candidateApp.services.split(",") : [];
+      const services = (typeof candidateApp.services === 'string' && candidateApp.services.trim() !== '') ? candidateApp.services.split(",") : [];
       candidateApp.dav_exist = services.includes(String(digitalAddressID)) ? 1 : 0;
 
       return callback(null, candidateApp);
