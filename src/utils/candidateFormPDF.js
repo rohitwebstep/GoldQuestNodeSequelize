@@ -382,9 +382,12 @@ module.exports = {
                                 );
                             }
                             // console.log(`application - `, application);
-                            const service_ids = Array.isArray(application.services)
-                                ? application.services
-                                : application.services.split(",").map((item) => item.trim());
+                            const service_ids = application.services && application.services.trim() !== ''
+                                ? Array.isArray(application.services)
+                                    ? application.services
+                                    : application.services.split(",").map((item) => item.trim())
+                                : [];
+
 
                             CandidateMasterTrackerModel.cefApplicationByID(
                                 candidate_applicaton_id,
