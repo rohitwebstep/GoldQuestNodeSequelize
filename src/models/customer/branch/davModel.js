@@ -38,6 +38,7 @@ const dav = {
         type: QueryTypes.SELECT,
       });
 
+      console.log(`davResults- `, davResults);
       // Valid if no record found in DAV or is_submitted is 0
       if (davResults.length === 0 || davResults[0].is_submitted === 0) {
         const davApplication = davResults[0];
