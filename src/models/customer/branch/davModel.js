@@ -190,7 +190,7 @@ const dav = {
     }
   },
 
-  updateImages: async (dav_id, candidate_application_id, imagesArr, dbColumn, callback) => {
+  updateImages: async (candidate_application_id, imagesArr, dbColumn, callback) => {
     try {
       let images = Array.isArray(imagesArr) ? imagesArr.join(",") : imagesArr;
 
@@ -203,7 +203,7 @@ const dav = {
       const sql = `
         UPDATE \`dav_applications\`
         SET \`${dbColumn}\` = ?
-        WHERE \`id\` = ? AND \`candidate_application_id\` = ?
+        WHERE \`candidate_application_id\` = ?
       `;
 
       // First, check if the column exists
@@ -221,7 +221,7 @@ const dav = {
 
       // Execute the update query
       const results = await sequelize.query(sql, {
-        replacements: [images, dav_id, candidate_application_id],
+        replacements: [images, candidate_application_id],
         type: QueryTypes.UPDATE,
       });
 
