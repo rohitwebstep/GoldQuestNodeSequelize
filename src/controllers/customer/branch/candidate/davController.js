@@ -355,6 +355,7 @@ exports.upload = async (req, res) => {
                 });
               }
 
+              /*
               if (
                 !currentDAVApplication &&
                 Object.keys(currentDAVApplication).length === 0
@@ -364,6 +365,7 @@ exports.upload = async (req, res) => {
                   message: "An application has not submmited.",
                 });
               }
+                */
 
               // Retrieve branch details
               Branch.getBranchById(branch_id, (err, currentBranch) => {
@@ -473,7 +475,6 @@ exports.upload = async (req, res) => {
                         }
 
                         DAV.updateImages(
-                          currentDAVApplication.id,
                           application_id,
                           savedImagePaths,
                           db_column,
