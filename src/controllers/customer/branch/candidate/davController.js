@@ -69,19 +69,17 @@ exports.isApplicationExist = (req, res) => {
       if (currentCandidateApplication) {
         DAV.getDAVApplicationById(app_id, (err, currentDAVApplication) => {
           if (err) {
-            console.error(
-              "Database error during DAV application retrieval:",
-              err
-            );
+            console.error("Database error during DAV application retrieval:", err);
             return res.status(500).json({
               status: false,
-              message: "Failed to retrieve DAV Application. Please try again.",
+              message: "Failed to retrieve DAV application. Please try again.",
             });
           }
 
+          // If DAV application already submitted, reject
           if (
             currentDAVApplication &&
-            Object.keys(currentDAVApplication).length > 0
+            currentDAVApplication.status === false
           ) {
             return res.status(400).json({
               status: false,
@@ -89,12 +87,26 @@ exports.isApplicationExist = (req, res) => {
             });
           }
 
-          return res.status(200).json({
-            status: true,
-            data: currentCandidateApplication,
-            message: "Application exists.",
+          // If application is valid
+          if (
+            currentDAVApplication &&
+            currentDAVApplication.status === true &&
+            currentDAVApplication.data
+          ) {
+            return res.status(200).json({
+              status: true,
+              data: currentCandidateApplication,
+              message: "Application exists.",
+            });
+          }
+
+          // If not found at all
+          return res.status(404).json({
+            status: false,
+            message: "Application not found.",
           });
         });
+
       } else {
         return res.status(404).json({
           status: false,
