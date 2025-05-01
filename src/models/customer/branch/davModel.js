@@ -17,10 +17,10 @@ const dav = {
       });
 
       if (appResults.length === 0) {
-        return callback(null, {
+        return callback({
           status: false,
           message: "Application not found in candidate_applications"
-        });
+        }, null);
       }
 
       const application = appResults[0];
@@ -40,18 +40,15 @@ const dav = {
 
       // Valid if no record found in DAV or is_submitted is 0
       if (davResults.length === 0 || davResults[0].is_submitted === 0) {
-        return callback(null, {
-          status: true,
-          message: "Valid application",
-          data: application
-        });
+        const davApplication = davResults[0];
+        return callback(null, davApplication);
       }
 
       // Else, DAV application is already submitted
-      return callback(null, {
+      return callback({
         status: false,
         message: "DAV application already submitted"
-      });
+      }, null);
 
     } catch (error) {
       console.error("Error in getDAVApplicationById:", error);
