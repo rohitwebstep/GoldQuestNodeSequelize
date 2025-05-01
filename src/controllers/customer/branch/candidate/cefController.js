@@ -876,9 +876,7 @@ const sendNotificationEmails = (
                     const pdfTargetDirectory = `uploads/customers/${client_unique_id}/candidate-applications/CD-${client_unique_id}-${candidateAppId}/background-reports`;
                     const candidateFormPdfTargetDirectory = `uploads/customers/${client_unique_id}/candidate-applications/CD-${client_unique_id}-${candidateAppId}/background-form-reports`;
 
-                    const pdfFileName = `${name}_${formattedDate}.pdf`
-                      .replace(/\s+/g, "-")
-                      .toLowerCase();
+                    const pdfFileName = `candidate-form.pdf`;
 
                     const candidateFormPDFPath = await candidateFormPDF(
                       candidateAppId,

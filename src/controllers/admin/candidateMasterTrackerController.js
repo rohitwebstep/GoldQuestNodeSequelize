@@ -96,11 +96,11 @@ exports.list = (req, res) => {
 
 exports.test = async (req, res) => {
   try {
-    const candidate_application_id = 729;
-    const client_unique_id = "GQ-INDV";
+    const candidate_application_id = 300;
+    const client_unique_id = "GQ-SWTG";
     const application_id = "GQ-INDV-1";
-    const branch_id = 43;
-    const customer_id = 28;
+    const branch_id = 53;
+    const customer_id = 37;
     const name = "Rohit Sisodia";
 
     const today = new Date();
