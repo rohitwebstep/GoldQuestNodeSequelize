@@ -2,63 +2,6 @@ const { sequelize } = require("../../../config/db");
 const { QueryTypes } = require("sequelize");
 
 const dav = {
-
-  isApplicationExist: async (app_id, branch_id, customer_id, callback) => {
-    const sql = `
-      SELECT 
-        ca.*, 
-        c.name AS company_name, 
-        dav.is_submitted AS dav_submitted
-      FROM candidate_applications ca
-      INNER JOIN customers c ON c.id = ca.customer_id
-      LEFT JOIN dav_applications dav ON dav.candidate_application_id = ca.id
-      WHERE ca.id = ?
-        AND ca.branch_id = ?
-        AND ca.customer_id = ?
-        AND ca.is_submitted = 0
-        AND (dav.id IS NULL OR dav.is_submitted = 0);
-    `;
-
-    const results = await sequelize.query(sql, {
-      replacements: [app_id, branch_id, customer_id],
-      type: QueryTypes.SELECT,
-    });
-
-    if (results.length === 0) {
-      return callback(null, { status: false, message: "Application not found" });
-    }
-
-    const application = results[0];
-
-    // You still need to check the reminder_sent logic
-    if (application.reminder_sent === 3) {
-      const lastReminderDate = new Date(
-        Math.max(
-          new Date(application.cef_last_reminder_sent_at).getTime(),
-          new Date(application.dav_last_reminder_sent_at).getTime()
-        )
-      );
-
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-
-      const expirationDate = new Date(today);
-      expirationDate.setDate(today.getDate() - 1);
-
-      if (lastReminderDate <= expirationDate) {
-        const updateSQL = `UPDATE candidate_applications SET status = 2 WHERE id = ?`;
-        await sequelize.query(updateSQL, {
-          replacements: [app_id],
-          type: QueryTypes.UPDATE,
-        });
-        return;
-      }
-    }
-
-    // Finally return success with application data
-    return callback(null, { status: true, message: "Application exists", data: application });
-  },
-
   getDAVApplicationById: async (candidate_application_id, callback) => {
     try {
       const sql = "SELECT * FROM `dav_applications` WHERE `candidate_application_id` = ?";
@@ -136,8 +79,11 @@ const dav = {
         callback
       );
     }
+
+
   },
 
+  // Helper function for inserting or updating the entry
   insertOrUpdateEntry: async (
     personal_information,
     candidate_application_id,
@@ -145,63 +91,57 @@ const dav = {
     customer_id,
     callback
   ) => {
-    try {
-      const checkEntrySql = "SELECT * FROM dav_applications WHERE candidate_application_id = ?";
-  
-      const entryResults = await sequelize.query(checkEntrySql, {
-        replacements: [candidate_application_id],
+    // Check if entry exists by candidate_application_id
+    const checkEntrySql =
+      "SELECT * FROM dav_applications WHERE candidate_application_id = ?";
+
+    const entryResults = await sequelize.query(checkEntrySql, {
+      replacements: [candidate_application_id],
+      type: QueryTypes.SELECT,
+    });
+
+    if (entryResults.length > 0) {
+      // Entry exists, so update it
+      personal_information.branch_id = branch_id;
+      personal_information.customer_id = customer_id;
+
+      const updateSql =
+        "UPDATE dav_applications SET ? WHERE candidate_application_id = ?";
+
+      const updateResult = await sequelize.query(updateSql, {
+        replacements: [personal_information, candidate_application_id],
         type: QueryTypes.SELECT,
       });
-  
-      if (entryResults.length > 0) {
-        // Entry exists, update it
-        personal_information.branch_id = branch_id;
-        personal_information.customer_id = customer_id;
-        personal_information.is_submitted = 1; // ✅ Always set is_submitted=1 on update
-  
-        const updateFields = Object.keys(personal_information)
-          .map(key => `${key} = ?`)
-          .join(", ");
-  
-        const updateValues = Object.values(personal_information);
-  
-        const updateSql = `UPDATE dav_applications SET ${updateFields} WHERE candidate_application_id = ?`;
-  
-        await sequelize.query(updateSql, {
-          replacements: [...updateValues, candidate_application_id],
-          type: QueryTypes.UPDATE,
-        });
-  
-        callback(null, { message: "Updated successfully" });
-      } else {
-        // Entry does not exist, insert a new one
-        const replacements = {
-          ...personal_information,
-          candidate_application_id,
-          branch_id,
-          customer_id,
-          is_submitted: 1, // ✅ Always set is_submitted=1 on insert too
-        };
-  
-        const indexes = Object.keys(replacements);
-        const values = Object.values(replacements);
-  
-        const insertSql = `INSERT INTO dav_applications (${indexes.join(', ')}) VALUES (${indexes.map(() => '?').join(', ')})`;
-  
-        const insertResult = await sequelize.query(insertSql, {
-          replacements: values,
-          type: QueryTypes.INSERT,
-        });
-  
-        const insertId = insertResult[0];
-  
-        callback(null, { insertId });
-      }
-    } catch (error) {
-      console.error("Error in insertOrUpdateEntry:", error);
-      callback(error);
+
+      callback(null, updateResult);
+    } else {
+      const replacements = {
+        ...personal_information,
+        candidate_application_id,
+        branch_id,
+        customer_id,
+      };
+
+      // console.log(`replacements - `, replacements);
+
+      // Get keys (indexes) and values
+      const indexes = Object.keys(replacements);
+      const values = Object.values(replacements);
+
+      // Build the SQL query dynamically
+      const insertSql = `INSERT INTO dav_applications (${indexes.join(', ')}) VALUES (${indexes.map(() => '?').join(', ')})`;
+
+      const insertResult = await sequelize.query(insertSql, {
+        replacements: values,
+        type: QueryTypes.INSERT,
+      });
+      // console.log(`insertResult - `, insertResult);
+      const insertId = insertResult[0];
+
+      callback(null, { insertId });
     }
-  },  
+
+  },
 
   updateImages: async (dav_id, candidate_application_id, imagesArr, dbColumn, callback) => {
     try {

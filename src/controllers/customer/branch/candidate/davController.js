@@ -3,21 +3,17 @@ const Customer = require("../../../../models/customer/customerModel");
 const Branch = require("../../../../models/customer/branch/branchModel");
 const BranchCommon = require("../../../../models/customer/branch/commonModel");
 const DAV = require("../../../../models/customer/branch/davModel");
-const CEF = require("../../../../models/customer/branch/cefModel");
-const Service = require("../../../../models/admin/serviceModel");
 const App = require("../../../../models/appModel");
-const Admin = require("../../../../models/admin/adminModel");
-const { candidateDAVFromPDF } = require("../../../../utils/candidateDAVFromPDF");
+
+const Service = require("../../../../models/admin/serviceModel");
+
 const fs = require("fs");
+const path = require("path");
 const {
   upload,
   saveImage,
   saveImages,
 } = require("../../../../utils/cloudImageSave");
-
-const {
-  davSubmitMail,
-} = require("../../../../mailer/customer/branch/candidate/davSubmitMail");
 
 exports.isApplicationExist = (req, res) => {
   const { app_id, branch_id, customer_id } = req.query;
@@ -57,28 +53,18 @@ exports.isApplicationExist = (req, res) => {
     });
   }
 
-  DAV.isApplicationExist(
+  Candidate.isApplicationExist(
     app_id,
     branch_id,
     customer_id,
-    (err, applicationResult) => {
+    (err, currentCandidateApplication) => {
       if (err) {
         console.error("Database error:", err);
         return res.status(500).json({
           status: false,
-          message: err.message
+          message: err.message,
         });
       }
-
-      if (!applicationResult.status) {
-        return res.status(404).json({
-          status: false,
-          message: applicationResult.message,
-        });
-      }
-
-      // Store application data if status is true
-      const currentCandidateApplication = applicationResult.data;
 
       if (currentCandidateApplication) {
         DAV.getDAVApplicationById(app_id, (err, currentDAVApplication) => {
@@ -93,7 +79,6 @@ exports.isApplicationExist = (req, res) => {
             });
           }
 
-          /*
           if (
             currentDAVApplication &&
             Object.keys(currentDAVApplication).length > 0
@@ -103,7 +88,6 @@ exports.isApplicationExist = (req, res) => {
               message: "An application has already been submitted.",
             });
           }
-          */
 
           return res.status(200).json({
             status: true,
@@ -120,6 +104,7 @@ exports.isApplicationExist = (req, res) => {
     }
   );
 };
+
 exports.submit = (req, res) => {
   const { branch_id, customer_id, application_id, personal_information } =
     req.body;
@@ -147,24 +132,14 @@ exports.submit = (req, res) => {
     application_id,
     branch_id,
     customer_id,
-    (err, applicationResult) => {
+    (err, exists) => {
       if (err) {
         console.error("Database error:", err);
         return res.status(500).json({
           status: false,
-          message: err.message
+          message: err.message,
         });
       }
-
-      if (!applicationResult.status) {
-        return res.status(404).json({
-          status: false,
-          message: applicationResult.message,
-        });
-      }
-
-      // Store application data if status is true
-      const exists = applicationResult.data;
 
       if (!exists) {
         return res.status(404).json({
@@ -226,7 +201,6 @@ exports.submit = (req, res) => {
                 });
               }
 
-              /*
               if (
                 currentDAVApplication &&
                 Object.keys(currentDAVApplication).length > 0
@@ -236,7 +210,6 @@ exports.submit = (req, res) => {
                   message: "An application has already been submitted.",
                 });
               }
-              */
 
               // Create new DAV application
               DAV.create(
@@ -257,15 +230,10 @@ exports.submit = (req, res) => {
                     });
                   }
 
-                  sendNotificationEmails(
-                    application_id,
-                    exists.name,
-                    branch_id,
-                    customer_id,
-                    currentCustomer.client_unique_id,
-                    currentCustomer.name,
-                    res
-                  );
+                  return res.status(200).json({
+                    status: true,
+                    message: "DAV Application submitted successfully.",
+                  });
                 }
               );
             }
@@ -276,222 +244,34 @@ exports.submit = (req, res) => {
   );
 };
 
-exports.testDavPdf = async (req, res) => {
-  try {
-    const candidate_application_id = 113;
-    const client_unique_id = "GQ-INDV";
-    const application_id = "GQ-INDV-1";
-    const branch_id = 86;
-    const customer_id = 72;
-    const name = "kalia";
-
-    const today = new Date();
-    const formattedDate = `${today.getFullYear()}-${String(
-      today.getMonth() + 1
-    ).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
-
-    sendNotificationEmails(
-      candidate_application_id,
-      name,
-      branch_id,
-      customer_id,
-      client_unique_id,
-      'Demo',
-      res
-    );
-  } catch (error) {
-    console.error("Error:", error.message);
-
-    // Return error response
-    res.status(500).json({
-      status: false,
-      message: "Failed to generate PDF",
-      error: error.message,
-    });
-  }
-};
-
 // Helper function to send notification emails
-const sendNotificationEmails = (
-  candidateAppId,
-  name,
-  branch_id,
-  customer_id,
-  client_unique_id,
-  customer_name,
-  res
-) => {
-  // console.log(`Step 1: Check if application exists`);
-  Candidate.isApplicationExist(
-    candidateAppId,
+const sendNotificationEmails = (branch_id, customer_id, res) => {
+  BranchCommon.getBranchandCustomerEmailsForNotification(
     branch_id,
-    customer_id,
-    (err, currentCandidateApplication) => {
+    (err, emailData) => {
       if (err) {
-        console.error("Database error during application existence check:", err);
+        console.error("Error fetching emails:", err);
         return res.status(500).json({
           status: false,
-          message: err.message,
+          message: "Failed to retrieve email addresses.",
         });
       }
-      // console.log(`Step 2: Check if application exists - `, currentCandidateApplication);
 
-      if (!currentCandidateApplication) {
-        return res.status(404).json({
-          status: false,
-          message: "Application does not exist.",
-        });
-      }
-      DAV.getDAVApplicationById(
-        candidateAppId,
-        (err, currentDAVApplication) => {
-          if (err) {
-            console.error("Database error during DAV application retrieval:", err);
-            return res.status(500).json({
-              status: false,
-              message: "Failed to retrieve DAV Application. Please try again.",
-            });
-          }
-          // console.log(`Step 3: Check if DAV application exists - `, currentDAVApplication);
-          BranchCommon.getBranchandCustomerEmailsForNotification(
-            branch_id,
-            async (err, emailData) => {
-              if (err) {
-                console.error("Error fetching emails:", err);
-                return res.status(500).json({
-                  status: false,
-                  message: "Failed to retrieve email addresses.",
-                });
-              }
-              CEF.getAttachmentsByClientAppID(
-                candidateAppId,
-                async (err, attachments) => {
-                  if (err) {
-                    console.error("Database error:", err);
-                    return res.status(500).json({
-                      status: false,
-                      message: "Database error occurred",
-                    });
-                  }
+      const { branch, customer } = emailData;
+      const toArr = [{ name: branch.name, email: branch.email }];
+      const ccArr = JSON.parse(customer.emails).map((email) => ({
+        name: customer.name,
+        email: email.trim(),
+      }));
 
-                  // console.log(`Step 4: Get attachments - `, attachments);
-
-                  App.appInfo("backend", async (err, appInfo) => {
-                    if (err) {
-                      console.error("Database error:", err);
-                      return res.status(500).json({
-                        status: false,
-                        err,
-                        message: err.message,
-                      });
-                    }
-
-                    let imageHost = "www.example.in";
-
-                    if (appInfo) {
-                      imageHost = appInfo.cloud_host || "www.example.in";
-                    }
-                    // console.log(`Step 5: App info - `, appInfo);
-
-                    const today = new Date();
-                    const formattedDate = `${today.getFullYear()}-${String(
-                      today.getMonth() + 1
-                    ).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
-
-                    // Generate the PDF
-                    const candidateFormPdfTargetDirectory = `uploads/customers/${client_unique_id}/candidate-applications/CD-${client_unique_id}-${candidateAppId}/digital-address-verification`;
-
-                    const pdfFileName = `${name}_${formattedDate}.pdf`
-                      .replace(/\s+/g, "-")
-                      .toLowerCase();
-                    const candidateDAVFromPDFPath = await candidateDAVFromPDF(
-                      candidateAppId,
-                      branch_id,
-                      customer_id,
-                      pdfFileName,
-                      candidateFormPdfTargetDirectory
-                    );
-                    console.log("candidateDAVFromPDFPath - ", candidateDAVFromPDFPath);
-
-                    // console.log("step 5.1: Generate PDF - ", pdfPath);
-                    let newAttachments = [];
-                    if (candidateDAVFromPDFPath) newAttachments.push(`${imageHost}/${candidateDAVFromPDFPath}`);
-
-                    if (newAttachments.length > 0) {
-                      attachments += (attachments ? "," : "") + newAttachments.join(",");
-                    }
-
-                    // console.log("step 6: New attachments - ", newAttachments);
-                    Admin.filterAdmins({ status: "active", role: "admin_user" }, (err, adminResult) => {
-                      if (err) {
-                        console.error("Database error:", err);
-                        return res.status(500).json({
-                          status: false,
-                          message: "Error retrieving admin details.",
-                          token: newToken,
-                        });
-                      }
-
-                      // console.log("step 7: Filter admins - ", adminResult);
-                      const { branch, customer } = emailData;
-
-                      // Prepare recipient and CC lists
-                      const toArr = [{ name: branch.name, email: branch.email }];
-                      const candidateArr = [{ name: currentCandidateApplication.name, email: currentCandidateApplication.email }];
-
-                      const emailList = JSON.parse(customer.emails);
-                      const ccArr1 = emailList.map(email => ({ name: customer.name, email }));
-
-                      const mergedEmails = [
-                        ...ccArr1,
-                        ...adminResult.map(admin => ({ name: admin.name, email: admin.email }))
-                      ];
-
-                      const uniqueEmails = [
-                        ...new Map(mergedEmails.map(item => [item.email, item])).values()
-                      ];
-
-                      const ccArr = [
-                        ...new Map([...ccArr1, ...uniqueEmails].map(item => [item.email, item])).values()
-                      ];
-
-                      // console.log("step 8: Merged emails - ", mergedEmails);
-                      // Send application creation email
-                      davSubmitMail(
-                        "Candidate Digital Address Form",
-                        "submit",
-                        name,
-                        customer_name,
-                        attachments,
-                        adminResult || [],
-                        []
-                      )
-                        .then(() => {
-                          return res.status(201).json({
-                            status: true,
-                            message:
-                              "DAV Form & documents Submitted.",
-                          });
-                        })
-                        .catch((emailError) => {
-                          console.error(
-                            "Error sending application creation email:",
-                            emailError
-                          );
-                          return res.status(201).json({
-                            status: true,
-                            message:
-                              "DAV Form & documents Submitted.",
-                          });
-                        });
-                    });
-                  });
-                }
-              );
-            }
-          );
-        });
-    });
+      // Placeholder for sending email logic
+      return res.status(200).json({
+        status: true,
+        message:
+          "DAV Application submitted successfully and notifications sent.",
+      });
+    }
+  );
 };
 
 exports.upload = async (req, res) => {
@@ -544,24 +324,14 @@ exports.upload = async (req, res) => {
         application_id,
         branch_id,
         customer_id,
-        (err, applicationResult) => {
+        (err, exists) => {
           if (err) {
             console.error("Database error:", err);
             return res.status(500).json({
               status: false,
-              message: err.message
+              message: err.message,
             });
           }
-
-          if (!applicationResult.status) {
-            return res.status(404).json({
-              status: false,
-              message: applicationResult.message,
-            });
-          }
-
-          // Store application data if status is true
-          const exists = applicationResult.data;
 
           if (!exists) {
             return res.status(404).json({
