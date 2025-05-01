@@ -3,13 +3,12 @@ const Customer = require("../../../../models/customer/customerModel");
 const Branch = require("../../../../models/customer/branch/branchModel");
 const BranchCommon = require("../../../../models/customer/branch/commonModel");
 const DAV = require("../../../../models/customer/branch/davModel");
+const CEF = require("../../../../models/customer/branch/cefModel");
+const Service = require("../../../../models/admin/serviceModel");
 const App = require("../../../../models/appModel");
 const Admin = require("../../../../models/admin/adminModel");
 const { candidateDAVFromPDF } = require("../../../../utils/candidateDAVFromPDF");
-const Service = require("../../../../models/admin/serviceModel");
-
 const fs = require("fs");
-const path = require("path");
 const {
   upload,
   saveImage,
@@ -58,24 +57,34 @@ exports.isApplicationExist = (req, res) => {
     });
   }
 
-  Candidate.isApplicationExist(
+  DAV.isApplicationExist(
     app_id,
     branch_id,
     customer_id,
-    (err, currentCandidateApplication) => {
+    (err, applicationResult) => {
       if (err) {
         console.error("Database error:", err);
         return res.status(500).json({
           status: false,
-          message: err.message,
+          message: err.message
         });
       }
+
+      if (!applicationResult.status) {
+        return res.status(404).json({
+          status: false,
+          message: applicationResult.message,
+        });
+      }
+
+      // Store application data if status is true
+      const currentCandidateApplication = applicationResult.data;
 
       if (currentCandidateApplication) {
         DAV.getDAVApplicationById(app_id, (err, currentDAVApplication) => {
           if (err) {
             console.error(
-              "Database error during DAV application retrieval 1:",
+              "Database error during DAV application retrieval:",
               err
             );
             return res.status(500).json({
@@ -84,6 +93,7 @@ exports.isApplicationExist = (req, res) => {
             });
           }
 
+          /*
           if (
             currentDAVApplication &&
             Object.keys(currentDAVApplication).length > 0
@@ -93,6 +103,7 @@ exports.isApplicationExist = (req, res) => {
               message: "An application has already been submitted.",
             });
           }
+          */
 
           return res.status(200).json({
             status: true,
@@ -109,7 +120,6 @@ exports.isApplicationExist = (req, res) => {
     }
   );
 };
-
 exports.submit = (req, res) => {
   const { branch_id, customer_id, application_id, personal_information } =
     req.body;
@@ -137,14 +147,24 @@ exports.submit = (req, res) => {
     application_id,
     branch_id,
     customer_id,
-    (err, exists) => {
+    (err, applicationResult) => {
       if (err) {
         console.error("Database error:", err);
         return res.status(500).json({
           status: false,
-          message: err.message,
+          message: err.message
         });
       }
+
+      if (!applicationResult.status) {
+        return res.status(404).json({
+          status: false,
+          message: applicationResult.message,
+        });
+      }
+
+      // Store application data if status is true
+      const exists = applicationResult.data;
 
       if (!exists) {
         return res.status(404).json({
@@ -196,7 +216,7 @@ exports.submit = (req, res) => {
             (err, currentDAVApplication) => {
               if (err) {
                 console.error(
-                  "Database error during DAV application retrieval 2:",
+                  "Database error during DAV application retrieval:",
                   err
                 );
                 return res.status(500).json({
@@ -206,6 +226,7 @@ exports.submit = (req, res) => {
                 });
               }
 
+              /*
               if (
                 currentDAVApplication &&
                 Object.keys(currentDAVApplication).length > 0
@@ -215,6 +236,7 @@ exports.submit = (req, res) => {
                   message: "An application has already been submitted.",
                 });
               }
+              */
 
               // Create new DAV application
               DAV.create(
@@ -254,6 +276,41 @@ exports.submit = (req, res) => {
   );
 };
 
+exports.testDavPdf = async (req, res) => {
+  try {
+    const candidate_application_id = 113;
+    const client_unique_id = "GQ-INDV";
+    const application_id = "GQ-INDV-1";
+    const branch_id = 86;
+    const customer_id = 72;
+    const name = "kalia";
+
+    const today = new Date();
+    const formattedDate = `${today.getFullYear()}-${String(
+      today.getMonth() + 1
+    ).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+
+    sendNotificationEmails(
+      candidate_application_id,
+      name,
+      branch_id,
+      customer_id,
+      client_unique_id,
+      'Demo',
+      res
+    );
+  } catch (error) {
+    console.error("Error:", error.message);
+
+    // Return error response
+    res.status(500).json({
+      status: false,
+      message: "Failed to generate PDF",
+      error: error.message,
+    });
+  }
+};
+
 // Helper function to send notification emails
 const sendNotificationEmails = (
   candidateAppId,
@@ -289,7 +346,7 @@ const sendNotificationEmails = (
         candidateAppId,
         (err, currentDAVApplication) => {
           if (err) {
-            console.error("Database error during DAV application retrieval 3:", err);
+            console.error("Database error during DAV application retrieval:", err);
             return res.status(500).json({
               status: false,
               message: "Failed to retrieve DAV Application. Please try again.",
@@ -487,14 +544,24 @@ exports.upload = async (req, res) => {
         application_id,
         branch_id,
         customer_id,
-        (err, exists) => {
+        (err, applicationResult) => {
           if (err) {
             console.error("Database error:", err);
             return res.status(500).json({
               status: false,
-              message: err.message,
+              message: err.message
             });
           }
+
+          if (!applicationResult.status) {
+            return res.status(404).json({
+              status: false,
+              message: applicationResult.message,
+            });
+          }
+
+          // Store application data if status is true
+          const exists = applicationResult.data;
 
           if (!exists) {
             return res.status(404).json({
@@ -508,13 +575,23 @@ exports.upload = async (req, res) => {
             (err, currentDAVApplication) => {
               if (err) {
                 console.error(
-                  "Database error during DAV application retrieval 4:",
+                  "Database error during DAV application retrieval:",
                   err
                 );
                 return res.status(500).json({
                   status: false,
                   message:
                     "Failed to retrieve DAV Application. Please try again.",
+                });
+              }
+
+              if (
+                !currentDAVApplication &&
+                Object.keys(currentDAVApplication).length === 0
+              ) {
+                return res.status(400).json({
+                  status: false,
+                  message: "An application has not submmited.",
                 });
               }
 
@@ -643,15 +720,11 @@ exports.upload = async (req, res) => {
                             }
 
                             if (send_mail == 1) {
-                              sendNotificationEmails(
-                                application_id,
-                                exists.name,
-                                branch_id,
-                                customer_id,
-                                currentCustomer.client_unique_id,
-                                currentCustomer.name,
-                                res
-                              );
+                              return res.json({
+                                status: true,
+                                message:
+                                  "Customer and branches created and file saved successfully.",
+                              });
                             } else {
                               return res.json({
                                 status: true,

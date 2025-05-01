@@ -2,58 +2,76 @@ const { sequelize } = require("../../../config/db");
 const { QueryTypes } = require("sequelize");
 
 const dav = {
+
+  isApplicationExist: async (app_id, branch_id, customer_id, callback) => {
+    const sql = `
+      SELECT 
+        ca.*, 
+        c.name AS company_name, 
+        dav.is_submitted AS dav_submitted
+      FROM candidate_applications ca
+      INNER JOIN customers c ON c.id = ca.customer_id
+      LEFT JOIN dav_applications dav ON dav.candidate_application_id = ca.id
+      WHERE ca.id = ?
+        AND ca.branch_id = ?
+        AND ca.customer_id = ?
+        AND ca.is_submitted = 0
+        AND (dav.id IS NULL OR dav.is_submitted = 0);
+    `;
+
+    const results = await sequelize.query(sql, {
+      replacements: [app_id, branch_id, customer_id],
+      type: QueryTypes.SELECT,
+    });
+
+    if (results.length === 0) {
+      return callback(null, { status: false, message: "Application not found" });
+    }
+
+    const application = results[0];
+
+    // You still need to check the reminder_sent logic
+    if (application.reminder_sent === 3) {
+      const lastReminderDate = new Date(
+        Math.max(
+          new Date(application.cef_last_reminder_sent_at).getTime(),
+          new Date(application.dav_last_reminder_sent_at).getTime()
+        )
+      );
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const expirationDate = new Date(today);
+      expirationDate.setDate(today.getDate() - 1);
+
+      if (lastReminderDate <= expirationDate) {
+        const updateSQL = `UPDATE candidate_applications SET status = 2 WHERE id = ?`;
+        await sequelize.query(updateSQL, {
+          replacements: [app_id],
+          type: QueryTypes.UPDATE,
+        });
+        return;
+      }
+    }
+
+    // Finally return success with application data
+    return callback(null, { status: true, message: "Application exists", data: application });
+  },
+
   getDAVApplicationById: async (candidate_application_id, callback) => {
     try {
-      // Step 1: Check if application exists in candidate_applications
-      const appSql = `
-        SELECT *
-        FROM candidate_applications
-        WHERE id = ?;
-      `;
+      const sql = "SELECT * FROM `dav_applications` WHERE `candidate_application_id` = ?";
 
-      const appResults = await sequelize.query(appSql, {
+      const results = await sequelize.query(sql, {
         replacements: [candidate_application_id],
         type: QueryTypes.SELECT,
       });
 
-      if (appResults.length === 0) {
-        return callback({
-          status: false,
-          message: "Application not found in candidate_applications"
-        }, null);
-      }
-
-      const application = appResults[0];
-
-      // Step 2: Check for corresponding dav_applications
-      const davSql = `
-        SELECT is_submitted
-        FROM dav_applications
-        WHERE candidate_application_id = ?
-        LIMIT 1;
-      `;
-
-      const davResults = await sequelize.query(davSql, {
-        replacements: [candidate_application_id],
-        type: QueryTypes.SELECT,
-      });
-
-      console.log(`davResults- `, davResults);
-      // Valid if no record found in DAV or is_submitted is 0
-      if (davResults.length === 0 || davResults[0].is_submitted === 0) {
-        const davApplication = davResults[0];
-        return callback(null, davApplication);
-      }
-
-      // Else, DAV application is already submitted
-      return callback({
-        status: false,
-        message: "DAV application already submitted"
-      }, null);
-
+      callback(null, results.length > 0 ? results[0] : null);
     } catch (error) {
-      console.error("Error in getDAVApplicationById:", error);
-      return callback(error, null);
+      console.error("Error fetching DAV application:", error);
+      callback({ status: false, message: "Internal server error" }, null);
     }
   },
 
@@ -120,7 +138,6 @@ const dav = {
     }
   },
 
-  // Helper function for inserting or updating the entry
   insertOrUpdateEntry: async (
     personal_information,
     candidate_application_id,
@@ -130,31 +147,31 @@ const dav = {
   ) => {
     try {
       const checkEntrySql = "SELECT * FROM dav_applications WHERE candidate_application_id = ?";
-
+  
       const entryResults = await sequelize.query(checkEntrySql, {
         replacements: [candidate_application_id],
         type: QueryTypes.SELECT,
       });
-
+  
       if (entryResults.length > 0) {
         // Entry exists, update it
         personal_information.branch_id = branch_id;
         personal_information.customer_id = customer_id;
         personal_information.is_submitted = 1; // ✅ Always set is_submitted=1 on update
-
+  
         const updateFields = Object.keys(personal_information)
           .map(key => `${key} = ?`)
           .join(", ");
-
+  
         const updateValues = Object.values(personal_information);
-
+  
         const updateSql = `UPDATE dav_applications SET ${updateFields} WHERE candidate_application_id = ?`;
-
+  
         await sequelize.query(updateSql, {
           replacements: [...updateValues, candidate_application_id],
           type: QueryTypes.UPDATE,
         });
-
+  
         callback(null, { message: "Updated successfully" });
       } else {
         // Entry does not exist, insert a new one
@@ -165,28 +182,28 @@ const dav = {
           customer_id,
           is_submitted: 1, // ✅ Always set is_submitted=1 on insert too
         };
-
+  
         const indexes = Object.keys(replacements);
         const values = Object.values(replacements);
-
+  
         const insertSql = `INSERT INTO dav_applications (${indexes.join(', ')}) VALUES (${indexes.map(() => '?').join(', ')})`;
-
+  
         const insertResult = await sequelize.query(insertSql, {
           replacements: values,
           type: QueryTypes.INSERT,
         });
-
+  
         const insertId = insertResult[0];
-
+  
         callback(null, { insertId });
       }
     } catch (error) {
       console.error("Error in insertOrUpdateEntry:", error);
       callback(error);
     }
-  },
+  },  
 
-  updateImages: async (candidate_application_id, imagesArr, dbColumn, callback) => {
+  updateImages: async (dav_id, candidate_application_id, imagesArr, dbColumn, callback) => {
     try {
       let images = Array.isArray(imagesArr) ? imagesArr.join(",") : imagesArr;
 
@@ -199,7 +216,7 @@ const dav = {
       const sql = `
         UPDATE \`dav_applications\`
         SET \`${dbColumn}\` = ?
-        WHERE \`candidate_application_id\` = ?
+        WHERE \`id\` = ? AND \`candidate_application_id\` = ?
       `;
 
       // First, check if the column exists
@@ -217,7 +234,7 @@ const dav = {
 
       // Execute the update query
       const results = await sequelize.query(sql, {
-        replacements: [images, candidate_application_id],
+        replacements: [images, dav_id, candidate_application_id],
         type: QueryTypes.UPDATE,
       });
 
