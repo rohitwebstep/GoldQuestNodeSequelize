@@ -120,8 +120,6 @@ const dav = {
         callback
       );
     }
-
-
   },
 
   // Helper function for inserting or updating the entry
