@@ -75,7 +75,7 @@ exports.isApplicationExist = (req, res) => {
         DAV.getDAVApplicationById(app_id, (err, currentDAVApplication) => {
           if (err) {
             console.error(
-              "Database error during DAV application retrieval:",
+              "Database error during DAV application retrieval 1:",
               err
             );
             return res.status(500).json({
@@ -196,7 +196,7 @@ exports.submit = (req, res) => {
             (err, currentDAVApplication) => {
               if (err) {
                 console.error(
-                  "Database error during DAV application retrieval:",
+                  "Database error during DAV application retrieval 2:",
                   err
                 );
                 return res.status(500).json({
@@ -289,7 +289,7 @@ const sendNotificationEmails = (
         candidateAppId,
         (err, currentDAVApplication) => {
           if (err) {
-            console.error("Database error during DAV application retrieval:", err);
+            console.error("Database error during DAV application retrieval 3:", err);
             return res.status(500).json({
               status: false,
               message: "Failed to retrieve DAV Application. Please try again.",
@@ -508,7 +508,7 @@ exports.upload = async (req, res) => {
             (err, currentDAVApplication) => {
               if (err) {
                 console.error(
-                  "Database error during DAV application retrieval:",
+                  "Database error during DAV application retrieval 4:",
                   err
                 );
                 return res.status(500).json({
