@@ -421,7 +421,7 @@ const Customer = {
 
   basicInfoByID: async (customer_id, callback) => {
     try {
-      // Fetch basic customer info
+      // Fetch basic customer info and metadata
       const sql = `
         SELECT 
           customers.client_unique_id,
@@ -456,36 +456,44 @@ const Customer = {
         return callback(null, { message: "No customer data found" });
       }
 
-      let customerData = results[0];
+      const customerData = results[0];
 
-      // Parse services JSON safely
-      let servicesData;
-      try {
-        servicesData = JSON.parse(customerData.services);
-      } catch (parseError) {
-        return callback(parseError, null);
-      }
-
-      // Update service titles
-      for (const group of servicesData) {
-        const serviceSql = `SELECT title FROM services WHERE id = ?`;
-
-        const serviceResult = await sequelize.query(serviceSql, {
-          type: QueryTypes.SELECT,
-          replacements: [group.serviceId],
-        });
-
-        if (serviceResult.length && serviceResult[0].title) {
-          group.serviceTitle = serviceResult[0].title;
+      // Parse services JSON if present
+      let servicesData = [];
+      if (customerData.services) {
+        try {
+          servicesData = JSON.parse(customerData.services);
+        } catch (parseError) {
+          console.error("Error parsing services JSON:", parseError);
+          return callback(parseError, null);
         }
       }
 
-      // Attach updated service titles
+      // Fetch all service titles in parallel (if there are any services)
+      if (Array.isArray(servicesData) && servicesData.length > 0) {
+        for (const group of servicesData) {
+          if (group.serviceId) {
+            const serviceSql = `SELECT title FROM services WHERE id = ? LIMIT 1`;
+            const [serviceResult] = await sequelize.query(serviceSql, {
+              type: QueryTypes.SELECT,
+              replacements: [group.serviceId],
+            });
+
+            if (serviceResult && serviceResult.title) {
+              group.serviceTitle = serviceResult.title;
+            }
+          }
+        }
+      }
+
+      // Attach updated service titles to customer data
       customerData.services = JSON.stringify(servicesData);
-      callback(null, customerData);
+
+      return callback(null, customerData);
+
     } catch (err) {
       console.error("Database query error:", err);
-      callback(err, null);
+      return callback(err, null);
     }
   },
 
