@@ -167,42 +167,39 @@ const generateInvoiceModel = {
             */
 
             const statusQuery = `
-                                  SELECT status${additionalFeeColumn ? `, ${additionalFeeColumn}` : ""}
-                                  FROM ${dbTable}
-                                  WHERE client_application_id = ?
-                                    AND (
-                                      billed_date IS NULL
-                                      OR (MONTH(billed_date) = ? AND YEAR(billed_date) = ?)
-                                    )
-                                    AND status IN (${completeStatusGroups.map(() => "?").join(", ")});
-                                `;
+  SELECT billed_date, status${additionalFeeColumn ? `, ${additionalFeeColumn}` : ""}
+  FROM ${dbTable}
+  WHERE client_application_id = ?
+    AND status IN (${completeStatusGroups.map(() => "?").join(", ")});
+`;
 
             const statusResults = await sequelize.query(statusQuery, {
-              replacements: [application.id, month, year, ...completeStatusGroups],
+              replacements: [application.id, ...completeStatusGroups],
               type: QueryTypes.SELECT,
             });
 
-            if (statusResults.length > 0 && statusResults[0].status !== null) {
-              application.statusDetails.push({
-                serviceId,
-                status: statusResults[0].status,
-                additionalFee: additionalFeeColumn ? statusResults[0][additionalFeeColumn] : null,
-              });
-
+            if (statusResults.length > 0 && !statusResults[0].billed_date) {
               // Update billed status
               const updateQuery = `
-                                  UPDATE ${dbTable} 
-                                  SET is_billed = 1, billed_date = NOW() 
-                                  WHERE client_application_id = ?
-                                    AND (billed_date IS NULL)
-                                    AND (is_billed IS NULL OR is_billed = '');
-                                `;
+                                    UPDATE ${dbTable}
+                                    SET is_billed = 1, billed_date = NOW()
+                                    WHERE client_application_id = ?
+                                      AND billed_date IS NULL
+                                      AND (is_billed IS NULL OR is_billed = '');
+                                  `;
 
               await sequelize.query(updateQuery, {
                 replacements: [application.id],
                 type: QueryTypes.UPDATE,
               });
             }
+
+            application.statusDetails.push({
+              serviceId,
+              status: statusResults[0]?.status || null,
+              additionalFee: additionalFeeColumn ? statusResults[0]?.[additionalFeeColumn] : null,
+            });
+
           }
         }
       }
