@@ -33,12 +33,12 @@ const Branch = {
 
       const query = `
         SELECT 
-            ca.id AS client_application_id, 
-            ca.application_id,
+            ca.id AS client_application_primary_id, 
+            ca.application_id as client_unique_application_id,
             ca.employee_id, 
             ca.name AS application_name,
             ca.status,
-            ca.created_at,
+            ca.created_at AS client_application_created_at,
             cmt.id AS cmt_id,
             cmt.* 
         FROM 
@@ -56,6 +56,8 @@ const Branch = {
         type: QueryTypes.SELECT,
       });
 
+      console.log(`results - `, results);
+
       const applicationsByStatus = results.reduce((grouped, app) => {
         if (!grouped[app.status]) {
           grouped[app.status] = {
@@ -64,13 +66,14 @@ const Branch = {
           };
         }
 
+        console.log(`app - `, app);
+
         grouped[app.status].applications.push({
-          client_application_id: app.client_application_id,
-          application_name: app.name,
-          application_id: app.application_id,
-          created_at: app.created_at,
-          cmtApplicationId: app.cmt_id,
-          cmtOtherFields: app.other_fields, // Adjust based on actual field names from cmt
+          client_application_id: app.client_application_primary_id,
+          application_name: app.application_name,
+          application_id: app.client_unique_application_id,
+          created_at: app.client_application_created_at,
+          cmtApplicationId: app.cmt_id
         });
 
         grouped[app.status].applicationCount += 1;
@@ -434,7 +437,7 @@ const Branch = {
         replacements: [name, email, password, id],
         type: QueryTypes.UPDATE,
       });
-       const affectedRows = results[0];
+      const affectedRows = results[0];
       if (affectedRows === 0) {
         return callback({ message: "No branch found or no update made." }, null);
       }
