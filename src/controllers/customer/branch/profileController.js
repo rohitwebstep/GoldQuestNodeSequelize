@@ -7,8 +7,10 @@ const Service = require("../../../models/admin/serviceModel");
 const clientMasterTracker = require("../../../models/admin/clientMasterTrackerModel");
 
 const generatePassword = (companyName) => {
-  const firstName = companyName.split(" ")[0];
-  return `${firstName}@123`;
+  if (!companyName || typeof companyName !== "string") return "default@123";
+
+  const firstWord = companyName.trim().split(/\s+/)[0];
+  return `${firstWord || "default"}@123`;
 };
 
 exports.index = (req, res) => {
@@ -35,7 +37,7 @@ exports.index = (req, res) => {
         message: authResult.message,
       });
     }
-    
+
     // Step 2: Verify the branch token
     BranchCommon.isBranchTokenValid(
       _token,
@@ -73,8 +75,8 @@ exports.index = (req, res) => {
           // Calculate total application count
           const totalApplicationCount = clientApplications
             ? Object.values(clientApplications).reduce((total, statusGroup) => {
-                return total + statusGroup.applicationCount;
-              }, 0)
+              return total + statusGroup.applicationCount;
+            }, 0)
             : 0;
 
           return res.status(200).json({
@@ -132,7 +134,7 @@ exports.callbackRequest = (req, res) => {
         console.error("Error checking token validity:", tokenErr);
         return res.status(500).json({
           status: false,
-          message:tokenErr.message,
+          message: tokenErr.message,
         });
       }
 
@@ -421,7 +423,7 @@ exports.filterOptionsForClientApplications = (req, res) => {
         message: authResult.message, // Return the authorization error message
       });
     }
-    
+
     // Step 3: Verify the branch token
     BranchCommon.isBranchTokenValid(
       _token,
@@ -516,7 +518,7 @@ exports.filterOptionsForCandidateApplications = (req, res) => {
         message: authResult.message, // Return the authorization error message
       });
     }
-    
+
     // Step 3: Verify the branch token
     BranchCommon.isBranchTokenValid(
       _token,
@@ -676,7 +678,7 @@ exports.update = (req, res) => {
                 "0",
                 JSON.stringify({ id, ...changes }),
                 err,
-                () => {}
+                () => { }
               );
               return res.status(500).json({
                 status: false,
@@ -692,7 +694,7 @@ exports.update = (req, res) => {
               "1",
               JSON.stringify({ id, ...changes }),
               null,
-              () => {}
+              () => { }
             );
 
             res.status(200).json({
@@ -801,7 +803,7 @@ exports.active = (req, res) => {
                 "0",
                 JSON.stringify({ branch_id, ...changes }),
                 err,
-                () => {}
+                () => { }
               );
               return res.status(500).json({
                 status: false,
@@ -817,7 +819,7 @@ exports.active = (req, res) => {
               "1",
               JSON.stringify({ branch_id, ...changes }),
               null,
-              () => {}
+              () => { }
             );
 
             res.status(200).json({
@@ -926,7 +928,7 @@ exports.inactive = (req, res) => {
                 "0",
                 JSON.stringify({ branch_id, ...changes }),
                 err,
-                () => {}
+                () => { }
               );
               return res.status(500).json({
                 status: false,
@@ -942,7 +944,7 @@ exports.inactive = (req, res) => {
               "1",
               JSON.stringify({ branch_id, ...changes }),
               null,
-              () => {}
+              () => { }
             );
 
             res.status(200).json({
@@ -1045,7 +1047,7 @@ exports.delete = (req, res) => {
                 "0",
                 JSON.stringify({ id }),
                 err,
-                () => {}
+                () => { }
               );
               return res.status(500).json({
                 status: false,
@@ -1061,7 +1063,7 @@ exports.delete = (req, res) => {
               "1",
               JSON.stringify({ id }),
               null,
-              () => {}
+              () => { }
             );
 
             res.status(200).json({
@@ -1090,7 +1092,7 @@ exports.getServiceById = (req, res) => {
       message: `Missing required fields: ${missingFields.join(", ")}`,
     });
   }
-  
+
   BranchCommon.isBranchTokenValid(
     _token,
     sub_user_id || null,
@@ -1187,7 +1189,7 @@ exports.annexureDataByServiceId = (req, res) => {
       message: `Missing required fields: ${missingFields.join(", ")}`,
     });
   }
-  
+
   BranchCommon.isBranchTokenValid(
     _token,
     sub_user_id || null,

@@ -21,13 +21,6 @@ const {
 } = require("../../utils/cloudImageSave");
 const clientApplication = require("../../models/customer/branch/clientApplicationModel");
 
-// Helper function to generate a password
-const generatePassword = (companyName) => {
-    const firstName = companyName.split(" ")[0];
-    return `${firstName}@123`;
-};
-
-
 exports.create = (req, res) => {
     const { id, admin_id, from, to, _token } = req.query;
     // Convert string "true" or boolean true to actual boolean values

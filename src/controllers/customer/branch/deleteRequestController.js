@@ -21,12 +21,6 @@ const {
 } = require("../../../utils/cloudImageSave");
 const clientApplication = require("../../../models/customer/branch/clientApplicationModel");
 
-// Helper function to generate a password
-const generatePassword = (companyName) => {
-    const firstName = companyName.split(" ")[0];
-    return `${firstName}@123`;
-};
-
 // Controller to list all services
 exports.list = (req, res) => {
     const { branch_id, sub_user_id, _token } = req.query;

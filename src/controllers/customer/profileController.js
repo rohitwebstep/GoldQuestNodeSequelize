@@ -22,8 +22,10 @@ const {
 
 // Helper function to generate a password
 const generatePassword = (companyName) => {
-  const firstName = companyName.split(" ")[0];
-  return `${firstName}@123`;
+  if (!companyName || typeof companyName !== "string") return "default@123";
+
+  const firstWord = companyName.trim().split(/\s+/)[0];
+  return `${firstWord || "default"}@123`;
 };
 
 const areEmailsUsed = (emails) => {
