@@ -70,7 +70,7 @@ async function createMail(
     const table = generateTable(branches, password);
 
     console.log(`table - `, table);
-    return;
+    // return;
 
     // Replace placeholders in the email template
     let template = email.template
