@@ -422,6 +422,7 @@ exports.create = (req, res) => {
                     }
                     const headBranchEmail = emails[0];
                     const password = generatePassword(company_name);
+                    console.log('password - ', password);
 
                     // Create the first branch (head branch)
                     Branch.create(
@@ -442,7 +443,7 @@ exports.create = (req, res) => {
                             token: newToken,
                           });
                         }
-
+                        console.log(`Step - 1`);
                         const headBranchId = headBranchResult.insertId;
 
                         // Create remaining branches with head_branch_id as foreign key
@@ -467,6 +468,8 @@ exports.create = (req, res) => {
                                     );
                                     return reject(err);
                                   }
+                                  console.log(`Step - 2`);
+
                                   resolve(branchResult);
                                 }
                               );
@@ -485,8 +488,10 @@ exports.create = (req, res) => {
                               null,
                               () => { }
                             );
+                            console.log(`Step - 3`);
 
                             if (send_mail == 1) {
+                              console.log(`Step - 4`);
                               Customer.getAllBranchesByCustomerId(
                                 customerId,
                                 (err, dbBranches) => {
@@ -513,6 +518,8 @@ exports.create = (req, res) => {
                                       token: newToken,
                                     });
                                   }
+                                  console.log(`Step - 5`);
+
                                   AppModel.appInfo(
                                     "frontend",
                                     async (err, appInfo) => {
@@ -536,6 +543,8 @@ exports.create = (req, res) => {
                                           )
                                         );
                                       }
+                                      console.log(`Step - 6`);
+
                                       const appHost =
                                         appInfo.host || "www.example.com";
                                       const appName =
@@ -577,6 +586,9 @@ exports.create = (req, res) => {
                                                       );
                                                     }
 
+                                                    console.log(`Step - 7`);
+
+
                                                     Admin.filterAdmins({ status: "active", role: "admin" }, (err, adminsResult) => {
                                                       if (err) {
                                                         return reject(
@@ -605,6 +617,7 @@ exports.create = (req, res) => {
                                                             email: email,
                                                           })
                                                         );
+                                                      console.log(`createMail Calling`);
                                                       // Create email for head branch
                                                       createMail(
                                                         "customer",
@@ -625,6 +638,8 @@ exports.create = (req, res) => {
                                               }
                                             );
                                           } else {
+                                            console.log(`Step - 9`);
+
                                             Admin.filterAdmins({ status: "active", role: "admin" }, (err, adminsResult) => {
                                               if (err) {
                                                 return reject(
@@ -637,6 +652,8 @@ exports.create = (req, res) => {
                                               const ccArray = adminsResult.length > 0
                                                 ? adminsResult.map(({ name, email }) => ({ name, email }))
                                                 : [];
+
+                                              console.log(`Step - 10`);
 
                                               // For non-head branches
                                               return createMail(
@@ -696,6 +713,8 @@ exports.create = (req, res) => {
                                 }
                               );
                             } else {
+                              console.log(`Step - 11`);
+
                               return res.json({
                                 status: true,
                                 message:
@@ -750,15 +769,12 @@ exports.upload = async (req, res) => {
         customer_id,
         upload_category,
         send_mail,
-        company_name,
-        password,
       } = req.body;
 
       // Validate required fields and collect missing ones
       const requiredFields = {
         admin_id,
         _token,
-        customer_code,
         customer_id,
         upload_category,
       };
@@ -783,8 +799,7 @@ exports.upload = async (req, res) => {
 
       // If send_mail is 1, add additional required fields
       if (send_mail == 1) {
-        requiredFields.company_name = company_name;
-        requiredFields.password = password;
+        // requiredFields.company_name = company_name;
       }
 
       // Check if the admin is authorized
@@ -831,167 +846,172 @@ exports.upload = async (req, res) => {
             if (appInfo) {
               imageHost = appInfo.cloud_host || "www.example.in";
             }
-            // Define the target directory for uploads
-            let targetDir;
-            let db_column;
-            switch (upload_category) {
-              case "custom_logo":
-                targetDir = `uploads/customers/${customer_code}/logos`;
-                db_column = `logo`;
-                break;
-              case "agr_upload":
-                targetDir = `uploads/customers/${customer_code}/agreements`;
-                db_column = `agreement`;
-                break;
-              default:
-                return res.status(400).json({
-                  status: false,
-                  message: "Invalid upload category.",
-                  token: newToken,
-                });
-            }
 
-            try {
-              // Create the target directory for uploads
-              await fs.promises.mkdir(targetDir, { recursive: true });
+            Customer.getCustomerById(
+              customer_id,
+              async (err, currentCustomer) => {
+                if (err) {
+                  console.error(
+                    "Database error during customer retrieval:",
+                    err
+                  );
+                  return res.status(500).json({
+                    status: false,
+                    message:
+                      "Failed to retrieve Customer. Please try again.",
+                    token: newToken,
+                  });
+                }
 
-              let savedImagePaths = [];
+                if (!currentCustomer) {
+                  return res.status(404).json({
+                    status: false,
+                    message: "Customer not found.",
+                    token: newToken,
+                  });
+                }
 
-              if (req.files.images && req.files.images.length > 0) {
-                const uploadedImages = await saveImages(
-                  req.files.images,
-                  targetDir
-                );
-                uploadedImages.forEach((imagePath) => {
-                  savedImagePaths.push(`${imageHost}/${imagePath}`);
-                });
-              }
+                const customerName = currentCustomer.name;
+                const password = generatePassword(customerName);
 
-              // Process single file upload
-              if (req.files.image && req.files.image.length > 0) {
-                const uploadedImage = await saveImage(
-                  req.files.image[0],
-                  targetDir
-                );
-                savedImagePaths.push(`${imageHost}/${uploadedImage}`);
-              }
-
-              Customer.documentUpload(
-                customer_id,
-                db_column,
-                savedImagePaths,
-                (err, result) => {
-                  if (err) {
-                    console.error(
-                      "Database error while creating customer:",
-                      err
-                    );
-                    AdminCommon.adminActivityLog(
-                      admin_id,
-                      "Customer",
-                      "Create",
-                      "0",
-                      null,
-                      err,
-                      () => { }
-                    );
-                    return res.status(500).json({
+                // Define the target directory for uploads
+                let targetDir;
+                let db_column;
+                switch (upload_category) {
+                  case "custom_logo":
+                    targetDir = `uploads/customers/${customer_code}/logos`;
+                    db_column = `logo`;
+                    break;
+                  case "agr_upload":
+                    targetDir = `uploads/customers/${customer_code}/agreements`;
+                    db_column = `agreement`;
+                    break;
+                  default:
+                    return res.status(400).json({
                       status: false,
-                      message: err.message,
+                      message: "Invalid upload category.",
                       token: newToken,
+                    });
+                }
+
+                try {
+                  // Create the target directory for uploads
+                  await fs.promises.mkdir(targetDir, { recursive: true });
+
+                  let savedImagePaths = [];
+
+                  if (req.files.images && req.files.images.length > 0) {
+                    const uploadedImages = await saveImages(
+                      req.files.images,
+                      targetDir
+                    );
+                    uploadedImages.forEach((imagePath) => {
+                      savedImagePaths.push(`${imageHost}/${imagePath}`);
                     });
                   }
 
-                  if (send_mail == 1) {
-                    Customer.getAllBranchesByCustomerId(
-                      customer_id,
-                      (err, dbBranches) => {
-                        if (err) {
-                          console.error(
-                            "Database error while fetching branches:",
-                            err
-                          );
+                  // Process single file upload
+                  if (req.files.image && req.files.image.length > 0) {
+                    const uploadedImage = await saveImage(
+                      req.files.image[0],
+                      targetDir
+                    );
+                    savedImagePaths.push(`${imageHost}/${uploadedImage}`);
+                  }
 
-                          // Log the error using your admin activity log function
-                          AdminCommon.adminActivityLog(
-                            admin_id, // Assuming admin_id is defined in your context
-                            "Branch",
-                            "Fetch",
-                            "0",
-                            null,
-                            err,
-                            () => { } // Callback after logging the error
-                          );
+                  Customer.documentUpload(
+                    customer_id,
+                    db_column,
+                    savedImagePaths,
+                    (err, result) => {
+                      if (err) {
+                        console.error(
+                          "Database error while creating customer:",
+                          err
+                        );
+                        AdminCommon.adminActivityLog(
+                          admin_id,
+                          "Customer",
+                          "Create",
+                          "0",
+                          null,
+                          err,
+                          () => { }
+                        );
+                        return res.status(500).json({
+                          status: false,
+                          message: err.message,
+                          token: newToken,
+                        });
+                      }
 
-                          // Return error response
-                          return res.status(500).json({
-                            status: false,
-                            message: err.message,
-                            token: newToken, // Assuming newToken is defined in your context
-                          });
-                        }
+                      if (send_mail == 1) {
+                        Customer.getAllBranchesByCustomerId(
+                          customer_id,
+                          (err, dbBranches) => {
+                            if (err) {
+                              console.error(
+                                "Database error while fetching branches:",
+                                err
+                              );
 
-                        AppModel.appInfo("frontend", async (err, appInfo) => {
-                          if (err) {
-                            console.error("Database error:", err);
-                            return res.status(500).json({
-                              status: false,
-                              message:
-                                "An error occurred while retrieving application information. Please try again.",
-                            });
-                          }
+                              // Log the error using your admin activity log function
+                              AdminCommon.adminActivityLog(
+                                admin_id, // Assuming admin_id is defined in your context
+                                "Branch",
+                                "Fetch",
+                                "0",
+                                null,
+                                err,
+                                () => { } // Callback after logging the error
+                              );
 
-                          if (!appInfo) {
-                            console.error(
-                              "Database error during app info retrieval:",
-                              err
-                            );
-                            return reject(
-                              new Error(
-                                "Information of the application not found."
-                              )
-                            );
-                          }
-                          const appHost = appInfo.host || "www.example.com";
-                          const appName = appInfo.name || "Example Company";
-                          // Create an array to hold all promises
-                          const emailPromises = [];
+                              // Return error response
+                              return res.status(500).json({
+                                status: false,
+                                message: err.message,
+                                token: newToken, // Assuming newToken is defined in your context
+                              });
+                            }
 
-                          // Format the branches into the desired structure
-                          const formattedBranches = dbBranches.map(
-                            (dbBranch) => ({
-                              email: dbBranch.email,
-                              name: dbBranch.name,
-                            })
-                          );
+                            AppModel.appInfo("frontend", async (err, appInfo) => {
+                              if (err) {
+                                console.error("Database error:", err);
+                                return res.status(500).json({
+                                  status: false,
+                                  message:
+                                    "An error occurred while retrieving application information. Please try again.",
+                                });
+                              }
 
-                          // Iterate through each branch
-                          dbBranches.forEach((dbBranch) => {
-                            // Check if the branch is a head branch
-                            if (dbBranch.is_head == 1) {
-                              Customer.getCustomerById(
-                                customer_id,
-                                (err, currentCustomer) => {
-                                  if (err) {
-                                    console.error(
-                                      "Database error during customer retrieval:",
-                                      err
-                                    );
-                                    return res.status(500).json({
-                                      status: false,
-                                      message:
-                                        "Failed to retrieve Customer. Please try again.",
-                                      token: newToken,
-                                    });
-                                  }
+                              if (!appInfo) {
+                                console.error(
+                                  "Database error during app info retrieval:",
+                                  err
+                                );
+                                return reject(
+                                  new Error(
+                                    "Information of the application not found."
+                                  )
+                                );
+                              }
+                              const appHost = appInfo.host || "www.example.com";
+                              const appName = appInfo.name || "Example Company";
+                              // Create an array to hold all promises
+                              const emailPromises = [];
 
-                                  if (!currentCustomer) {
-                                    return res.status(404).json({
-                                      status: false,
-                                      message: "Customer not found.",
-                                      token: newToken,
-                                    });
-                                  }
+                              // Format the branches into the desired structure
+                              const formattedBranches = dbBranches.map(
+                                (dbBranch) => ({
+                                  email: dbBranch.email,
+                                  name: dbBranch.name,
+                                })
+                              );
+
+                              // Iterate through each branch
+                              dbBranches.forEach((dbBranch) => {
+                                // Check if the branch is a head branch
+                                if (dbBranch.is_head == 1) {
 
                                   Admin.filterAdmins({ status: "active", role: "admin" }, (err, adminsResult) => {
                                     if (err) {
@@ -1022,7 +1042,7 @@ exports.upload = async (req, res) => {
                                     const emailPromise = createMail(
                                       "customer",
                                       "create",
-                                      company_name,
+                                      customerName,
                                       formattedBranches,
                                       dbBranch.is_head,
                                       customerRecipientList,
@@ -1041,101 +1061,101 @@ exports.upload = async (req, res) => {
 
                                     emailPromises.push(emailPromise);
                                   });
-                                }
-                              );
-                            } else {
+                                } else {
 
-                              Admin.filterAdmins({ status: "active", role: "admin" }, (err, adminsResult) => {
-                                if (err) {
-                                  console.error("Database error:", err);
-                                  return res.status(500).json({
-                                    status: false,
-                                    message: "Error retrieving admin details.",
-                                    token: newToken,
+                                  Admin.filterAdmins({ status: "active", role: "admin" }, (err, adminsResult) => {
+                                    if (err) {
+                                      console.error("Database error:", err);
+                                      return res.status(500).json({
+                                        status: false,
+                                        message: "Error retrieving admin details.",
+                                        token: newToken,
+                                      });
+                                    }
+
+                                    const ccArray = adminsResult.length > 0
+                                      ? adminsResult.map(({ name, email }) => ({ name, email }))
+                                      : [];
+
+                                    // Send email with the single formatted branch
+                                    const emailPromise = createMail(
+                                      "customer",
+                                      "create",
+                                      customerName,
+                                      [
+                                        {
+                                          email: dbBranch.email,
+                                          name: dbBranch.name,
+                                        },
+                                      ], // Send only the current branch
+                                      dbBranch.is_head,
+                                      [],
+                                      ccArray || [],
+                                      password,
+                                      appHost
+                                    ).catch((emailError) => {
+                                      console.error(
+                                        "Error sending email:",
+                                        emailError
+                                      );
+                                      return Promise.resolve(
+                                        "Email sending failed for this branch."
+                                      );
+                                    });
+
+                                    emailPromises.push(emailPromise);
                                   });
                                 }
+                              });
 
-                                const ccArray = adminsResult.length > 0
-                                  ? adminsResult.map(({ name, email }) => ({ name, email }))
-                                  : [];
-
-                                // Send email with the single formatted branch
-                                const emailPromise = createMail(
-                                  "customer",
-                                  "create",
-                                  company_name,
-                                  [
-                                    {
-                                      email: dbBranch.email,
-                                      name: dbBranch.name,
-                                    },
-                                  ], // Send only the current branch
-                                  dbBranch.is_head,
-                                  [],
-                                  ccArray || [],
-                                  password,
-                                  appHost
-                                ).catch((emailError) => {
+                              // Wait for all email promises to resolve
+                              Promise.all(emailPromises)
+                                .then(() => {
+                                  return res.json({
+                                    status: true,
+                                    message:
+                                      "Customer and branches created successfully.",
+                                    branches: formattedBranches, // Optionally send the formatted branches
+                                    data: savedImagePaths,
+                                    token: newToken,
+                                  });
+                                })
+                                .catch((error) => {
                                   console.error(
-                                    "Error sending email:",
-                                    emailError
+                                    "An error occurred during processing:",
+                                    error
                                   );
-                                  return Promise.resolve(
-                                    "Email sending failed for this branch."
-                                  );
+                                  return res.status(500).json({
+                                    status: false,
+                                    message:
+                                      "An error occurred while processing requests.",
+                                    token: newToken,
+                                  });
                                 });
-
-                                emailPromises.push(emailPromise);
-                              });
-                            }
-                          });
-
-                          // Wait for all email promises to resolve
-                          Promise.all(emailPromises)
-                            .then(() => {
-                              return res.json({
-                                status: true,
-                                message:
-                                  "Customer and branches created successfully.",
-                                branches: formattedBranches, // Optionally send the formatted branches
-                                data: savedImagePaths,
-                                token: newToken,
-                              });
-                            })
-                            .catch((error) => {
-                              console.error(
-                                "An error occurred during processing:",
-                                error
-                              );
-                              return res.status(500).json({
-                                status: false,
-                                message:
-                                  "An error occurred while processing requests.",
-                                token: newToken,
-                              });
                             });
+                          }
+                        );
+                      } else {
+                        return res.json({
+                          status: true,
+                          message:
+                            "Customer and branches created and file saved successfully.",
+                          data: savedImagePaths,
+                          token: newToken,
                         });
                       }
-                    );
-                  } else {
-                    return res.json({
-                      status: true,
-                      message:
-                        "Customer and branches created and file saved successfully.",
-                      data: savedImagePaths,
-                      token: newToken,
-                    });
-                  }
+                    }
+                  );
+                } catch (error) {
+                  console.error("Error saving image:", error);
+                  return res.status(500).json({
+                    status: false,
+                    message: "An error occurred while saving the image.",
+                    token: newToken,
+                  });
                 }
-              );
-            } catch (error) {
-              console.error("Error saving image:", error);
-              return res.status(500).json({
-                status: false,
-                message: "An error occurred while saving the image.",
-                token: newToken,
               });
-            }
+
           });
         });
       });
