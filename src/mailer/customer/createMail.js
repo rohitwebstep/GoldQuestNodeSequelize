@@ -69,6 +69,9 @@ async function createMail(
     // Generate the HTML table from branch details
     const table = generateTable(branches, password);
 
+    console.log(`table - `, table);
+    // return;
+
     // Replace placeholders in the email template
     let template = email.template
       .replace(/{{dynamic_name}}/g, client_name)
