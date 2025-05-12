@@ -572,12 +572,11 @@ module.exports = {
                                                                 let yPosition = 10;  // Initial y position
 
                                                                 // Add the form title
-                                                                console.log(`Step 3.2: Adding form title...`);
+
                                                                 if (customBgv === 1) {
                                                                     const imageData = await fetchImageToBase(LogoBgv);
                                                                     doc.addImage(imageData, 'PNG', 75, yPosition, 60, 10);
                                                                 }
-                                                                console.log(`Step 4: Logo added successfully`);
                                                                 // Set font size for the title
                                                                 doc.setFontSize(20);  // Sets the font size to 20
                                                                 doc.setFont("helvetica", "bold");  // Sets the font to Helvetica and makes it bold
@@ -613,7 +612,6 @@ module.exports = {
                                                                 const imageHeight = 80; // Fixed height of 500px for the image
                                                                 doc.setFontSize(16);
                                                                 doc.setFont("helvetica", "bold");
-                                                                console.log(`Step 5: Font set successfully`);
                                                                 if (purpose === 'NORMAL BGV(EMPLOYMENT)') {
                                                                     // Add a form group with Applicant's CV label
                                                                     doc.setFontSize(12);
@@ -663,7 +661,6 @@ module.exports = {
                                                                 if (purpose === 'NORMAL BGV(EMPLOYMENT)') {
                                                                     yPosition += imageHeight + 10;
                                                                 }
-                                                                console.log(`Step 6: Image added successfully`);
                                                                 yPosition += 5;
                                                                 if (cefData && cefData.govt_id) {
                                                                     // Split the comma-separated string into an array of image URLs
@@ -740,7 +737,7 @@ module.exports = {
                                                                 }
 
 
-                                                                console.log(`Step 7: Govt ID added successfully`);
+
 
 
                                                                 if (customBgv === 1) {
@@ -825,7 +822,7 @@ module.exports = {
                                                                             doc.text(noImagesText, noImagesCenterX, yPosition + 10);
                                                                             yPosition += 20; // Adjust for the message
                                                                         }
-                                                                        console.log(`Step 8: Passport photo added successfully`);
+
                                                                     } else {
                                                                         // If no passport photo is available, display a message
                                                                         const noPhotoText = "No Passport Photo uploaded.";
@@ -837,7 +834,7 @@ module.exports = {
                                                                 }
 
 
-                                                                console.log(`Step 9: Passport photo added successfully`);
+
 
 
 
@@ -1096,21 +1093,14 @@ module.exports = {
 
 
 
-
+                                                                doc.addPage();
                                                                 (async () => {
-                                                                    if (!serviceDataMain.length) {
-                                                                        const pageWidth = doc.internal.pageSize.width;
-                                                                        doc.text("No service data available.", pageWidth / 2, yPosition + 10, { align: 'center' });
-                                                                        yPosition += 20;
-                                                                    } else {
-                                                                        // const selectedServices = serviceDataMain.slice(0, 2); // Get only the first 2 services
-
+                                                                    if (serviceDataMain || !serviceDataMain.length === 0) {
                                                                         for (let i = 0; i < serviceDataMain.length; i++) {
                                                                             const service = serviceDataMain[i];
                                                                             const tableData = [];
-
                                                                             if (serviceDataMain.length > 1) {
-                                                                                doc.addPage();
+
                                                                                 yPosition = 20;
                                                                             }
                                                                             // Reset yPosition before each service
@@ -1203,7 +1193,7 @@ module.exports = {
                                                                                 yPosition = doc.autoTable.previous.finalY + 10;
                                                                                 // Post Graduation
                                                                                 if (annexureData?.gap_validation?.highest_education_gap === 'post_graduation' || annexureData?.gap_validation?.highest_education_gap === 'phd') {
-                                                                                    doc.addPage();
+                                                                                    // doc.addPage();
                                                                                     yPosition = 20;
                                                                                     const { employGaps, gaps } = calculateGaps(annexureData);
                                                                                     const postGradData = [
@@ -1419,7 +1409,7 @@ module.exports = {
                                                                                     ;  // Call this function separately if required for gap message
                                                                                 }
 
-                                                                                doc.addPage();
+                                                                                // doc.addPage();
                                                                                 yPosition = 10;
                                                                                 // Secondary Education Section
                                                                                 if (
@@ -1599,6 +1589,7 @@ module.exports = {
                                                                                     }
                                                                                 }
 
+                                                                                // First pass to check if any checkbox is checked
                                                                                 service.rows.forEach((row, rowIndex) => {
                                                                                     row.inputs.forEach((input) => {
                                                                                         // Handle logic for checkbox checked state
@@ -1621,119 +1612,131 @@ module.exports = {
                                                                                     });
                                                                                 });
 
+                                                                                // ✅ Skip the entire block (table + images) if checkbox is ticked
+                                                                                if (!skipService) {
+                                                                                    // Build table data
+                                                                                    service.rows.forEach((row, rowIndex) => {
+                                                                                        if (skipService) return;
 
-                                                                                // Add service heading
-                                                                                doc.setFontSize(16);
-                                                                                yPosition += 10;
-                                                                                doc.autoTable({
-                                                                                    startY: yPosition,
-                                                                                    head: [[{ content: service.heading, colSpan: 2, styles: { halign: 'center', fontSize: 16, bold: true } }],
-                                                                                    ],
-                                                                                    body: tableData,
-                                                                                    theme: 'grid',
-                                                                                    margin: { horizontal: 10 },
-                                                                                    styles: { fontSize: 10 },
-                                                                                });
+                                                                                        row.inputs.forEach((input) => {
+                                                                                            if (input.type === 'file') return;
 
-                                                                                yPosition = doc.lastAutoTable.finalY + 10; // Update yPosition after table
+                                                                                            let inputValue = annexureData[service.db_table]?.[input.name] || "NIL";
 
-
-                                                                                // Process and add images for this service
-                                                                                const fileInputs = service.rows.flatMap(row =>
-                                                                                    row.inputs.filter(({ type }) => type === "file").map(input => input.name)
-                                                                                );
-
-                                                                                if (fileInputs.length > 0) {
-                                                                                    const filePromises = fileInputs.map(async (inputName) => {
-                                                                                        const annexureFilesStr = annexureData[service.db_table]?.[inputName];
-                                                                                        let annexureDataImageHeight = 220;
-
-                                                                                        if (annexureFilesStr) {
-                                                                                            const fileUrls = annexureFilesStr.split(",").map(url => url.trim());
-                                                                                            if (fileUrls.length === 0) {
-                                                                                                doc.setFont("helvetica", "italic");
-                                                                                                doc.setFontSize(10);
-                                                                                                doc.setTextColor(150, 150, 150);
-                                                                                                doc.text("No annexure files available.", 10, yPosition + 10);
-                                                                                                yPosition += 10;
-                                                                                                return;
+                                                                                            // Format ISO date to dd-mm-yyyy
+                                                                                            const isoDateRegex = /^\d{4}-\d{2}-\d{2}$/;
+                                                                                            if (isoDateRegex.test(inputValue)) {
+                                                                                                const [year, month, day] = inputValue.split("-");
+                                                                                                inputValue = `${day}-${month}-${year}`;
                                                                                             }
 
-                                                                                            // Filter out non-image URLs (pdf, xls, etc.)
-                                                                                            const imageUrlsToProcess = fileUrls.filter(url => {
-                                                                                                const validImageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'];
-                                                                                                return validImageExtensions.some(ext => url.toLowerCase().endsWith(ext));
-                                                                                            });
-
-                                                                                            // Filter out URLs that are not images
-                                                                                            const nonImageUrlsToProcess = fileUrls.filter(url => {
-                                                                                                const validNonImageExtensions = ['pdf', 'xls', 'xlsx'];
-                                                                                                return validNonImageExtensions.some(ext => url.toLowerCase().endsWith(ext));
-                                                                                            });
-
-                                                                                            // Handle image files
-                                                                                            if (imageUrlsToProcess.length > 0) {
-                                                                                                const imageBases = await fetchImageToBase(imageUrlsToProcess);
-                                                                                                for (const image of imageBases) {
-                                                                                                    if (!image.base64.startsWith('data:image/')) continue;
-
-                                                                                                    doc.addPage();
-                                                                                                    yPosition = 20;
-
-                                                                                                    try {
-                                                                                                        const imageWidth = doc.internal.pageSize.width - 10;
-                                                                                                        // Adjust height if needed based on image dimensions or conditions
-                                                                                                        doc.addImage(image.base64, image.type, 5, yPosition + 20, imageWidth, annexureDataImageHeight);
-                                                                                                        yPosition += (annexureDataImageHeight + 30);
-                                                                                                    } catch (error) {
-                                                                                                        console.error(`Error adding image:`, error);
-                                                                                                    }
-                                                                                                }
-                                                                                            }
-
-                                                                                            // Handle non-image files (PDF, XLS, etc.)
-                                                                                            const pageHeight = doc.internal.pageSize.height;
-                                                                                            const margin = 10; // margin from top and bottom
-                                                                                            let lineHeight = 10; // space between lines
-
-                                                                                            if (nonImageUrlsToProcess.length > 0) {
-                                                                                                nonImageUrlsToProcess.forEach(url => {
-                                                                                                    // Calculate available space on the current page
-                                                                                                    if (yPosition + lineHeight > pageHeight - margin) {
-                                                                                                        doc.addPage(); // Add a new page if there's not enough space
-                                                                                                        yPosition = margin; // Reset yPosition after adding a new page
-                                                                                                    }
-
-                                                                                                    // Add a button to open the file in a new tab
-                                                                                                    doc.setFont("helvetica", "normal");
-                                                                                                    doc.setFontSize(10);
-                                                                                                    doc.setTextColor(255, 0, 0);
-                                                                                                    const buttonText = `Click to open the file`;
-                                                                                                    const textWidth = doc.getTextWidth(buttonText);
-                                                                                                    const centerX = (doc.internal.pageSize.width - textWidth) / 2;
-
-                                                                                                    // Add the text at the center and create the link
-                                                                                                    doc.text(buttonText, centerX, yPosition + 10);
-                                                                                                    doc.link(centerX, yPosition + 10, textWidth, 10, { url: url });
-
-                                                                                                    // Adjust yPosition for the next line
-                                                                                                    yPosition += lineHeight + 2; // Adjust for button space
-                                                                                                });
-                                                                                            }
-
-                                                                                        }
+                                                                                            tableData.push([input.label, inputValue]);
+                                                                                        });
                                                                                     });
 
-                                                                                    await Promise.all(filePromises);
+                                                                                    if (tableData.length > 0) {
+                                                                                        doc.setFontSize(16);
+                                                                                        yPosition += 10;
+                                                                                        doc.autoTable({
+                                                                                            startY: yPosition,
+                                                                                            head: [[{ content: service.heading, colSpan: 2, styles: { halign: 'center', fontSize: 16, bold: true } }]],
+                                                                                            body: tableData,
+                                                                                            theme: 'grid',
+                                                                                            margin: { horizontal: 10 },
+                                                                                            styles: { fontSize: 10 },
+                                                                                        });
+                                                                                        yPosition = doc.previousAutoTable.finalY + 10;
+                                                                                    }
+
+                                                                                    // ✅ Process and add images/files for this service
+                                                                                    const fileInputs = service.rows.flatMap(row =>
+                                                                                        row.inputs.filter(({ type }) => type === "file").map(input => input.name)
+                                                                                    );
+
+                                                                                    if (fileInputs.length > 0) {
+                                                                                        const filePromises = fileInputs.map(async (inputName) => {
+                                                                                            const annexureFilesStr = annexureData[service.db_table]?.[inputName];
+                                                                                            let annexureDataImageHeight = 220;
+
+                                                                                            if (annexureFilesStr) {
+                                                                                                const fileUrls = annexureFilesStr.split(",").map(url => url.trim());
+
+                                                                                                const imageUrlsToProcess = fileUrls.filter(url => {
+                                                                                                    const validImageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'];
+                                                                                                    return validImageExtensions.some(ext => url.toLowerCase().endsWith(ext));
+                                                                                                });
+
+                                                                                                const nonImageUrlsToProcess = fileUrls.filter(url => {
+                                                                                                    const validNonImageExtensions = ['pdf', 'xls', 'xlsx'];
+                                                                                                    return validNonImageExtensions.some(ext => url.toLowerCase().endsWith(ext));
+                                                                                                });
+
+                                                                                                // Handle image files
+                                                                                                if (imageUrlsToProcess.length > 0) {
+                                                                                                    const imageBases = await fetchImageToBase(imageUrlsToProcess);
+                                                                                                    for (const image of imageBases) {
+                                                                                                        if (!image.base64.startsWith('data:image/')) continue;
+
+                                                                                                        doc.addPage();
+                                                                                                        yPosition = 20;
+
+                                                                                                        try {
+                                                                                                            const imageWidth = doc.internal.pageSize.width - 10;
+                                                                                                            doc.addImage(image.base64, image.type, 5, yPosition + 20, imageWidth, annexureDataImageHeight);
+                                                                                                            yPosition += (annexureDataImageHeight + 30);
+                                                                                                        } catch (error) {
+                                                                                                            console.error(`Error adding image:`, error);
+                                                                                                        }
+                                                                                                    }
+                                                                                                }
+
+                                                                                                // Handle non-image files (PDF, XLS, etc.)
+                                                                                                const pageHeight = doc.internal.pageSize.height;
+                                                                                                const margin = 10;
+                                                                                                let lineHeight = 10;
+
+                                                                                                if (nonImageUrlsToProcess.length > 0) {
+                                                                                                    nonImageUrlsToProcess.forEach(url => {
+                                                                                                        if (yPosition + lineHeight > pageHeight - margin) {
+                                                                                                            doc.addPage();
+                                                                                                            yPosition = margin;
+                                                                                                        }
+
+                                                                                                        doc.setFont("helvetica", "normal");
+                                                                                                        doc.setFontSize(10);
+                                                                                                        doc.setTextColor(255, 0, 0);
+                                                                                                        const buttonText = `Click to open the file`;
+                                                                                                        const textWidth = doc.getTextWidth(buttonText);
+                                                                                                        const centerX = (doc.internal.pageSize.width - textWidth) / 2;
+
+                                                                                                        doc.text(buttonText, centerX, yPosition + 10);
+                                                                                                        doc.link(centerX, yPosition + 10, textWidth, 10, { url: url });
+
+                                                                                                        yPosition += lineHeight + 2;
+                                                                                                    });
+                                                                                                }
+                                                                                            }
+                                                                                        });
+
+                                                                                        await Promise.all(filePromises);
+                                                                                    }
+                                                                                    if (tableData.length > 0 && fileInputs.length > 0) {
+                                                                                        doc.addPage();
+
+                                                                                    }
+
                                                                                 }
-
-
                                                                             }
 
+                                                                            const fileInputs = service?.rows?.flatMap(row =>
+                                                                                row.inputs.filter(({ type }) => type === "file").map(input => input.name)
+                                                                            );
+                                                                            if (!fileInputs.length > 0) {
+                                                                                doc.addPage();
+                                                                            }
                                                                         }
                                                                     }
 
-                                                                    doc.addPage();
                                                                     let newYPosition = 20;
 
                                                                     // Upper Table: Declaration & Authorization
@@ -1802,7 +1805,6 @@ module.exports = {
                                                                         margin: { left: 10, right: 10 },
                                                                         tableWidth: 'wrap'
                                                                     });
-
                                                                     const tableY = doc.autoTable.previous.finalY - 40;
                                                                     const cellStartX = 10 + colWidths[0]; // X of signature cell
                                                                     const colWidth = colWidths[1]; // width of signature cell
@@ -1909,7 +1911,6 @@ module.exports = {
                                                                         targetDirectory
                                                                     );
                                                                     resolve(pdfPathCloud);
-
                                                                 })();
 
 
