@@ -9,7 +9,7 @@ const tatDelay = {
       const applicationsQuery = `
             SELECT 
                 cmt.report_date, 
-                ca.id AS client_application_id, 
+                ca.id AS client_application_id,
                 ca.customer_id, 
                 ca.branch_id, 
                 ca.application_id, 
