@@ -564,17 +564,20 @@ module.exports = {
                                                             console.log(`Step 3: Annexure data constructed successfully`);
 
                                                             const serviceDataMain = allJsonData;
+                                                            console.log(`Step 3.1: Service data main constructed successfully`);
+
                                                             try {
                                                                 // Create a new PDF document
                                                                 const doc = new jsPDF();
                                                                 let yPosition = 10;  // Initial y position
 
                                                                 // Add the form title
-
+                                                                console.log(`Step 3.2: Adding form title...`);
                                                                 if (customBgv === 1) {
                                                                     const imageData = await fetchImageToBase(LogoBgv);
                                                                     doc.addImage(imageData, 'PNG', 75, yPosition, 60, 10);
                                                                 }
+                                                                console.log(`Step 4: Logo added successfully`);
                                                                 // Set font size for the title
                                                                 doc.setFontSize(20);  // Sets the font size to 20
                                                                 doc.setFont("helvetica", "bold");  // Sets the font to Helvetica and makes it bold
@@ -610,6 +613,7 @@ module.exports = {
                                                                 const imageHeight = 80; // Fixed height of 500px for the image
                                                                 doc.setFontSize(16);
                                                                 doc.setFont("helvetica", "bold");
+                                                                console.log(`Step 5: Font set successfully`);
                                                                 if (purpose === 'NORMAL BGV(EMPLOYMENT)') {
                                                                     // Add a form group with Applicant's CV label
                                                                     doc.setFontSize(12);
@@ -659,6 +663,7 @@ module.exports = {
                                                                 if (purpose === 'NORMAL BGV(EMPLOYMENT)') {
                                                                     yPosition += imageHeight + 10;
                                                                 }
+                                                                console.log(`Step 6: Image added successfully`);
                                                                 yPosition += 5;
                                                                 if (cefData && cefData.govt_id) {
                                                                     // Split the comma-separated string into an array of image URLs
@@ -735,7 +740,7 @@ module.exports = {
                                                                 }
 
 
-
+                                                                console.log(`Step 7: Govt ID added successfully`);
 
 
                                                                 if (customBgv === 1) {
@@ -820,7 +825,7 @@ module.exports = {
                                                                             doc.text(noImagesText, noImagesCenterX, yPosition + 10);
                                                                             yPosition += 20; // Adjust for the message
                                                                         }
-
+                                                                        console.log(`Step 8: Passport photo added successfully`);
                                                                     } else {
                                                                         // If no passport photo is available, display a message
                                                                         const noPhotoText = "No Passport Photo uploaded.";
@@ -832,7 +837,7 @@ module.exports = {
                                                                 }
 
 
-
+                                                                console.log(`Step 9: Passport photo added successfully`);
 
 
 
@@ -1093,14 +1098,11 @@ module.exports = {
 
 
                                                                 (async () => {
-                                                                    console.log(`Step 4`);
                                                                     if (!serviceDataMain.length) {
                                                                         const pageWidth = doc.internal.pageSize.width;
                                                                         doc.text("No service data available.", pageWidth / 2, yPosition + 10, { align: 'center' });
                                                                         yPosition += 20;
                                                                     } else {
-                                                                        console.log(`serviceDataMain.length - `, serviceDataMain.length);
-
                                                                         // const selectedServices = serviceDataMain.slice(0, 2); // Get only the first 2 services
 
                                                                         for (let i = 0; i < serviceDataMain.length; i++) {
@@ -1121,14 +1123,13 @@ module.exports = {
                                                                                 return `${years} years and ${months} months`;
                                                                             }
 
-                                                                            console.log(`Step 5`);
                                                                             if (service.db_table === "gap_validation") {
-
+                                                                                const { employGaps, gaps } = calculateGaps(annexureData);
 
                                                                                 doc.setFontSize(12);
                                                                                 doc.setTextColor(0, 0, 0);
                                                                                 if (annexureData?.gap_validation?.highest_education_gap === 'phd') {
-                                                                                    const { employGaps, gaps } = calculateGaps(annexureData);
+
 
                                                                                     // Table for PhD information
                                                                                     yPosition += 10;
@@ -1301,7 +1302,7 @@ module.exports = {
                                                                                             fontSize: 10
                                                                                         }
                                                                                     });
-                                                                                    console.log(`Step 4`);
+
                                                                                     let index = 1;
                                                                                     let Graduation = [];
                                                                                     while (true) {
@@ -1417,7 +1418,7 @@ module.exports = {
 
                                                                                     ;  // Call this function separately if required for gap message
                                                                                 }
-                                                                                console.log(`Step 4`);
+
                                                                                 doc.addPage();
                                                                                 yPosition = 10;
                                                                                 // Secondary Education Section
@@ -1579,8 +1580,6 @@ module.exports = {
 
                                                                             }
                                                                             else {
-                                                                                console.log(`Step 6`);
-
                                                                                 let skipService = false;
                                                                                 if (
                                                                                     Array.isArray(service.rows) &&
@@ -1590,7 +1589,7 @@ module.exports = {
                                                                                 ) {
                                                                                     const input = service.rows[0].inputs[0];
                                                                                     if (
-                                                                                        input.name?.startsWith('done_or_not_') &&
+                                                                                        (input.name?.startsWith('done_or_not_') || input.name?.startsWith('has_not_done_')) &&
                                                                                         input.type === 'checkbox'
                                                                                     ) {
                                                                                         const hasNotValue = annexureData?.[service.db_table]?.[input.name];
@@ -1600,10 +1599,6 @@ module.exports = {
                                                                                     }
                                                                                 }
 
-
-
-                                                                                console.log(`Step 6`);
-                                                                                console.log(`Step 3.1`);
                                                                                 service.rows.forEach((row, rowIndex) => {
                                                                                     row.inputs.forEach((input) => {
                                                                                         // Handle logic for checkbox checked state
@@ -1739,77 +1734,114 @@ module.exports = {
                                                                     }
 
                                                                     doc.addPage();
-                                                                    let newYPosition = 20
+                                                                    let newYPosition = 20;
+
+                                                                    // Upper Table: Declaration & Authorization
                                                                     doc.autoTable({
                                                                         head: [[
-                                                                            { content: 'Declaration and Authorization', colSpan: 4, styles: { halign: 'center', fontSize: 16, bold: true } }
-                                                                        ]],
-                                                                        body: [
-                                                                            [
-                                                                                {
-                                                                                    content: 'I hereby authorize GoldQuest Global HR Services Private Limited and its representative to verify information provided in my application for employment and this employee background verification form, and to conduct enquiries as may be necessary, at the company’s discretion. I authorize all persons who may have information relevant to this enquiry to disclose it to GoldQuest Global HR Services Pvt Ltd or its representative. I release all persons from liability on account of such disclosure. I confirm that the above information is correct to the best of my knowledge. I agree that in the event of my obtaining employment, my probationary appointment, confirmation as well as continued employment in the services of the company are subject to clearance of medical test and background verification check done by the company.',
-                                                                                    colSpan: 4, styles: { halign: 'center', fontSize: 9, cellPadding: 5 }
+                                                                            {
+                                                                                content: 'Declaration & Authorization',
+                                                                                colSpan: 3,
+                                                                                styles: {
+                                                                                    halign: 'left',
+                                                                                    fontSize: 12,
+                                                                                    textColor: 255,
                                                                                 }
-                                                                            ],
-                                                                            ['Name', cefData?.name_declaration || 'N/A', 'Date', formatDate(cefData?.declaration_date) || 'N/A']
-                                                                        ],
+                                                                            }
+                                                                        ]],
+                                                                        body: [[
+                                                                            {
+                                                                                content: `I hereby authorize GoldQuest Global HR Services Pvt Ltd and its representative to verify information provided in my application for employment and this employee background verification form, and to conduct enquiries as may be necessary, at the company’s discretion. I authorize all persons who may have information relevant to this enquiry to disclose it to GoldQuest Global HR Services Pvt Ltd or its representative. I release all persons from liability on account of such disclosure.\n\nI confirm that the above information is correct to the best of my knowledge. I agree that in the event of my obtaining employment, my probationary appointment, confirmation as well as continued employment in the services of the company are subject to clearance of medical test and background verification check done by the company.`,
+                                                                                colSpan: 3,
+                                                                                styles: {
+                                                                                    fontSize: 10,
+                                                                                    cellPadding: { top: 2, bottom: 2, left: 2, right: 2 },
+                                                                                    valign: 'top'
+                                                                                }
+                                                                            }
+                                                                        ]],
                                                                         startY: newYPosition,
-                                                                        margin: { top: 20 },
                                                                         theme: 'grid',
+                                                                        margin: { left: 10, right: 9 },
+                                                                        styles: { fontSize: 9 },
+                                                                        tableWidth: 'wrap',
+                                                                        columnStyles: {
+                                                                            0: { cellWidth: 70 },
+                                                                            1: { cellWidth: 70 },
+                                                                            2: { cellWidth: 50 }
+                                                                        }
                                                                     });
 
+                                                                    newYPosition = doc.autoTable.previous.finalY;
 
+                                                                    // Lower Table: Candidate Info and Signature
+                                                                    const colWidths = [70, 70, 50]; // match upper table width
+                                                                    const imageWidth = 65;
+                                                                    const imageHeight = 40;
 
+                                                                    const name = cefData?.name_declaration || 'N/A';
+                                                                    const dateFilled = formatDate(cefData?.declaration_date) || 'N/A';
 
-                                                                    newYPosition = doc.autoTable.previous.finalY + 20; // Adjusting for space from the last table
+                                                                    doc.autoTable({
+                                                                        body: [[
+                                                                            { content: name, styles: { halign: 'center', valign: 'top', fontSize: 10 } },
+                                                                            { content: '', styles: { halign: 'center', valign: 'top', minCellHeight: 44 } },
+                                                                            { content: dateFilled, styles: { halign: 'center', valign: 'top', fontSize: 0 } }
+                                                                        ], [
+                                                                            { content: 'Full name of the candidate', styles: { halign: 'center', fontSize: 10, fontStyle: "bold" } },
+                                                                            { content: 'Signature', styles: { halign: 'center', fontSize: 10, fontStyle: "bold" } },
+                                                                            { content: 'Date of form filled', styles: { halign: 'center', fontSize: 10, fontStyle: "bold" } }
+                                                                        ]],
+                                                                        columnStyles: {
+                                                                            0: { cellWidth: colWidths[0] },
+                                                                            1: { cellWidth: colWidths[1] },
+                                                                            2: { cellWidth: colWidths[2] }
+                                                                        },
+                                                                        startY: newYPosition,
+                                                                        theme: 'grid',
+                                                                        margin: { left: 10, right: 10 },
+                                                                        tableWidth: 'wrap'
+                                                                    });
 
-                                                                    doc.text("Attach Signature.", doc.internal.pageSize.width / 2, newYPosition, { align: 'center' });
+                                                                    const tableY = doc.autoTable.previous.finalY - 40;
+                                                                    const cellStartX = 10 + colWidths[0]; // X of signature cell
+                                                                    const colWidth = colWidths[1]; // width of signature cell
 
-                                                                    const lineHeight = 10;
-                                                                    const margin = 10;
-                                                                    const DocHeight = 100; // Height for images (adjust as needed)
-
-                                                                    // Check if the signature exists
-                                                                    if (cefData && cefData.signature) {
-                                                                        // Check if the signature is an image
+                                                                    // Handle Signature
+                                                                    if (cefData?.signature) {
                                                                         const validImageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'];
                                                                         const isImage = validImageExtensions.some(ext => cefData.signature.toLowerCase().endsWith(ext));
 
                                                                         if (isImage) {
-                                                                            // Fetch the base64 image
                                                                             const imageBases = await fetchImageToBase([cefData.signature]);
+                                                                            if (imageBases && imageBases[0]?.base64) {
+                                                                                const imageX = cellStartX + (colWidth - imageWidth) / 2;
+                                                                                const imageY = tableY + (22 - imageHeight) / 2;
 
-                                                                            // Assuming imageBases[0] exists and contains the base64 string
-                                                                            if (imageBases && imageBases[0] && imageBases[0].base64) {
-                                                                                const imageBase64 = imageBases[0].base64;
-                                                                                const imageWidth = doc.internal.pageSize.width - 10; // 20px padding for margins
-
-                                                                                // Add the image to the PDF
-                                                                                doc.addImage(imageBase64, 'PNG', 5, newYPosition + 20, imageWidth, DocHeight);
-                                                                                newYPosition += DocHeight + 20; // Update the position after the image
+                                                                                doc.addImage(
+                                                                                    imageBases[0].base64,
+                                                                                    'PNG',
+                                                                                    imageX,
+                                                                                    imageY,
+                                                                                    imageWidth,
+                                                                                    imageHeight
+                                                                                );
                                                                             }
                                                                         } else {
-                                                                            // If not an image, show a clickable button to view the document
                                                                             const buttonText = "Click to view attached document";
                                                                             const textWidth = doc.getTextWidth(buttonText);
-                                                                            const centerX = (doc.internal.pageSize.width - textWidth) / 2;
+                                                                            const centerX = cellStartX + ((colWidth - textWidth) / 2);
+                                                                            const centerY = tableY + 25;
 
-                                                                            // Add the text at the center
                                                                             doc.setFont("helvetica", "normal");
                                                                             doc.setFontSize(10);
-                                                                            doc.setTextColor(255, 0, 0); // Red color for the button text
-                                                                            doc.text(buttonText, centerX + 10, newYPosition + 10);
-
-                                                                            // Create the clickable link to open the document (e.g., cefData.signature could be a URL to the document)
-                                                                            doc.link(centerX, newYPosition + 10, textWidth, 10, { url: cefData.signature });
-
-                                                                            // Update the position after the link
-                                                                            newYPosition += lineHeight + 20; // Adjust space for next content
+                                                                            doc.setTextColor(255, 0, 0);
+                                                                            doc.text(buttonText, centerX, centerY);
+                                                                            doc.link(centerX, centerY - 5, textWidth, 10, { url: cefData.signature });
                                                                         }
                                                                     } else {
-                                                                        // If no signature exists, add a message or alternative content
-                                                                        doc.text("No Signature uploaded.", 10, newYPosition + 10);
-                                                                        newYPosition += lineHeight + 20; // Adjust space for next content
+                                                                        doc.setFontSize(10);
+                                                                        doc.text("No Signature uploaded.", cellStartX + 5, tableY + 25);
                                                                     }
 
                                                                     doc.addPage();
@@ -1853,7 +1885,6 @@ module.exports = {
                                                                             2: { halign: "center", minCellWidth: 60 }
                                                                         }
                                                                     });
-
                                                                     // Footer Note
                                                                     doc.setFontSize(10);
                                                                     doc.setTextColor(0, 0, 0);
@@ -1864,6 +1895,8 @@ module.exports = {
                                                                         doc.lastAutoTable.finalY + 10,
                                                                         { maxWidth: 180 }
                                                                     );
+                                                                    console.log("PDF generated successfully");
+
 
                                                                     // Save PDF
                                                                     // console.log(`pdfFileName - `, pdfFileName);
@@ -1876,6 +1909,7 @@ module.exports = {
                                                                         targetDirectory
                                                                     );
                                                                     resolve(pdfPathCloud);
+
                                                                 })();
 
 

@@ -311,6 +311,15 @@ function createEmploymentFields(noOfEmployments, fieldValue) {
     return employmentFields;
 }
 
+function formatDate(dateStr) {
+    const d = new Date(dateStr);
+    if (isNaN(d)) return "Invalid Date";
+    const day = String(d.getDate()).padStart(2, "0");
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const year = d.getFullYear();
+    return `${day}-${month}-${year}`;
+}
+
 function updateEmploymentFields(annexureData, noOfEmployments, fieldValue) {
     // Generate new employment fields based on the provided number of employments
     const allEmploymentFields = createEmploymentFields(noOfEmployments, fieldValue);
@@ -556,6 +565,7 @@ module.exports = {
 
                                                             const serviceDataMain = allJsonData;
                                                             try {
+                                                                // Create a new PDF document
                                                                 const doc = new jsPDF();
                                                                 let yPosition = 10;  // Initial y position
 
@@ -563,19 +573,8 @@ module.exports = {
 
                                                                 if (customBgv === 1) {
                                                                     const imageData = await fetchImageToBase(LogoBgv);
-
-                                                                    if (imageData) {
-                                                                        doc.addImage(
-                                                                            imageData,
-                                                                            'png',
-                                                                            75,
-                                                                            yPosition,
-                                                                            60,
-                                                                            10
-                                                                        );
-                                                                    }
+                                                                    doc.addImage(imageData, 'PNG', 75, yPosition, 60, 10);
                                                                 }
-
                                                                 // Set font size for the title
                                                                 doc.setFontSize(20);  // Sets the font size to 20
                                                                 doc.setFont("helvetica", "bold");  // Sets the font to Helvetica and makes it bold
@@ -671,9 +670,8 @@ module.exports = {
                                                                             const govtIdUrl = govtIdUrls[i];
 
                                                                             // Fetch the image as base64
-                                                                            // console.log(`govtIdUrl - `, govtIdUrl);
                                                                             const imageBases = await fetchImageToBase([govtIdUrl]);
-                                                                            // console.log(`imageBases - `, imageBases);
+
                                                                             // Check if the image is valid
                                                                             if (imageBases?.[0]?.base64) {
                                                                                 // Set font size and add the label for each image
@@ -798,7 +796,7 @@ module.exports = {
                                                                                             yPosition += passport_photoHeight + margin;  // Move to the next row
                                                                                         }
                                                                                     } else {
-                                                                                        // console.error(`Image at index ${i} could not be loaded.`);
+                                                                                        console.error(`Image at index ${i} could not be loaded.`);
                                                                                         const imageNotFoundText = `Image #${i + 1} not found.`;
                                                                                         const imageNotFoundTextWidth = doc.getTextWidth(imageNotFoundText);
                                                                                         const imageNotFoundCenterX = (doc.internal.pageSize.width - imageNotFoundTextWidth) / 2;
@@ -806,7 +804,7 @@ module.exports = {
                                                                                         yPosition += 10;  // Update yPos for the error message
                                                                                     }
                                                                                 } catch (error) {
-                                                                                    // console.error(`Error loading image at index ${i}:`, error);
+                                                                                    console.error(`Error loading image at index ${i}:`, error);
                                                                                     const errorMessage = `Error loading image #${i + 1}.`;
                                                                                     const errorTextWidth = doc.getTextWidth(errorMessage);
                                                                                     const errorTextCenterX = (doc.internal.pageSize.width - errorTextWidth) / 2;
@@ -844,10 +842,38 @@ module.exports = {
                                                                     { title: "Mobile Number", value: cefData.mb_no || "N/A" },
                                                                     { title: "Father's Name", value: cefData.father_name || "N/A" },
                                                                     { title: "Spouse's Name", value: cefData.husband_name || "N/A" },
-                                                                    { title: "Date of Birth", value: cefData.dob || "N/A" },
+                                                                    { title: "Date of Birth", value: formatDate(cefData.dob) || "N/A" },
+                                                                    {
+                                                                        title: "Age",
+                                                                        value: getFormattedAge(cefData.dob) || "N/A"
+                                                                    },
                                                                     { title: "Gender", value: cefData.gender || "N/A" },
+                                                                    { title: "Alternative Mobile Number", value: cefData.alternative_mobile_number || "N/A" },
                                                                     // Add conditional fields based on customBgv and nationality
                                                                 ];
+
+                                                                function getFormattedAge(dob) {
+                                                                    const birthDate = new Date(dob);
+                                                                    const today = new Date();
+
+                                                                    let years = today.getFullYear() - birthDate.getFullYear();
+                                                                    let months = today.getMonth() - birthDate.getMonth();
+
+                                                                    if (today.getDate() < birthDate.getDate()) {
+                                                                        months -= 1;
+                                                                    }
+
+                                                                    if (months < 0) {
+                                                                        years -= 1;
+                                                                        months += 12;
+                                                                    }
+
+                                                                    if (years < 1 && months >= 0) {
+                                                                        return `${months} month${months !== 1 ? 's' : ''}`;
+                                                                    }
+
+                                                                    return `${years} year${years !== 1 ? 's' : ''} ${months} month${months !== 1 ? 's' : ''}`;
+                                                                }
 
                                                                 // Conditionally add fields
                                                                 if (customBgv === 1 && nationality === "Indian") {
@@ -872,6 +898,7 @@ module.exports = {
 
                                                                 tableData.push(
                                                                     { title: "Aadhar Card Number", value: cefData.aadhar_card_number || "N/A" },
+                                                                    { title: "Aadhar Card Number", value: cefData.aadhar_card_linked_mobile_number || "N/A" },
                                                                     { title: "Pan Card Number", value: cefData.pan_card_number || "N/A" },
                                                                     { title: "Nationality", value: cefData.nationality || "N/A" },
                                                                     { title: "Marital Status", value: cefData.marital_status || "N/A" }
@@ -1013,21 +1040,23 @@ module.exports = {
                                                                 // Table for Permanent Address
                                                                 doc.autoTable({
                                                                     startY: yPosition,
-                                                                    head: [[{ content: 'Permanent Address', colSpan: 2, styles: { halign: 'center', fontSize: 16, bold: true } }],
-                                                                    ],
+                                                                    head: [[
+                                                                        { content: 'Permanent Address', colSpan: 2, styles: { halign: 'center', fontSize: 16, fontStyle: 'bold' } }
+                                                                    ]],
                                                                     body: [
-                                                                        ['Permanent Address', cefData.permanent_address || 'N/A'],
-                                                                        ['Pin Code', cefData.permanent_pin_code || 'N/A'],
-                                                                        ['Mobile Number', cefData.permanent_address_landline_number || 'N/A'],
-                                                                        ['Current State', cefData.permanent_address_state || 'N/A'],
-                                                                        ['Current Landmark', cefData.permanent_prominent_landmark || 'N/A'],
-                                                                        ['Current Address Stay No.', cefData.permanent_address_stay_to || 'N/A'],
-                                                                        ['Nearest Police Station', cefData.permanent_address_nearest_police_station || 'N/A']
+                                                                        ['House no', cefData.permanent_address || 'N/A'],
+                                                                        ['Street', cefData.permanent_street_locality || 'N/A'],
+                                                                        ['District', cefData.permanent_sector_village || 'N/A'],
+                                                                        ['City', cefData.permanent_city || 'N/A'],
+                                                                        ['State', cefData.permanent_address_state || 'N/A'],
+                                                                        ['Pincode', cefData.permanent_pin_code || 'N/A'],
                                                                     ],
                                                                     theme: 'grid',
                                                                     margin: { top: 10 },
-                                                                    styles: { fontSize: 10, cellPadding: 3 }
+                                                                    styles: { fontSize: 10, cellPadding: 3 },
+                                                                    pageBreak: 'avoid'  // Prevent breaking table across pages
                                                                 });
+
 
                                                                 // Update yPosition after the permanent address table
                                                                 yPosition = doc.autoTable.previous.finalY + 20; // Add a small margin after the table
@@ -1040,13 +1069,12 @@ module.exports = {
                                                                         head: [[{ content: 'Current Address', colSpan: 2, styles: { halign: 'center', fontSize: 16, bold: true } }],
                                                                         ],
                                                                         body: [
-                                                                            ['Current Address', cefData.current_address || 'N/A'],
-                                                                            ['Pin Code', cefData.current_address_pin_code || 'N/A'],
-                                                                            ['Mobile Number', cefData.current_address_landline_number || 'N/A'],
-                                                                            ['Current State', cefData.current_address_state || 'N/A'],
-                                                                            ['Current Landmark', cefData.current_prominent_landmark || 'N/A'],
-                                                                            ['Current Address Stay No.', cefData.current_address_stay_to || 'N/A'],
-                                                                            ['Nearest Police Station', cefData.current_address_nearest_police_station || 'N/A']
+                                                                            ['House no', cefData.current_address || 'N/A'],
+                                                                            ['Street', cefData.current_street_locality || 'N/A'],
+                                                                            ['District', cefData.current_sector_village || 'N/A'],
+                                                                            ['City', cefData.current_city || 'N/A'],
+                                                                            ['State', cefData.current_address_state || 'N/A'],
+                                                                            ['Pincode', cefData.current_pin_code || 'N/A'],
                                                                         ],
                                                                         theme: 'grid',
                                                                         margin: { top: 10 },
@@ -1062,13 +1090,17 @@ module.exports = {
 
 
 
-                                                                console.log("serviceDataMain.length - ", serviceDataMain.length);
+
+
                                                                 (async () => {
+                                                                    console.log(`Step 4`);
                                                                     if (!serviceDataMain.length) {
                                                                         const pageWidth = doc.internal.pageSize.width;
                                                                         doc.text("No service data available.", pageWidth / 2, yPosition + 10, { align: 'center' });
                                                                         yPosition += 20;
                                                                     } else {
+                                                                        console.log(`serviceDataMain.length - `, serviceDataMain.length);
+
                                                                         // const selectedServices = serviceDataMain.slice(0, 2); // Get only the first 2 services
 
                                                                         for (let i = 0; i < serviceDataMain.length; i++) {
@@ -1089,7 +1121,7 @@ module.exports = {
                                                                                 return `${years} years and ${months} months`;
                                                                             }
 
-
+                                                                            console.log(`Step 5`);
                                                                             if (service.db_table === "gap_validation") {
 
 
@@ -1097,7 +1129,7 @@ module.exports = {
                                                                                 doc.setTextColor(0, 0, 0);
                                                                                 if (annexureData?.gap_validation?.highest_education_gap === 'phd') {
                                                                                     const { employGaps, gaps } = calculateGaps(annexureData);
-                                                                                    // console.log(`gaps - `, gaps);
+
                                                                                     // Table for PhD information
                                                                                     yPosition += 10;
                                                                                     doc.autoTable({
@@ -1107,8 +1139,8 @@ module.exports = {
                                                                                         body: [
                                                                                             ['Institute Name', annexureData?.gap_validation?.education_fields?.phd_1?.phd_institute_name_gap || 'N/A'],
                                                                                             ['School Name', annexureData?.gap_validation?.education_fields?.phd_1?.phd_school_name_gap || 'N/A'],
-                                                                                            ['Start Date', annexureData?.gap_validation?.education_fields?.phd_1?.phd_start_date_gap || 'N/A'],
-                                                                                            ['End Date', annexureData?.gap_validation?.education_fields?.phd_1?.phd_end_date_gap || 'N/A'],
+                                                                                            ['Start Date', formatDate(annexureData?.gap_validation?.education_fields?.phd_1?.phd_start_date_gap) || 'N/A'],
+                                                                                            ['End Date', formatDate(annexureData?.gap_validation?.education_fields?.phd_1?.phd_end_date_gap) || 'N/A'],
                                                                                             ['Specialization', annexureData?.gap_validation?.education_fields?.phd_1?.phd_specialization_gap || 'N/A'],
                                                                                             ["Gap Status", renderGapMessageNew(gaps?.gapPostGradToPhd) || 'N/A']
                                                                                         ],
@@ -1269,7 +1301,7 @@ module.exports = {
                                                                                             fontSize: 10
                                                                                         }
                                                                                     });
-
+                                                                                    console.log(`Step 4`);
                                                                                     let index = 1;
                                                                                     let Graduation = [];
                                                                                     while (true) {
@@ -1385,7 +1417,7 @@ module.exports = {
 
                                                                                     ;  // Call this function separately if required for gap message
                                                                                 }
-
+                                                                                console.log(`Step 4`);
                                                                                 doc.addPage();
                                                                                 yPosition = 10;
                                                                                 // Secondary Education Section
@@ -1547,22 +1579,53 @@ module.exports = {
 
                                                                             }
                                                                             else {
+                                                                                console.log(`Step 6`);
+
+                                                                                let skipService = false;
+                                                                                if (
+                                                                                    Array.isArray(service.rows) &&
+                                                                                    service.rows.length > 0 &&
+                                                                                    Array.isArray(service.rows[0].inputs) &&
+                                                                                    service.rows[0].inputs.length > 0
+                                                                                ) {
+                                                                                    const input = service.rows[0].inputs[0];
+                                                                                    if (
+                                                                                        input.name?.startsWith('done_or_not_') &&
+                                                                                        input.type === 'checkbox'
+                                                                                    ) {
+                                                                                        const hasNotValue = annexureData?.[service.db_table]?.[input.name];
+                                                                                        if (["1", 1, true, "true"].includes(hasNotValue)) {
+                                                                                            skipService = true;
+                                                                                        }
+                                                                                    }
+                                                                                }
+
+
+
+                                                                                console.log(`Step 6`);
+                                                                                console.log(`Step 3.1`);
                                                                                 service.rows.forEach((row, rowIndex) => {
                                                                                     row.inputs.forEach((input) => {
-                                                                                        const isCheckbox = input.type === 'checkbox';
-                                                                                        const isDoneCheckbox = isCheckbox && (input.name.startsWith('done_or_not') || input.name.startsWith('has_not_done'));
-                                                                                        const isChecked = ["1", 1, true, "true"].includes(annexureData[service.db_table]?.[input.name] ?? false);
-
                                                                                         // Handle logic for checkbox checked state
-                                                                                        if (isDoneCheckbox && isChecked) {
-                                                                                            // Hide all rows except the one with the checked checkbox
+                                                                                        if (rowIndex > 0 && skipService) {
+                                                                                            return;
                                                                                         }
-                                                                                        if (input.type === 'file') return; // Skip file inputs
 
-                                                                                        const inputValue = annexureData[service.db_table]?.[input.name] || "NIL";
+                                                                                        if (input.type === 'file') return;
+
+                                                                                        let inputValue = annexureData[service.db_table]?.[input.name] || "NIL";
+
+                                                                                        // Detect and format ISO date strings (yyyy-mm-dd)
+                                                                                        const isoDateRegex = /^\d{4}-\d{2}-\d{2}$/;
+                                                                                        if (isoDateRegex.test(inputValue)) {
+                                                                                            const [year, month, day] = inputValue.split("-");
+                                                                                            inputValue = `${day}-${month}-${year}`;
+                                                                                        }
+
                                                                                         tableData.push([input.label, inputValue]);
                                                                                     });
                                                                                 });
+
 
                                                                                 // Add service heading
                                                                                 doc.setFontSize(16);
@@ -1616,21 +1679,19 @@ module.exports = {
                                                                                             // Handle image files
                                                                                             if (imageUrlsToProcess.length > 0) {
                                                                                                 const imageBases = await fetchImageToBase(imageUrlsToProcess);
-                                                                                                if (imageBases) {
-                                                                                                    for (const image of imageBases) {
-                                                                                                        if (!image.base64.startsWith('data:image/')) continue;
+                                                                                                for (const image of imageBases) {
+                                                                                                    if (!image.base64.startsWith('data:image/')) continue;
 
-                                                                                                        doc.addPage();
-                                                                                                        yPosition = 20;
+                                                                                                    doc.addPage();
+                                                                                                    yPosition = 20;
 
-                                                                                                        try {
-                                                                                                            const imageWidth = doc.internal.pageSize.width - 10;
-                                                                                                            // Adjust height if needed based on image dimensions or conditions
-                                                                                                            doc.addImage(image.base64, image.type, 5, yPosition + 20, imageWidth, annexureDataImageHeight);
-                                                                                                            yPosition += (annexureDataImageHeight + 30);
-                                                                                                        } catch (error) {
-                                                                                                            // console.error(`Error adding image:`, error);
-                                                                                                        }
+                                                                                                    try {
+                                                                                                        const imageWidth = doc.internal.pageSize.width - 10;
+                                                                                                        // Adjust height if needed based on image dimensions or conditions
+                                                                                                        doc.addImage(image.base64, image.type, 5, yPosition + 20, imageWidth, annexureDataImageHeight);
+                                                                                                        yPosition += (annexureDataImageHeight + 30);
+                                                                                                    } catch (error) {
+                                                                                                        console.error(`Error adding image:`, error);
                                                                                                     }
                                                                                                 }
                                                                                             }
@@ -1676,25 +1737,29 @@ module.exports = {
 
                                                                         }
                                                                     }
+
                                                                     doc.addPage();
                                                                     let newYPosition = 20
                                                                     doc.autoTable({
-                                                                        head: [[{ content: 'Declaration and Authorization', colSpan: 2, styles: { halign: 'center', fontSize: 16, bold: true } }],
-                                                                        ], // Table headers
+                                                                        head: [[
+                                                                            { content: 'Declaration and Authorization', colSpan: 4, styles: { halign: 'center', fontSize: 16, bold: true } }
+                                                                        ]],
                                                                         body: [
                                                                             [
                                                                                 {
                                                                                     content: 'I hereby authorize GoldQuest Global HR Services Private Limited and its representative to verify information provided in my application for employment and this employee background verification form, and to conduct enquiries as may be necessary, at the company’s discretion. I authorize all persons who may have information relevant to this enquiry to disclose it to GoldQuest Global HR Services Pvt Ltd or its representative. I release all persons from liability on account of such disclosure. I confirm that the above information is correct to the best of my knowledge. I agree that in the event of my obtaining employment, my probationary appointment, confirmation as well as continued employment in the services of the company are subject to clearance of medical test and background verification check done by the company.',
-                                                                                    colSpan: 2, styles: { halign: 'center', fontSize: 9, cellPadding: 5 }
+                                                                                    colSpan: 4, styles: { halign: 'center', fontSize: 9, cellPadding: 5 }
                                                                                 }
                                                                             ],
-                                                                            ['Name', cefData.name_declaration],
-                                                                            ['Date', cefData.declaration_date],
+                                                                            ['Name', cefData?.name_declaration || 'N/A', 'Date', formatDate(cefData?.declaration_date) || 'N/A']
                                                                         ],
-                                                                        startY: newYPosition, // Starting Y position
-                                                                        margin: { top: 20 }, // Margin for the table
-                                                                        theme: 'grid', // You can change the table theme (grid, stripes, etc.)
+                                                                        startY: newYPosition,
+                                                                        margin: { top: 20 },
+                                                                        theme: 'grid',
                                                                     });
+
+
+
 
                                                                     newYPosition = doc.autoTable.previous.finalY + 20; // Adjusting for space from the last table
 
@@ -1799,6 +1864,7 @@ module.exports = {
                                                                         doc.lastAutoTable.finalY + 10,
                                                                         { maxWidth: 180 }
                                                                     );
+
                                                                     // Save PDF
                                                                     // console.log(`pdfFileName - `, pdfFileName);
                                                                     // doc.save(`123.pdf`);
@@ -1814,7 +1880,7 @@ module.exports = {
 
 
                                                             } catch (error) {
-                                                                // console.error("PDF generation error:", error);
+                                                                console.error("PDF generation error:", error);
                                                                 reject(new Error("Error generating PDF"));
                                                             }
                                                         }
