@@ -404,6 +404,8 @@ const Customer = {
                         ORDER BY
                             application_counts.latest_application_date DESC;
                         `;
+
+      console.log("finalSql - ", finalSql);
       const results = await sequelize.query(finalSql, {
         type: QueryTypes.SELECT,
       });
