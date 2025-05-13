@@ -408,6 +408,10 @@ const Customer = {
         type: QueryTypes.SELECT,
       });
 
+      if (results.length === 0) {
+        return callback(null, []);
+      }
+
       // Process each result to fetch client_spoc names
       for (const result of results) {
         const headBranchApplicationsCountQuery = `SELECT COUNT(*) FROM \`client_applications\` ca INNER JOIN \`branches\` b ON ca.branch_id = b.id WHERE ca.customer_id = ? AND b.customer_id = ? AND b.is_head = ?`;
