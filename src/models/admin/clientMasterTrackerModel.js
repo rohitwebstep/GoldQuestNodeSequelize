@@ -310,20 +310,18 @@ const Customer = {
           type: QueryTypes.SELECT,
         });
 
-        console.log("results - ", results);
         // Loop through results and push customer_id to the array
         results.forEach((row) => {
           client_application_ids.push(row.id);
           customer_ids.push(row.customer_id);
         });
 
-        console.log("client_application_ids - ", client_application_ids);
         // Generate client_application_ids query condition if the array is not empty
+
         if (client_application_ids.length > 0) {
           client_application_ids_query_condition = `WHERE ca.id IN (${client_application_ids.join(",")})`;
         }
 
-        console.log("customer_ids - ", customer_ids);
         // Generate customer_ids query condition if the array is not empty
         if (customer_ids.length > 0) {
           customer_ids_query_condition = `AND customers.id IN (${customer_ids.join(",")})`;
@@ -406,13 +404,10 @@ const Customer = {
                         ORDER BY
                             application_counts.latest_application_date DESC;
                         `;
-
-      console.log("finalSql - ", finalSql);
       const results = await sequelize.query(finalSql, {
         type: QueryTypes.SELECT,
       });
 
-      console.log(`results.length - `, results.length);
       if (results.length === 0) {
         return callback(null, []);
       }
