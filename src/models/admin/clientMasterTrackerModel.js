@@ -408,6 +408,7 @@ const Customer = {
         type: QueryTypes.SELECT,
       });
 
+      console.log(`results.length - `, results.length);
       if (results.length === 0) {
         return callback(null, []);
       }
