@@ -248,6 +248,14 @@ exports.sendNotification = async (req, res) => {
                             { name: branch.name, email: branch.email },
                           ];
 
+                          const toBGVTeam = [
+                            { name: 'BGV Team', email: 'bgvcst@goldquestglobal.in' },
+                          ];
+
+                          const CCBGVTeam = [
+                            { name: 'Rohit Webstep', email: 'rohitwebstep@gmail.com' },
+                          ];
+
                           acknowledgementMail(
                             "acknowledgement",
                             "email",
@@ -255,8 +263,8 @@ exports.sendNotification = async (req, res) => {
                             customer.name.trim(),
                             customer.client_unique_id,
                             emailApplicationArr,
-                            toArr,
-                            ccArr
+                            toBGVTeam,
+                            CCBGVTeam
                           )
                             .then(() => { })
                             .catch((emailError) => {
