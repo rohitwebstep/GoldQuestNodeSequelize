@@ -194,7 +194,7 @@ const generateInvoiceModel = {
               });
             }
 
-            if (completeStatusGroups.includes(status)) {
+            if (completeStatusGroups.includes(statusResults[0]?.status)) {
               application.statusDetails.push({
                 serviceId,
                 status: statusResults[0]?.status || null,
