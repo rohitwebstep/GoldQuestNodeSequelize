@@ -194,12 +194,13 @@ const generateInvoiceModel = {
               });
             }
 
-            application.statusDetails.push({
-              serviceId,
-              status: statusResults[0]?.status || null,
-              additionalFee: additionalFeeColumn ? statusResults[0]?.[additionalFeeColumn] : null,
-            });
-
+            if (completeStatusGroups.includes(status)) {
+              application.statusDetails.push({
+                serviceId,
+                status: statusResults[0]?.status || null,
+                additionalFee: additionalFeeColumn ? statusResults[0]?.[additionalFeeColumn] : null,
+              });
+            }
           }
         }
       }
