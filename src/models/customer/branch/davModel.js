@@ -162,7 +162,7 @@ const dav = {
       const sql = `
         UPDATE \`dav_applications\`
         SET \`${dbColumn}\` = ?
-        WHERE AND \`candidate_application_id\` = ?
+        WHERE \`candidate_application_id\` = ?
       `;
 
       // First, check if the column exists
