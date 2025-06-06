@@ -336,20 +336,26 @@ module.exports = {
                                                     console.log('davData', davData);
                                                     const personalBody = [
                                                         [{ content: "Full Name of the Applicant", styles: { fontStyle: 'bold' } }, davData?.name || "N/A"],
-                                                        [{ content: "Aadhaar Number", styles: { fontStyle: 'bold' } }, davData?.aadhaar_number || "N/A"],
-                                                        [{ content: "Father's Name", styles: { fontStyle: 'bold' } }, davData?.father_name || "N/A"],
+                                                        [{ content: "Id Card details (Passport/Dl/Resident Card/Adhaar)", styles: { fontStyle: 'bold' } }, davData?.id_card_details || "N/A"],
+                                                        [{ content: "Verifier Name", styles: { fontStyle: 'bold' } }, davData?.verifier_name || "N/A"],
+                                                        [{ content: "Relation With Verifier: ", styles: { fontStyle: 'bold' } }, davData?.relation_with_verifier || "N/A"],
+                                                        [{ content: "House Number / Flat Number", styles: { fontStyle: 'bold' } }, davData?.house_flat_no || "N/A"],
+                                                        [{ content: "Street Address", styles: { fontStyle: 'bold' } }, davData?.street_adress || "N/A"],
+                                                        [{ content: "Locality Name", styles: { fontStyle: 'bold' } }, davData?.locality_name || "N/A"],
+                                                        [{ content: "City", styles: { fontStyle: 'bold' } }, davData?.city || "N/A"],
+                                                        [{ content: "State", styles: { fontStyle: 'bold' } }, davData?.state || "N/A"],
+                                                        [{ content: "Country", styles: { fontStyle: 'bold' } }, davData?.country || "N/A"],
+                                                        [{ content: "Nature of Residence", styles: { fontStyle: 'bold' } }, davData?.nature_of_residence || "N/A"],
+                                                        [{ content: "Prominent Landmark", styles: { fontStyle: 'bold' } }, davData?.landmark || "N/A"],
+                                                        [{ content: "Nearest Police Station", styles: { fontStyle: 'bold' } }, davData?.police_station || "N/A"],
+                                                        [{ content: "Pin code", styles: { fontStyle: 'bold' } }, davData?.pin_code || "N/A"],
                                                         [{ content: "Email Id", styles: { fontStyle: 'bold' } }, davData?.email || "N/A"],
                                                         [{ content: "Employee ID", styles: { fontStyle: 'bold' } }, davData?.employee_id || "N/A"],
                                                         [{ content: "Mobile Number", styles: { fontStyle: 'bold' } }, davData?.mobile_number || "N/A"],
-                                                        [{ content: "Gender", styles: { fontStyle: 'bold' } }, davData?.gender || "N/A"],
-                                                        [{ content: "Marital Status", styles: { fontStyle: 'bold' } }, davData?.marital_status || "N/A"],
-                                                        [{ content: "Date of Birth (dd/mm/yy)", styles: { fontStyle: 'bold' } }, davData?.dob || "N/A"],
-                                                        [{ content: "Husband's Name", styles: { fontStyle: 'bold' } }, davData?.husband_name || "N/A"],
                                                         [{ content: "Latitude", styles: { fontStyle: 'bold' } }, davData?.latitude || "N/A"],
                                                         [{ content: "Longitude", styles: { fontStyle: 'bold' } }, davData?.longitude || "N/A"],
                                                         [{ content: "Type of ID Attached", styles: { fontStyle: 'bold' } }, davData?.id_type || "N/A"],
                                                         [{ content: "No of years staying in the address", styles: { fontStyle: 'bold' } }, davData?.years_staying || "N/A"],
-
                                                     ];
 
                                                     doc.autoTable({
