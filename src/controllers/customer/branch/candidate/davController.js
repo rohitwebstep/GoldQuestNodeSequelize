@@ -430,17 +430,25 @@ exports.upload = async (req, res) => {
                       let targetDir;
                       let db_column;
                       switch (upload_category) {
-                        case "identity_proof":
+                        case "id_proof":
                           targetDir = `uploads/customers/${currentCustomer.client_unique_id}/candidate-applications/CD-${currentCustomer.client_unique_id}-${application_id}/dav/documents/identity-proofs`;
-                          db_column = `identity_proof`;
+                          db_column = `id_proof`;
                           break;
-                        case "home_photo":
-                          targetDir = `uploads/customers/${currentCustomer.client_unique_id}/candidate-applications/CD-${currentCustomer.client_unique_id}-${application_id}/dav/documents/home-photos`;
-                          db_column = `home_photo`;
+                        case "house_name_main_door":
+                          targetDir = `uploads/customers/${currentCustomer.client_unique_id}/candidate-applications/CD-${currentCustomer.client_unique_id}-${application_id}/dav/documents/house-name-main-door`;
+                          db_column = `house_name_main_door`;
                           break;
-                        case "locality":
-                          targetDir = `uploads/customers/${currentCustomer.client_unique_id}/candidate-applications/CD-${currentCustomer.client_unique_id}-${application_id}/dav/documents/localities`;
-                          db_column = `locality`;
+                        case "building_photo":
+                          targetDir = `uploads/customers/${currentCustomer.client_unique_id}/candidate-applications/CD-${currentCustomer.client_unique_id}-${application_id}/dav/documents/building-photo`;
+                          db_column = `building_photo`;
+                          break;
+                        case "street_photo":
+                          targetDir = `uploads/customers/${currentCustomer.client_unique_id}/candidate-applications/CD-${currentCustomer.client_unique_id}-${application_id}/dav/documents/street-photo`;
+                          db_column = `street_photo`;
+                          break;
+                        case "nearest_landmark":
+                          targetDir = `uploads/customers/${currentCustomer.client_unique_id}/candidate-applications/CD-${currentCustomer.client_unique_id}-${application_id}/dav/documents/nearest-landmark`;
+                          db_column = `nearest_landmark`;
                           break;
                         default:
                           return res.status(400).json({
