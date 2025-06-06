@@ -381,7 +381,7 @@ const cef = {
       const alterPromises = alterQueries.map(
         async (query) =>
           await sequelize.query(query, {
-            type: QueryTypes.ALTER,
+            type: QueryTypes.RAW,
           })
       );
 
@@ -596,7 +596,7 @@ const cef = {
         const alterPromises = alterQueries.map(
           async (query) =>
             await sequelize.query(query, {
-              type: QueryTypes.SELECT,
+              type: QueryTypes.RAW,
             })
         );
 
@@ -745,7 +745,7 @@ const cef = {
         const alterTableSql = `ALTER TABLE \`${db_table}\` ADD COLUMN \`${column}\` LONGTEXT`;
 
         await sequelize.query(alterTableSql, {
-          type: QueryTypes.ALTER,
+          type: QueryTypes.RAW,
         });
       });
 

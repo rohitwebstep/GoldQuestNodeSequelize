@@ -49,7 +49,7 @@ const dav = {
       const alterPromises = alterQueries.map(
         async (query) =>
           await sequelize.query(query, {
-            type: QueryTypes.SELECT,
+            type: QueryTypes.RAW,
           })
       );
 
