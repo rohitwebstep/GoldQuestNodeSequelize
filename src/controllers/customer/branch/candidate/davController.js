@@ -81,7 +81,7 @@ exports.isApplicationExist = (req, res) => {
 
           if (
             currentDAVApplication &&
-            Object.keys(currentDAVApplication).length > 0
+            Object.keys(currentDAVApplication).length > 0 && currentDAVApplication.is_submitted
           ) {
             return res.status(400).json({
               status: false,
@@ -203,7 +203,7 @@ exports.submit = (req, res) => {
 
               if (
                 currentDAVApplication &&
-                Object.keys(currentDAVApplication).length > 0
+                Object.keys(currentDAVApplication).length > 0 && currentDAVApplication.is_submitted
               ) {
                 return res.status(400).json({
                   status: false,
