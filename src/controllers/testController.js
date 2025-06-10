@@ -4,6 +4,7 @@ const Test = require("../models/testModel");
 const axios = require("axios");
 const sharp = require("sharp");
 const { upload, saveImage, saveImages, deleteFolder } = require("../utils/cloudImageSave");
+const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY;
 
 exports.deleteFolder = async (req, res) => {
   try {
@@ -244,4 +245,81 @@ exports.imageUrlToBase = async (req, res) => {
   }
 
   res.status(200).json({ images: base64Images });
+};
+
+
+exports.nearestLocationsByCoordinates = async (req, res) => {
+  // Extract client IP and domain
+  const clientIp = req.ip || req.connection.remoteAddress;
+  const forwardedFor = req.get('X-Forwarded-For');
+  const origin = req.get('Origin') || req.get('Referer') || 'Unknown';
+
+  const clientInfo = {
+    ip: forwardedFor ? forwardedFor.split(',')[0].trim() : clientIp,
+    domain: origin,
+  };
+
+  console.log(`📍 Request from IP: ${clientInfo.ip}, Domain: ${clientInfo.domain}`);
+
+  // Extract and validate query parameters
+  const { latitude, longitude, locations, radius } = req.body;
+
+  if (!latitude || !longitude || !locations) {
+    return res.status(400).json({
+      status: 'error',
+      message: 'Missing required parameters: latitude, longitude, and locations.',
+      client: clientInfo,
+    });
+  }
+
+  const lat = parseFloat(latitude);
+  const lng = parseFloat(longitude);
+  const types = locations.split(',').map(type => type.trim());
+
+  const results = {};
+
+  try {
+    for (const type of types) {
+      const googleUrl = `https://maps.googleapis.com/maps/api/place/nearbysearch/json`;
+      const params = {
+        location: `${lat},${lng}`,
+        radius,
+        type,
+        key: GOOGLE_API_KEY,
+      };
+
+      const response = await axios.get(googleUrl, { params });
+
+      if (response.data.status === 'OK' && response.data.results.length > 0) {
+        const nearest = response.data.results[0]; // pick only the nearest one
+        results[type] = {
+          name: nearest.name,
+          address: nearest.vicinity,
+          rating: nearest.rating || 'N/A',
+          coordinates: {
+            latitude: nearest.geometry.location.lat,
+            longitude: nearest.geometry.location.lng,
+          },
+        };
+      } else {
+        console.warn(`Google Places API returned '${response.data.status}' or no results for type: ${type}`);
+        results[type] = null;
+      }
+    }
+
+    return res.json({
+      status: 'success',
+      data: results,
+      client: clientInfo,
+    });
+
+  } catch (error) {
+    console.error('Google API error:', error.message);
+    return res.status(500).json({
+      status: 'error',
+      message: 'Failed to fetch data from Google Places API.',
+      error: error.message,
+      client: clientInfo,
+    });
+  }
 };

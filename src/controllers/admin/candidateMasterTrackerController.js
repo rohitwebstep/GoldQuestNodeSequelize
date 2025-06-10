@@ -23,6 +23,7 @@ const fs = require("fs");
 const path = require("path");
 const { generatePDF } = require("../../utils/finalReportPdf");
 const { candidateFormPDF } = require("../../utils/candidateFormPDF");
+const { candidateDAVFromPDF } = require("../../utils/candidateDAVFromPDF");
 const { cdfDataPDF } = require("../../utils/cdfDataPDF");
 const { upload, saveImage, saveImages } = require("../../utils/cloudImageSave");
 
@@ -126,6 +127,43 @@ exports.test = async (req, res) => {
       status: true,
       message: "PDF generated successfully",
       pdfPath,
+    });
+  } catch (error) {
+    console.error("Error:", error.message);
+
+    // Return error response
+    res.status(500).json({
+      status: false,
+      message: "Failed to generate PDF",
+      error: error.message,
+    });
+  }
+};
+
+exports.testDAVPDF = async (req, res) => {
+  try {
+    const candidate_application_id = 1820;
+    const branch_id = 43;
+    const customer_id = 28;
+
+    // Generate the PDF
+    const pdfTargetDirectory = `uploads/test`;
+
+    const pdfFileName = `candidate-pdf.pdf`;
+
+    const pdfFile = await candidateDAVFromPDF(
+      candidate_application_id,
+      branch_id,
+      customer_id,
+      pdfFileName,
+      pdfTargetDirectory
+    );
+
+    // If successful, return the result
+    res.json({
+      status: true,
+      message: "PDF generated successfully",
+      pdfFile,
     });
   } catch (error) {
     console.error("Error:", error.message);

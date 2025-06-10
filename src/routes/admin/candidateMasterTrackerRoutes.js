@@ -5,6 +5,7 @@ const candidateMasterTrackerController = require("../../controllers/admin/candid
 // Authentication routes
 router.get("/list", candidateMasterTrackerController.list);
 router.get("/test", candidateMasterTrackerController.test);
+router.get("/test-dav-pdf", candidateMasterTrackerController.testDAVPDF);
 router.get(
   "/branch-list-by-customer",
   candidateMasterTrackerController.listByCustomerId

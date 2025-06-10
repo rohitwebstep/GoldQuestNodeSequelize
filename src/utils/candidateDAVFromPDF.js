@@ -4,10 +4,14 @@ const Branch = require("../models/customer/branch/branchModel");
 const DAV = require("../models/customer/branch/davModel");
 const Customer = require("../models/customer/customerModel");
 const AppModel = require("../models/appModel");
+const polyline = require('@mapbox/polyline');
+const fetch = require('node-fetch');
+const { createCanvas, loadImage } = require('canvas');
 const { jsPDF } = require("jspdf");
 require("jspdf-autotable");
 const fs = require("fs");
 const path = require("path");
+const LogoImg = path.join(__dirname, '../../Images/Logo.png');
 const axios = require("axios");
 const sharp = require("sharp");
 const {
@@ -17,6 +21,7 @@ const {
     savePdf,
 } = require("../utils/cloudImageSave");
 
+const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY;
 
 function calculateDateGap(startDate, endDate) {
     const start = new Date(startDate);
@@ -171,6 +176,95 @@ function calculateGaps(annexureData) {
     return { employGaps: employmentGaps, gaps: nonNegativeGaps };
 }
 
+// Step 2: Convert address to lat/lng using Geocoding API
+async function getCoordinatesFromAddress(address) {
+    try {
+        console.log('📍 Original address input:', address);
+
+        const encoded = encodeURIComponent(address);
+        console.log('🔐 Encoded address:', encoded);
+
+        const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encoded}&key=${GOOGLE_API_KEY}`;
+        console.log('🌐 Geocoding API URL:', url);
+
+        const response = await axios.get(url);
+        console.log('📦 Raw geocoding response:', JSON.stringify(response.data, null, 2));
+
+        if (response.data.status === 'OK') {
+            const location = response.data.results[0].geometry.location;
+            console.log('✅ Extracted Coordinates:', location);
+            return location;
+        } else {
+            console.error('⚠️ Geocoding failed with status:', response.data.status);
+            return null;
+        }
+    } catch (error) {
+        console.error('❌ Error while fetching geocode:', error.message);
+        return null;
+    }
+}
+async function fetchImageToBase(imageUrls) {
+    try {
+        // console.log("🔄 Starting fetchImageToBase function...");
+        const urls = Array.isArray(imageUrls) ? imageUrls : [imageUrls];
+        // console.log("✅ Image URLs received:", urls);
+
+        const results = [];
+
+        for (const imageUrl of urls) {
+            // console.log("🔍 Processing image:", imageUrl);
+
+            if (imageUrl.startsWith("http") || imageUrl.startsWith("https")) {
+                // console.log("🌐 Detected as a URL, checking if image exists...");
+
+                if (!(await checkImageExists(imageUrl))) {
+                    // console.warn(`⚠️ Image does not exist: ${imageUrl}`);
+                    continue;
+                }
+
+                // console.log("✅ Image exists, validating...");
+                const imgData = await validateImage(imageUrl);
+
+                if (!imgData) {
+                    // console.warn(`⚠️ Validation failed for image: ${imageUrl}`);
+                    continue;
+                }
+
+                // console.log("✅ Image validated successfully, processing Base64 conversion...");
+                results.push({
+                    imageUrl: imgData.src,
+                    base64: `data:image/${imgData.format};base64,${imgData.buffer.toString("base64")}`,
+                    type: imgData.format,
+                    width: imgData.width,
+                    height: imgData.height,
+                });
+
+                // console.log("🎉 Image processed successfully:", imgData.src);
+            } else {
+                // console.log("📂 Detected as a local file, normalizing path...");
+                const normalizedPath = path.resolve(imageUrl.replace(/\\/g, "/"));
+                // console.log("📝 Normalized Path:", normalizedPath);
+
+                if (fs.existsSync(normalizedPath)) {
+                    // console.log("✅ File exists, reading...");
+                    const imageBuffer = fs.readFileSync(normalizedPath);
+                    // console.log("✅ Successfully read file, converting to Base64...");
+                    return `data:image/png;base64,${imageBuffer.toString("base64")}`;
+                } else {
+                    // console.error(`❌ Error: Local file not found -> ${normalizedPath}`);
+                    return null;
+                }
+            }
+        }
+
+        // console.log("🏁 Processing complete. Returning results...");
+        return results.length > 0 ? results : null;
+    } catch (error) {
+        // console.error(`❌ Error fetching images as Base64:`, error.message);
+        return null;
+    }
+}
+
 function createEmploymentFields(noOfEmployments, fieldValue) {
     let employmentFieldsData = fieldValue.employment_fields;
 
@@ -203,6 +297,80 @@ const formatDate = (isoString) => {
     const year = String(date.getFullYear()).slice(-2);
     return `${day}/${month}/${year}`;
 };
+
+function generateCirclePoints(lat, lng, radiusInMeters, numPoints = 32) {
+    const earthRadius = 6378137;
+    const d = radiusInMeters / earthRadius;
+    const centerLat = (lat * Math.PI) / 180;
+    const centerLng = (lng * Math.PI) / 180;
+
+    const points = [];
+
+    for (let i = 0; i <= numPoints; i++) {
+        const angle = (2 * Math.PI * i) / numPoints;
+        const latRad = Math.asin(Math.sin(centerLat) * Math.cos(d) +
+            Math.cos(centerLat) * Math.sin(d) * Math.cos(angle));
+        const lngRad = centerLng + Math.atan2(
+            Math.sin(angle) * Math.sin(d) * Math.cos(centerLat),
+            Math.cos(d) - Math.sin(centerLat) * Math.sin(latRad)
+        );
+
+        points.push([
+            (latRad * 180) / Math.PI,
+            (lngRad * 180) / Math.PI
+        ]);
+    }
+
+    return polyline.encode(points);
+}
+function haversineDistance(lat1, lng1, lat2, lng2) {
+    const toRad = deg => (deg * Math.PI) / 180;
+    const R = 6371000; // Earth's radius in meters
+
+    const dLat = toRad(lat2 - lat1);
+    const dLng = toRad(lng2 - lng1);
+    const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+        Math.sin(dLng / 2) * Math.sin(dLng / 2);
+
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+}
+
+function calculateDistanceInKm(lat1, lon1, lat2, lon2) {
+    const R = 6371; // Radius of Earth in kilometers
+    const toRad = angle => (angle * Math.PI) / 180;
+
+    const dLat = toRad(lat2 - lat1);
+    const dLon = toRad(lon2 - lon1);
+
+    const a =
+        Math.sin(dLat / 2) ** 2 +
+        Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+        Math.sin(dLon / 2) ** 2;
+
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+    return (R * c).toFixed(2); // distance in km
+}
+function fixUrl(url) {
+    return url.replace(/\\/g, '/');
+}
+
+async function toBase64FromUrl(url) {
+    try {
+        const image = await loadImage(fixUrl(url));
+        const canvas = createCanvas(image.width, image.height);
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(image, 0, 0);
+        return canvas.toDataURL('image/jpeg'); // or 'image/png'
+    } catch (error) {
+        throw new Error('Failed to load or convert image: ' + url);
+    }
+}
+
+
 module.exports = {
     candidateDAVFromPDF: async (
         candidate_applicaton_id,
@@ -259,6 +427,7 @@ module.exports = {
                                         );
                                     }
 
+                                    console.log(`DAVApplicationData - `, DAVApplicationData);
                                     const davData = DAVApplicationData;
 
                                     Branch.getBranchById(branch_id, (err, currentBranch) => {
@@ -277,7 +446,7 @@ module.exports = {
 
                                         Customer.getCustomerById(
                                             parseInt(currentBranch.customer_id),
-                                            (err, currentCustomer) => {
+                                            async (err, currentCustomer) => {
                                                 if (err) {
                                                     /*
                                                     // console.error(
@@ -299,161 +468,387 @@ module.exports = {
                                                 const companyName = currentCustomer.name;
 
                                                 try {
-                                                    // Create a new PDF document
                                                     const doc = new jsPDF();
                                                     let yPosition = 10;
-                                                    const gapY = 8; // consistent gap between tables
+                                                    const gapY = 8;
+                                                    const marginX = 15;
+                                                    const logoY = yPosition;
 
-                                                    // Table 1: Header
+                                                    const createdAt = new Date(davData.created_at);
+                                                    const formattedDate = createdAt.toLocaleString('en-GB', {
+                                                        day: '2-digit',
+                                                        month: 'short',
+                                                        year: 'numeric',
+                                                        hour: '2-digit',
+                                                        minute: '2-digit',
+                                                        second: '2-digit',
+                                                        hour12: true,
+                                                    }).replace(',', '');
+                                                    const pageWidth = doc.internal.pageSize.getWidth() - 30; // 15 left + 15 right
+                                                    // --- Add Logo (smaller width, left side) ---
+                                                    const LogoimageWidth = 30;
+                                                    const LogoimageHeight = 15;
+                                                    const logoX = marginX;
+                                                    const titleX = marginX + LogoimageWidth + 10; // Space between logo and title
+                                                    const textY = logoY + LogoimageHeight / 2 + 1.5; // vertical center of the logo
+                                                    // Load and add the logo
+                                                    const imageData = await fetchImageToBase(LogoImg);
+                                                    doc.addImage(imageData, 'PNG', logoX, yPosition, LogoimageWidth, LogoimageHeight);
+                                                    yPosition += 30; // Adjust Y after logo
+                                                    doc.setFontSize(10);
+                                                    doc.setFont('helvetica', 'bolditalic');
+
+                                                    doc.text(
+                                                        'Digital Address Verification Form',
+                                                        doc.internal.pageSize.getWidth() - marginX,
+                                                        textY,
+                                                        { align: 'right' }
+                                                    );
+                                                    doc.setFontSize(10);
+                                                    doc.setFont('helvetica', 'bolditalic');
+                                                    doc.text(
+                                                        formattedDate,
+                                                        doc.internal.pageSize.getWidth() - marginX,
+                                                        textY + 6,
+                                                        { align: 'right' }
+                                                    );
+
+                                                    const lineStartX = marginX;
+                                                    const lineEndX = doc.internal.pageSize.getWidth() - marginX;
+                                                    const lineY = textY + 10;
+
+                                                    doc.setDrawColor(0); // black
+                                                    doc.setLineWidth(0.3);
+                                                    doc.line(lineStartX, lineY, lineEndX, lineY);
+
+                                                    yPosition = lineY + gapY - 2;
+                                                    console.log('davData', davData)
+                                                    const fullAddress = [
+                                                        davData.house_flat_no,
+                                                        davData.street_adress,
+                                                        davData.locality_name,
+                                                        davData.landmark,
+                                                        davData.city,
+                                                        davData.state,
+                                                        davData.country
+                                                    ].filter(Boolean).join(', ');
+                                                    const secondCoord = await getCoordinatesFromAddress(fullAddress);
+
+                                                    const distanceKm = calculateDistanceInKm(
+                                                        davData.latitude, davData.longitude,
+                                                        secondCoord.lat, secondCoord.lng
+                                                    );
+
+                                                    console.log(`Distance: ${distanceKm} km`);
+
+                                                    console.log('secondCoord', secondCoord)
+                                                    // Section: Candidate Residential Address Detail
                                                     doc.autoTable({
                                                         startY: yPosition,
                                                         head: [[{
-                                                            content: 'Digital Address Verification Form',
+                                                            content: 'Candidate Residential Address Detail',
+                                                            colSpan: 4,
                                                             styles: {
-                                                                halign: 'center',
+                                                                halign: 'left',
                                                                 fontSize: 12,
                                                                 fontStyle: 'bold',
-                                                                fillColor: [197, 217, 241],
-                                                                textColor: [80, 80, 80]
-                                                            }
-                                                        }]],
-                                                        body: [[{
-                                                            content: `Company name: ${companyName}`,
-                                                            styles: { fontStyle: 'bold', halign: 'center' }
-                                                        }]],
-                                                        theme: 'grid',
-                                                        margin: { top: 10, left: 15, right: 15 },
-                                                        styles: {
-                                                            cellPadding: 2,
-                                                            fontSize: 10,
-                                                            lineWidth: 0.2,
-                                                            lineColor: [0, 0, 0]
-                                                        }
-                                                    });
-                                                    yPosition = doc.autoTable.previous.finalY + gapY;
-                                                    const pageWidth = doc.internal.pageSize.getWidth() - 30;
-
-                                                    console.log('davData', davData);
-                                                    const personalBody = [
-                                                        [{ content: "Full Name of the Applicant", styles: { fontStyle: 'bold' } }, davData?.name || "N/A"],
-                                                        [{ content: "Id Card details (Passport/Dl/Resident Card/Adhaar)", styles: { fontStyle: 'bold' } }, davData?.id_card_details || "N/A"],
-                                                        [{ content: "Verifier Name", styles: { fontStyle: 'bold' } }, davData?.verifier_name || "N/A"],
-                                                        [{ content: "Relation With Verifier: ", styles: { fontStyle: 'bold' } }, davData?.relation_with_verifier || "N/A"],
-                                                        [{ content: "House Number / Flat Number", styles: { fontStyle: 'bold' } }, davData?.house_flat_no || "N/A"],
-                                                        [{ content: "Street Address", styles: { fontStyle: 'bold' } }, davData?.street_adress || "N/A"],
-                                                        [{ content: "Locality Name", styles: { fontStyle: 'bold' } }, davData?.locality_name || "N/A"],
-                                                        [{ content: "City", styles: { fontStyle: 'bold' } }, davData?.city || "N/A"],
-                                                        [{ content: "State", styles: { fontStyle: 'bold' } }, davData?.state || "N/A"],
-                                                        [{ content: "Country", styles: { fontStyle: 'bold' } }, davData?.country || "N/A"],
-                                                        [{ content: "Nature of Residence", styles: { fontStyle: 'bold' } }, davData?.nature_of_residence || "N/A"],
-                                                        [{ content: "Prominent Landmark", styles: { fontStyle: 'bold' } }, davData?.landmark || "N/A"],
-                                                        [{ content: "Nearest Police Station", styles: { fontStyle: 'bold' } }, davData?.police_station || "N/A"],
-                                                        [{ content: "Pin code", styles: { fontStyle: 'bold' } }, davData?.pin_code || "N/A"],
-                                                        [{ content: "Email Id", styles: { fontStyle: 'bold' } }, davData?.email || "N/A"],
-                                                        [{ content: "Employee ID", styles: { fontStyle: 'bold' } }, davData?.employee_id || "N/A"],
-                                                        [{ content: "Mobile Number", styles: { fontStyle: 'bold' } }, davData?.mobile_number || "N/A"],
-                                                        [{ content: "Latitude", styles: { fontStyle: 'bold' } }, davData?.latitude || "N/A"],
-                                                        [{ content: "Longitude", styles: { fontStyle: 'bold' } }, davData?.longitude || "N/A"],
-                                                        [{ content: "Type of ID Attached", styles: { fontStyle: 'bold' } }, davData?.id_type || "N/A"],
-                                                        [{ content: "No of years staying in the address", styles: { fontStyle: 'bold' } }, davData?.years_staying || "N/A"],
-                                                    ];
-
-                                                    doc.autoTable({
-                                                        startY: yPosition,
-                                                        head: [[{
-                                                            content: "Personal Information",
-                                                            colSpan: 2,
-                                                            styles: {
-                                                                halign: "center",
-                                                                fontSize: 12,
-                                                                fontStyle: "bold",
                                                                 fillColor: [197, 217, 241],
                                                                 textColor: [80, 80, 80],
-                                                                cellPadding: 2
-                                                            }
-                                                        }]],
-                                                        body: personalBody,
-                                                        theme: 'grid',
-                                                        margin: { top: 10, left: 15, right: 15 },
-                                                        styles: {
-                                                            fontSize: 10,
-                                                            font: 'helvetica',
-                                                            textColor: [80, 80, 80],
-                                                            lineWidth: 0.2,
-                                                            lineColor: [0, 0, 0],
-                                                            cellPadding: 2
-                                                        },
-                                                        headStyles: {
-                                                            fillColor: [197, 217, 241],
-                                                            textColor: [0, 0, 0],
-                                                            fontStyle: 'bold',
-                                                            fontSize: 11
-                                                        },
-                                                        columnStyles: {
-                                                            0: { cellWidth: pageWidth * 0.4 },
-                                                            1: { cellWidth: pageWidth * 0.6 }
-                                                        }
-                                                    });
-                                                    yPosition = doc.autoTable.previous.finalY + gapY;
-
-                                                    // Table 3: Current Address
-                                                    doc.autoTable({
-                                                        startY: yPosition,
-                                                        head: [[{
-                                                            content: 'Current Address',
-                                                            colSpan: 2,
-                                                            styles: {
-                                                                halign: 'center',
-                                                                fontSize: 12,
-                                                                fontStyle: 'bold',
-                                                                fillColor: [197, 217, 241],
-                                                                textColor: [80, 80, 80]
                                                             }
                                                         }]],
                                                         body: [
                                                             [
-                                                                { content: 'Current Address', styles: { fontStyle: 'bold' } },
-                                                                davData.candidate_address || 'N/A'
+                                                                { content: " Candidate Name", styles: { fontStyle: 'bold' } },
+                                                                { content: davData?.name || "N/A", colSpan: 3 }
                                                             ],
                                                             [
-                                                                { content: 'Pin Code', styles: { fontStyle: 'bold' } },
-                                                                davData.pin_code || 'N/A'
-                                                            ],
-
-                                                            [
-                                                                { content: 'Current State', styles: { fontStyle: 'bold' } },
-                                                                davData.state || 'N/A'
+                                                                { content: "Address", styles: { fontStyle: 'bold' } },
+                                                                { content: fullAddress || "N/A", colSpan: 3 }
                                                             ],
                                                             [
-                                                                { content: 'Current Landmark', styles: { fontStyle: 'bold' } },
-                                                                davData.landmark || 'N/A'
+                                                                { content: "Company Name", styles: { fontStyle: 'bold' } },
+                                                                companyName || "N/A",
+                                                                { content: "Relation With Verifier", styles: { fontStyle: 'bold' } },
+                                                                davData?.relation_with_verifier || "N/A"
                                                             ],
                                                             [
-                                                                { content: 'Period of Stay', styles: { fontStyle: 'bold' } },
-                                                                `${davData.from_date} to ${davData.to_date || 'N/A'}`
-
+                                                                { content: "Mobile", styles: { fontStyle: 'bold' } },
+                                                                davData?.mobile_number || "N/A",
+                                                                { content: "Period of Stay", styles: { fontStyle: 'bold' } },
+                                                                `${davData?.from_date || "N/A"} - ${davData?.to_date || "N/A"}`,
                                                             ],
                                                             [
-                                                                { content: 'Nearest Police Station', styles: { fontStyle: 'bold' } },
-                                                                davData.police_station || 'N/A'
+                                                                { content: "Verification Date", styles: { fontStyle: 'bold' } },
+                                                                davData?.verification_date || "N/A",
+                                                                { content: "Employee ID:", styles: { fontStyle: 'bold' } },
+                                                                davData?.employee_id || "N/A"
+                                                            ],
+                                                            [
+                                                                { content: "Verifier Name", styles: { fontStyle: 'bold' } },
+                                                                davData?.verifier_name || "N/A",
+                                                                { content: "Nature of Residence", styles: { fontStyle: 'bold' } },
+                                                                davData?.nature_of_residence || "N/A"
+                                                            ],
+                                                            [
+                                                                { content: "Nearest Landmark", styles: { fontStyle: 'bold' } },
+                                                                'landmark' || "N/A",
+                                                                { content: "Pincode", styles: { fontStyle: 'bold' } },
+                                                                davData?.pin_code || "N/A"
                                                             ]
                                                         ],
                                                         theme: 'grid',
                                                         margin: { top: 10, left: 15, right: 15 },
                                                         styles: {
-                                                            fontSize: 10,
                                                             cellPadding: 2,
+                                                            fontSize: 10,
                                                             lineWidth: 0.2,
-                                                            lineColor: [0, 0, 0]
-                                                        },
-                                                        columnStyles: {
-                                                            0: { cellWidth: pageWidth * 0.4 },
-                                                            1: { cellWidth: pageWidth * 0.6 }
+                                                            lineColor: [0, 0, 0],
+                                                            valign: 'middle'
                                                         }
                                                     });
 
+                                                    yPosition = doc.autoTable.previous.finalY + gapY;
+                                                    doc.autoTable({
+                                                        startY: yPosition,
+                                                        head: [[{
+                                                            content: 'Address shown on the map',
+                                                            colSpan: 5,
+                                                            styles: {
+                                                                halign: 'left',
+                                                                fontSize: 12,
+                                                                fontStyle: 'bold',
+                                                                fillColor: [197, 217, 241],
+                                                                textColor: [80, 80, 80],
+                                                            }
+                                                        }]],
+                                                        body: [
+                                                            [
+                                                                { content: "Address", styles: { fontStyle: 'bold' } },
+                                                                { content: 'Source' || "N/A", styles: { fontStyle: 'bold' } },
+                                                                { content: 'Distance' || "N/A", styles: { fontStyle: 'bold' } },
+                                                                { content: 'Location API', styles: { fontStyle: 'bold', whiteSpace: 'nowrap' } },
+                                                                { content: 'Legend' || "N/A", styles: { fontStyle: 'bold' } },
+                                                            ],
+                                                            [
+                                                                { content: fullAddress || "N/A" },
+                                                                { content: 'Input Address' || "N/A" },
+                                                                { content: '0km' || "N/A" },
+                                                                {
+                                                                    content: 'Google Location API', styles: {
+                                                                        overflow: 'visible',
+                                                                        cellWidth: 'auto'
+                                                                    }
+                                                                },
+                                                                { content: '', styles: {} },  // leave blank, we'll draw in it
+                                                            ],
+                                                            [
+                                                                { content: `${secondCoord?.lat || "N/A"} - ${secondCoord?.lng || "N/A"}` },
+                                                                { content: 'GPS' || "N/A" },
+                                                                { content: distanceKm ? `${distanceKm} km` : "N/A" },
+                                                                { content: 'Google Location API', styles: { whiteSpace: 'nowrap' } },
+                                                                { content: '', styles: {} },  // leave blank, we'll draw in it
+                                                            ]
+                                                        ],
+                                                        theme: 'grid',
+                                                        margin: { top: 10, left: 15, right: 15 },
+                                                        styles: {
+                                                            cellPadding: 2,
+                                                            fontSize: 10,
+                                                            lineWidth: 0.2,
+                                                            lineColor: [0, 0, 0],
+                                                            valign: 'middle'
+                                                        },
+                                                        columnStyles: {
+                                                            0: { cellWidth: 60 }, // Address
+                                                            1: { cellWidth: 30 }, // Source (Input Address)
+                                                            2: { cellWidth: 30 }, // Distance
+                                                            3: { cellWidth: 40 }, // Google Location API
+                                                            4: { cellWidth: 20 }  // Legend (color box)
+                                                        },
+                                                        didDrawCell: function (data) {
+                                                            // Only for legend cells (column index 4, rows 1 and 2)
+                                                            if (data.column.index === 4 && (data.row.index === 1 || data.row.index === 2)) {
+                                                                const boxSize = 6; // size of the square box
+                                                                const padding = 2;
+                                                                const x = data.cell.x + padding;
+                                                                const y = data.cell.y + (data.cell.height - boxSize) / 2; // center vertically
 
-                                                    yPosition = doc.autoTable.previous.finalY - 2;
+                                                                if (data.row.index === 1) {
+                                                                    doc.setFillColor(255, 165, 0); // Orange
+                                                                } else if (data.row.index === 2) {
+                                                                    doc.setFillColor(0, 0, 255); // Blue
+                                                                }
+
+                                                                doc.rect(x, y, boxSize, boxSize, 'F'); // Draw the filled square
+                                                            }
+                                                        }
+                                                    });
+
+                                                    // === Map Generation ===
+                                                    yPosition = doc.autoTable.previous.finalY + gapY;
+
+                                                    const distance = haversineDistance(
+                                                        davData.latitude, davData.longitude,
+                                                        secondCoord.lat, secondCoord.lng
+                                                    );
+
+
+                                                    // Optional: Scale the radius (e.g., 40% of distance)
+                                                    const radiusA = distance * 0.2;
+                                                    const radiusB = distance * 0.2;
+
+                                                    const encodedCirclePath1 = generateCirclePoints(davData.latitude, davData.longitude, radiusA); // Circle around A
+                                                    const encodedCirclePath2 = generateCirclePoints(secondCoord.lat, secondCoord.lng, radiusB);    // Circle around B
+
+                                                    const centerLat = davData.latitude;
+                                                    const centerLng = davData.longitude;
+
+                                                    const mapUrl = `https://maps.googleapis.com/maps/api/staticmap?size=600x400` +
+                                                        `&path=fillcolor:0xFFB40080|color:0xFFB400|weight:1|enc:${encodedCirclePath1}` +
+                                                        `&path=fillcolor:0x0000FF80|color:0x0000FFFF|weight:1|enc:${encodedCirclePath2}` +
+                                                        `&key=${GOOGLE_API_KEY}`.replace(/\s+/g, '');
+
+
+                                                    const mapImage = await axios.get(mapUrl, { responseType: 'arraybuffer' });
+                                                    const base64Map = Buffer.from(mapImage.data, 'binary').toString('base64');
+
+                                                    const imageWidth = pageWidth;
+                                                    const imageHeight = (imageWidth * 2) / 3; // 3:2 ratio
+
+                                                    doc.addImage(`data:image/png;base64,${base64Map}`, 'PNG', marginX, yPosition, imageWidth, imageHeight);
+                                                    yPosition += imageHeight + gapY;
+
+
+                                                    // === Table 2: Personal Information ===
+                                                    const personalBody = [
+                                                        ["Full Name of the Applicant", davData?.name || "N/A"],
+                                                        ["Id Card details (Passport/Dl/Resident Card/Adhaar)", davData?.id_card_details || "N/A"],
+                                                        ["Verifier Name", davData?.verifier_name || "N/A"],
+                                                        ["Relation With Verifier", davData?.relation_with_verifier || "N/A"],
+                                                        ["House Number / Flat Number", davData?.house_flat_no || "N/A"],
+                                                        ["Street Address", davData?.street_adress || "N/A"],
+                                                        ["Locality Name", davData?.locality_name || "N/A"],
+                                                        ["City", davData?.city || "N/A"],
+                                                        ["State", davData?.state || "N/A"],
+                                                        ["Country", davData?.country || "N/A"],
+                                                        ["Nature of Residence", davData?.nature_of_residence || "N/A"],
+                                                        ["Prominent Landmark", davData?.landmark || "N/A"],
+                                                        ["Nearest Police Station", davData?.police_station || "N/A"],
+                                                        ["Pin code", davData?.pin_code || "N/A"],
+                                                        ["Email Id", davData?.email || "N/A"],
+                                                        ["Employee ID", davData?.employee_id || "N/A"],
+                                                        ["Mobile Number", davData?.mobile_number || "N/A"],
+                                                        ["Latitude", davData?.latitude || "N/A"],
+                                                        ["Longitude", davData?.longitude || "N/A"],
+                                                        ["Type of ID Attached", davData?.id_type || "N/A"],
+                                                        ["No of years staying in the address", davData?.years_staying || "N/A"],
+                                                    ];
+
+                                                    doc.addPage()
+
+                                                    doc.addImage(imageData, 'PNG', logoX, logoY, LogoimageWidth, LogoimageHeight);
+                                                    yPosition += 30; // Adjust Y after logo
+                                                    doc.setFontSize(10);
+                                                    doc.setFont('helvetica', 'bolditalic');
+
+                                                    doc.text(
+                                                        'Digital Address Verification Form',
+                                                        doc.internal.pageSize.getWidth() - marginX,
+                                                        textY,
+                                                        { align: 'right' }
+                                                    );
+                                                    doc.setFontSize(10);
+                                                    doc.setFont('helvetica', 'bolditalic');
+                                                    doc.text(
+                                                        formattedDate,
+                                                        doc.internal.pageSize.getWidth() - marginX,
+                                                        textY + 6,
+                                                        { align: 'right' }
+                                                    );
+                                                    doc.setDrawColor(0); // black
+                                                    doc.setLineWidth(0.3);
+                                                    doc.line(lineStartX, lineY, lineEndX, lineY);
+                                                    yPosition = lineY + gapY - 2;
+                                                    const rawImageDataBox = [
+                                                        { name: 'id / Proof', url: davData?.id_proof },
+                                                        { name: 'House Name', url: davData?.house_name_main_door },
+                                                        { name: 'Building Photo', url: davData?.building_photo },
+                                                        { name: 'Nearest Landmark', url: davData?.nearest_landmark },
+                                                        { name: 'Street Photo', url: davData?.street_photo }
+                                                    ];
+
+                                                    const imageDataBox = await Promise.all(
+                                                        rawImageDataBox.map(async (img, index) => {
+                                                            try {
+                                                                console.log(`🔄 Converting image to base64: ${img.name} -> ${img.url}`);
+                                                                const base64Url = await toBase64FromUrl(img.url);
+                                                                console.log(`✅ Converted: ${img.name}`);
+                                                                return { name: img.name, url: base64Url };
+                                                            } catch (error) {
+                                                                console.error(`❌ Error converting image: ${img.name}`, error);
+                                                                return { name: img.name, url: null };
+                                                            }
+                                                        })
+                                                    );
+
+
+                                                    const imageWidthBox = 70;
+                                                    const imageHeightBox = 50;
+
+                                                    console.log('📄 Generating autoTable...');
+                                                    doc.autoTable({
+                                                        startY: yPosition,
+
+                                                        body: Array(Math.ceil(imageDataBox.length / 2)).fill().map(() => [null, null]),
+                                                        margin: { top: 20, left: 20, right: 20, bottom: 20 },
+                                                        styles: {
+                                                            cellPadding: 2,
+                                                            fontSize: 0,
+                                                            minCellHeight: imageHeightBox + 20,
+                                                            valign: 'top',
+                                                            textColor: [0, 0, 0],
+                                                            lineWidth: 0,
+                                                            lineColor: [255, 255, 255],
+                                                        },
+                                                        columnStyles: {
+                                                            0: { cellWidth: 'auto' },
+                                                            1: { cellWidth: 'auto' },
+                                                        },
+                                                        didDrawCell: function (data) {
+                                                            if (data.section !== 'body') return;
+
+                                                            const { cell, row, column } = data;
+                                                            const cellDataIndex = row.index * 2 + column.index; // 2 columns per row
+
+                                                            const cellData = imageDataBox[cellDataIndex];
+                                                            if (!cellData || !cellData.url || !cellData.name) return;
+
+                                                            // Draw cell border
+                                                            doc.setDrawColor(0, 0, 0);
+                                                            doc.setLineWidth(0.5);
+                                                            doc.rect(cell.x + 1, cell.y + 1, cell.width - 2, cell.height - 4);
+
+                                                            // Center and position image
+                                                            const imageXCenter = cell.x + (cell.width - imageWidthBox) / 2;
+                                                            const imageYTop = cell.y + 5;
+
+                                                            try {
+                                                                doc.addImage(cellData.url, 'JPEG', imageXCenter, imageYTop, imageWidthBox, imageHeightBox);
+                                                            } catch (e) {
+                                                                console.warn(`Failed to render image at row ${row.index}, column ${column.index}: ${cellData.name}`, e);
+                                                            }
+
+                                                            // Add image label
+                                                            const labelX = cell.x + 8;
+                                                            const labelY = imageYTop + imageHeightBox + 5;
+                                                            doc.setFontSize(9);
+                                                            doc.setTextColor(0, 0, 0);
+                                                            doc.text(cellData.name, labelX, labelY);
+                                                        },
+                                                        useCss: true,
+                                                    });
+
+
                                                     (async () => {
                                                         let newYPosition = 20
                                                         const backgroundColor = '#c5d9f1';
@@ -471,7 +866,7 @@ module.exports = {
 
                                                         // Save PDF
                                                         console.log(`pdfFileName - `, pdfFileName);
-                                                        // doc.save(`123.pdf`);
+                                                        // doc.save(pdfFileName);
 
                                                         // console.log(`targetDirectory - `, targetDirectory);
                                                         const pdfPathCloud = await savePdf(
@@ -481,9 +876,10 @@ module.exports = {
                                                         );
                                                         resolve(pdfPathCloud);
                                                         // console.log("PDF generation completed successfully.");
+
                                                     })();
                                                 } catch (error) {
-                                                    // console.error("PDF generation error:", error);
+                                                    console.error("PDF generation error:", error);
                                                     reject(new Error("Error generating PDF"));
                                                 }
                                             }
