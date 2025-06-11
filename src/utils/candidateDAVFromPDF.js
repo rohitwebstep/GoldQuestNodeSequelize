@@ -809,8 +809,8 @@ module.exports = {
                                                                 mapImageFormat,
                                                                 marginX,
                                                                 yPosition,
-                                                                imageWidth,
-                                                                imageHeight
+                                                                mapImgWidth,
+                                                                mapImgHeight
                                                             );
                                                         }
                                                     }
