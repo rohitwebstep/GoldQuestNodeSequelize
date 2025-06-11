@@ -818,10 +818,17 @@ module.exports = {
                                                     ];
 
                                                     const imageDataBox = await Promise.all(
-                                                        rawImageDataBox.map(async (img, index) => {
+                                                        rawImageDataBox.map(async (img) => {
                                                             try {
-                                                                console.log(`🔄 Converting image to base64: ${img.name} -> ${img.url}`);
-                                                                const base64Url = await toBase64FromUrl(img.url);
+                                                                const urls = img.url?.split(',').map(u => u.trim()).filter(Boolean); // Split and clean
+
+                                                                if (!urls || urls.length === 0) {
+                                                                    return { name: img.name, url: null };
+                                                                }
+
+                                                                // Convert only the first image to base64 (you can loop all if needed)
+                                                                console.log(`🔄 Converting image to base64: ${img.name} -> ${urls[0]}`);
+                                                                const base64Url = await toBase64FromUrl(urls[0]);
                                                                 console.log(`✅ Converted: ${img.name}`);
                                                                 return { name: img.name, url: base64Url };
                                                             } catch (error) {
@@ -830,7 +837,6 @@ module.exports = {
                                                             }
                                                         })
                                                     );
-
 
                                                     const imageWidthBox = 70;
                                                     const imageHeightBox = 50;

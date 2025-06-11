@@ -22,6 +22,16 @@ const {
 
 const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY;
 
+async function checkImageExists(url) {
+    try {
+        const response = await fetch(url, { method: "HEAD" });
+        return response.ok; // Returns true if HTTP status is 200-299
+    } catch (error) {
+        console.error(`Error checking image existence at ${url}:`, error);
+        return false;
+    }
+}
+
 const getImageFormat = (url) => {
     const ext = url.split(".").pop().toLowerCase();
     if (ext === "png") return "PNG";
