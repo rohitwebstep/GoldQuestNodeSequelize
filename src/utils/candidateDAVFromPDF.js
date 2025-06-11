@@ -560,7 +560,7 @@ module.exports = {
                                                         davData.address_latitude, davData.address_longitude,
                                                     );
 
-                                                    console.log(`Distance: ${distanceKm} km`);
+                                                    // console.log(`Distance: ${distanceKm} km`);
 
                                                     // Section: Candidate Residential Address Detail
                                                     doc.autoTable({
