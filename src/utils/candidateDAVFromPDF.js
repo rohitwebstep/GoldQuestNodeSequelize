@@ -694,15 +694,16 @@ module.exports = {
         lineWidth: 0.2,
         lineColor: [0, 0, 0],
         valign: 'middle',
-        overflow: 'linebreak' // Ensures content wraps properly
+        overflow: 'linebreak'
     },
     columnStyles: {
-        0: { cellWidth: 50 }, // Label column
-        1: { cellWidth: 50 },
-        2: { cellWidth: 50 },
-        3: { cellWidth: 50 }
+        0: { cellWidth: 45 }, // Fixed width in mm (approx. 25%)
+        1: { cellWidth: 45 },
+        2: { cellWidth: 45 },
+        3: { cellWidth: 45 }
     }
 });
+
 
                                                     yPosition = doc.autoTable.previous.finalY + gapY;
                                                     doc.autoTable({
