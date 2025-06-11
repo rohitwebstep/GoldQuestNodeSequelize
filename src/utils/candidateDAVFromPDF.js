@@ -32,6 +32,41 @@ async function checkImageExists(url) {
     }
 }
 
+async function validateImage(url) {
+    try {
+        const response = await axios.get(url, { responseType: "arraybuffer" });
+        if (response.status !== 200) {
+            console.warn(
+                `Image fetch failed for URL: ${url} with status: ${response.status}`
+            );
+            return null;
+        }
+
+        if (!response.data) {
+            console.warn(`No data found in the response for URL: ${url}`);
+            return null;
+        }
+
+        const buffer = Buffer.from(response.data);
+        const metadata = await sharp(buffer).metadata();
+
+        if (!metadata) {
+            console.warn(`Unable to fetch metadata for image from URL: ${url}`);
+            return null;
+        }
+
+        return {
+            src: url,
+            width: metadata.width,
+            height: metadata.height,
+            format: metadata.format,
+        };
+    } catch (error) {
+        console.error(`Error validating image from ${url}:`, error);
+        return null;
+    }
+}
+
 const getImageFormat = (url) => {
     const ext = url.split(".").pop().toLowerCase();
     if (ext === "png") return "PNG";
