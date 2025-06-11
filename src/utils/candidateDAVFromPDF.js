@@ -22,6 +22,16 @@ const {
 
 const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY;
 
+async function checkImageExists(url) {
+    try {
+        const response = await fetch(url, { method: "HEAD" });
+        return response.ok; // Returns true if HTTP status is 200-299
+    } catch (error) {
+        console.error(`Error checking image existence at ${url}:`, error);
+        return false;
+    }
+}
+
 const getImageFormat = (url) => {
     const ext = url.split(".").pop().toLowerCase();
     if (ext === "png") return "PNG";
@@ -566,8 +576,147 @@ module.exports = {
                                                         throw new Error('jspdf-autotable plugin is not loaded.');
                                                     }
 
+                                                    // Section: Candidate Residential Address Detail
+                                                    doc.autoTable({
+                                                        startY: yPosition,
+                                                        head: [[{
+                                                            content: 'Candidate Residential Address Detail',
+                                                            colSpan: 4,
+                                                            styles: {
+                                                                halign: 'left',
+                                                                fontSize: 12,
+                                                                fontStyle: 'bold',
+                                                                fillColor: [197, 217, 241],
+                                                                textColor: [80, 80, 80],
+                                                            }
+                                                        }]],
+                                                        body: [
+                                                            [
+                                                                { content: " Candidate Name", styles: { fontStyle: 'bold' } },
+                                                                { content: davData?.name || "N/A", colSpan: 3 }
+                                                            ],
+                                                            [
+                                                                { content: "Address", styles: { fontStyle: 'bold' } },
+                                                                { content: fullAddress || "N/A", colSpan: 3 }
+                                                            ],
+                                                            [
+                                                                { content: "Company Name", styles: { fontStyle: 'bold' } },
+                                                                companyName || "N/A",
+                                                                { content: "Relation With Verifier", styles: { fontStyle: 'bold' } },
+                                                                davData?.relation_with_verifier || "N/A"
+                                                            ],
+                                                            [
+                                                                { content: "Mobile", styles: { fontStyle: 'bold' } },
+                                                                davData?.mobile_number || "N/A",
+                                                                { content: "Period of Stay", styles: { fontStyle: 'bold' } },
+                                                                `${davData?.from_date || "N/A"} - ${davData?.to_date || "N/A"}`,
+                                                            ],
+                                                            [
+                                                                { content: "Verification Date", styles: { fontStyle: 'bold' } },
+                                                                davData?.verification_date || "N/A",
+                                                                { content: "Employee ID:", styles: { fontStyle: 'bold' } },
+                                                                davData?.employee_id || "N/A"
+                                                            ],
+                                                            [
+                                                                { content: "Verifier Name", styles: { fontStyle: 'bold' } },
+                                                                davData?.verifier_name || "N/A",
+                                                                { content: "Nature of Residence", styles: { fontStyle: 'bold' } },
+                                                                davData?.nature_of_residence || "N/A"
+                                                            ],
+                                                            [
+                                                                { content: "Nearest Landmark", styles: { fontStyle: 'bold' } },
+                                                                'landmark' || "N/A",
+                                                                { content: "Pincode", styles: { fontStyle: 'bold' } },
+                                                                davData?.pin_code || "N/A"
+                                                            ]
+                                                        ],
+                                                        theme: 'grid',
+                                                        margin: { top: 10, left: 15, right: 15 },
+                                                        styles: {
+                                                            cellPadding: 2,
+                                                            fontSize: 10,
+                                                            lineWidth: 0.2,
+                                                            lineColor: [0, 0, 0],
+                                                            valign: 'middle'
+                                                        }
+                                                    });
 
                                                     yPosition = doc.autoTable.previous.finalY + gapY;
+                                                    doc.autoTable({
+                                                        startY: yPosition,
+                                                        head: [[{
+                                                            content: 'Address shown on the map',
+                                                            colSpan: 5,
+                                                            styles: {
+                                                                halign: 'left',
+                                                                fontSize: 12,
+                                                                fontStyle: 'bold',
+                                                                fillColor: [197, 217, 241],
+                                                                textColor: [80, 80, 80],
+                                                            }
+                                                        }]],
+                                                        body: [
+                                                            [
+                                                                { content: "Address", styles: { fontStyle: 'bold' } },
+                                                                { content: 'Source' || "N/A", styles: { fontStyle: 'bold' } },
+                                                                { content: 'Distance' || "N/A", styles: { fontStyle: 'bold' } },
+                                                                { content: 'Location API', styles: { fontStyle: 'bold', whiteSpace: 'nowrap' } },
+                                                                { content: 'Legend' || "N/A", styles: { fontStyle: 'bold' } },
+                                                            ],
+                                                            [
+                                                                { content: fullAddress || "N/A" },
+                                                                { content: 'Input Address' || "N/A" },
+                                                                { content: '0km' || "N/A" },
+                                                                {
+                                                                    content: 'Google Location API', styles: {
+                                                                        overflow: 'visible',
+                                                                        cellWidth: 'auto'
+                                                                    }
+                                                                },
+                                                                { content: '', styles: {} },  // leave blank, we'll draw in it
+                                                            ],
+                                                            [
+                                                                { content: `${davData?.address_latitude || "N/A"} - ${davData?.address_longitude || "N/A"}` },
+                                                                { content: 'GPS' || "N/A" },
+                                                                { content: distanceKm ? `${distanceKm} km` : "N/A" },
+                                                                { content: 'Google Location API', styles: { whiteSpace: 'nowrap' } },
+                                                                { content: '', styles: {} },  // leave blank, we'll draw in it
+                                                            ]
+                                                        ],
+                                                        theme: 'grid',
+                                                        margin: { top: 10, left: 15, right: 15 },
+                                                        styles: {
+                                                            cellPadding: 2,
+                                                            fontSize: 10,
+                                                            lineWidth: 0.2,
+                                                            lineColor: [0, 0, 0],
+                                                            valign: 'middle'
+                                                        },
+                                                        columnStyles: {
+                                                            0: { cellWidth: 60 }, // Address
+                                                            1: { cellWidth: 30 }, // Source (Input Address)
+                                                            2: { cellWidth: 30 }, // Distance
+                                                            3: { cellWidth: 40 }, // Google Location API
+                                                            4: { cellWidth: 20 }  // Legend (color box)
+                                                        },
+                                                        didDrawCell: function (data) {
+                                                            // Only for legend cells (column index 4, rows 1 and 2)
+                                                            if (data.column.index === 4 && (data.row.index === 1 || data.row.index === 2)) {
+                                                                const boxSize = 6; // size of the square box
+                                                                const padding = 2;
+                                                                const x = data.cell.x + padding;
+                                                                const y = data.cell.y + (data.cell.height - boxSize) / 2; // center vertically
+
+                                                                if (data.row.index === 1) {
+                                                                    doc.setFillColor(255, 165, 0); // Orange
+                                                                } else if (data.row.index === 2) {
+                                                                    doc.setFillColor(0, 0, 255); // Blue
+                                                                }
+
+                                                                doc.rect(x, y, boxSize, boxSize, 'F'); // Draw the filled square
+                                                            }
+                                                        }
+                                                    });
 
                                                     // === Map Generation ===
                                                     yPosition = doc.autoTable.previous.finalY + gapY;
@@ -687,6 +836,57 @@ module.exports = {
                                                     const imageHeightBox = 50;
 
                                                     console.log('📄 Generating autoTable...');
+                                                    doc.autoTable({
+                                                        startY: yPosition,
+
+                                                        body: Array(Math.ceil(imageDataBox.length / 2)).fill().map(() => [null, null]),
+                                                        margin: { top: 20, left: 20, right: 20, bottom: 20 },
+                                                        styles: {
+                                                            cellPadding: 2,
+                                                            fontSize: 0,
+                                                            minCellHeight: imageHeightBox + 20,
+                                                            valign: 'top',
+                                                            textColor: [0, 0, 0],
+                                                            lineWidth: 0,
+                                                            lineColor: [255, 255, 255],
+                                                        },
+                                                        columnStyles: {
+                                                            0: { cellWidth: 'auto' },
+                                                            1: { cellWidth: 'auto' },
+                                                        },
+                                                        didDrawCell: function (data) {
+                                                            if (data.section !== 'body') return;
+
+                                                            const { cell, row, column } = data;
+                                                            const cellDataIndex = row.index * 2 + column.index; // 2 columns per row
+
+                                                            const cellData = imageDataBox[cellDataIndex];
+                                                            if (!cellData || !cellData.url || !cellData.name) return;
+
+                                                            // Draw cell border
+                                                            doc.setDrawColor(0, 0, 0);
+                                                            doc.setLineWidth(0.5);
+                                                            doc.rect(cell.x + 1, cell.y + 1, cell.width - 2, cell.height - 4);
+
+                                                            // Center and position image
+                                                            const imageXCenter = cell.x + (cell.width - imageWidthBox) / 2;
+                                                            const imageYTop = cell.y + 5;
+
+                                                            try {
+                                                                doc.addImage(cellData.url, 'JPEG', imageXCenter, imageYTop, imageWidthBox, imageHeightBox);
+                                                            } catch (e) {
+                                                                console.warn(`Failed to render image at row ${row.index}, column ${column.index}: ${cellData.name}`, e);
+                                                            }
+
+                                                            // Add image label
+                                                            const labelX = cell.x + 8;
+                                                            const labelY = imageYTop + imageHeightBox + 5;
+                                                            doc.setFontSize(9);
+                                                            doc.setTextColor(0, 0, 0);
+                                                            doc.text(cellData.name, labelX, labelY);
+                                                        },
+                                                        useCss: true,
+                                                    });
 
 
                                                     (async () => {
