@@ -930,11 +930,11 @@ module.exports = {
                                                             overflow: 'linebreak'
                                                         },
                                                         columnStyles: {
-                                                            0: { cellWidth: 40 },
-                                                            1: { cellWidth: 40 },
-                                                            2: { cellWidth: 40 },
-                                                            3: { cellWidth: 40 },
-                                                            4: { cellWidth: 40 }
+                                                            0: { cellWidth: 35 },
+                                                            1: { cellWidth: 35 },
+                                                            2: { cellWidth: 35 },
+                                                            3: { cellWidth: 35 },
+                                                            4: { cellWidth: 35 }
                                                         }
                                                     });
 
