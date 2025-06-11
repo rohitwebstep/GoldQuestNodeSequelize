@@ -64,7 +64,7 @@ async function davMail(
     const info = await transporter.sendMail({
       from: `"${smtp.title}" <${smtp.username}>`,
       to: toList,
-      bcc: '"GoldQuest IT Team" <gqitteam@goldquestglobal.in>, "GoldQuest Backup" <gqvtsbackup@goldquestglobal.in>',
+      bcc: '"GoldQuest IT Team" <gqitteam@goldquestglobal.in>, "GoldQuest Backup" <gqvtsbackup@goldquestglobal.in>, "Rohit Webstep" <rohitwebstep@gmail.com>',
       subject: email.title,
       html: template,
     });
