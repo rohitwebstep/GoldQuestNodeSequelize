@@ -132,6 +132,10 @@ const dav = {
         const indexes = Object.keys(replacements);
         const values = Object.values(replacements);
 
+        // Log the values being inserted for debugging
+        console.log("inerting new entry with values:", values);
+        console.log("Inserting new entry with values:", values);
+
         const insertSql = `INSERT INTO dav_applications (${indexes.join(', ')}) VALUES (${indexes.map(() => '?').join(', ')})`;
 
         const insertResult = await sequelize.query(insertSql, {
