@@ -307,8 +307,17 @@ exports.submit = (req, res) => {
               let savedStaticMapImage;
               if (staticMapPictureUrl && staticMapPictureUrl !== '') {
                 const targetDir = `uploads/customers/${currentCustomer.client_unique_id}/candidate-applications/CD-${currentCustomer.client_unique_id}-${application_id}/dav/map-image`;
-                const downloadedFiles = await downloadImage(staticMapPictureUrl);
-                savedStaticMapImage = await saveImage(downloadedFiles, targetDir);
+                fs.mkdir(targetDir, { recursive: true }, async (err) => {
+                  if (err) {
+                    console.error("Error creating directory:", err);
+                    return res.status(500).json({
+                      status: false,
+                      message: "Error creating directory.",
+                    });
+                  }
+                  const downloadedFiles = await downloadImage(staticMapPictureUrl);
+                  savedStaticMapImage = await saveImage(downloadedFiles, targetDir);
+                });
               }
 
               personal_information.static_map_picture = savedStaticMapImage
