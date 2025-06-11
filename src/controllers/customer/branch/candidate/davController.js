@@ -274,22 +274,40 @@ exports.submit = (req, res) => {
             }
           }
 
-          // 7. Store map image
-          personal_information.static_map_picture = savedStaticMapImage;
-
-          // 8. Create DAV record
-          DAV.create(personal_information, application_id, branch_id, customer_id, (err, result) => {
+          App.appInfo("backend", async (err, appInfo) => {
             if (err) {
-              console.error("Error creating DAV application:", err);
+              console.error("Database error:", err);
               return res.status(500).json({
                 status: false,
-                message: "An error occurred while submitting the application.",
+                err,
+                message: err.message,
+                token: newToken,
               });
             }
 
-            return res.status(200).json({
-              status: true,
-              message: "DAV Application submitted successfully.",
+            let imageHost = "www.example.in";
+
+            if (appInfo) {
+              imageHost = appInfo.cloud_host || "www.example.in";
+            }
+
+            // 7. Store map image
+            personal_information.static_map_picture = `${imageHost}/${savedStaticMapImage.path}`;
+
+            // 8. Create DAV record
+            DAV.create(personal_information, application_id, branch_id, customer_id, (err, result) => {
+              if (err) {
+                console.error("Error creating DAV application:", err);
+                return res.status(500).json({
+                  status: false,
+                  message: "An error occurred while submitting the application.",
+                });
+              }
+
+              return res.status(200).json({
+                status: true,
+                message: "DAV Application submitted successfully.",
+              });
             });
           });
         });
