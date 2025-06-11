@@ -644,6 +644,8 @@ module.exports = {
                                                                 fontStyle: 'bold',
                                                                 fillColor: [197, 217, 241],
                                                                 textColor: [80, 80, 80],
+                                                                overflow: 'visible',
+                                                                cellWidth: 'auto'
                                                             }
                                                         }]],
                                                         body: [
