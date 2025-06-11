@@ -782,8 +782,34 @@ module.exports = {
                                                         }
                                                     });
 
+                                                    doc.addPage()
+
+                                                    doc.addImage(imageData, 'PNG', logoX, logoY, LogoimageWidth, LogoimageHeight);
+                                                    yPosition += 30; // Adjust Y after logo
+                                                    doc.setFontSize(10);
+                                                    doc.setFont('helvetica', 'bolditalic');
+
+                                                    doc.text(
+                                                        'Digital Address Verification Form',
+                                                        doc.internal.pageSize.getWidth() - marginX,
+                                                        textY,
+                                                        { align: 'right' }
+                                                    );
+                                                    doc.setFontSize(10);
+                                                    doc.setFont('helvetica', 'bolditalic');
+                                                    doc.text(
+                                                        formattedDate,
+                                                        doc.internal.pageSize.getWidth() - marginX,
+                                                        textY + 6,
+                                                        { align: 'right' }
+                                                    );
+                                                    doc.setDrawColor(0); // black
+                                                    doc.setLineWidth(0.3);
+                                                    doc.line(lineStartX, lineY, lineEndX, lineY);
+                                                    yPosition = lineY + gapY - 2;
+
                                                     // === Map Generation ===
-                                                    yPosition = doc.autoTable.previous.finalY + gapY;
+                                                    // yPosition = doc.autoTable.previous.finalY + gapY;
 
                                                     const imageWidth = pageWidth;
                                                     const imageHeight = (imageWidth * 2) / 3; // 3:2 ratio
@@ -818,7 +844,7 @@ module.exports = {
                                                                 marginX,
                                                                 yPosition,
                                                                 imageWidth,
-                                                                50
+                                                                imageHeight
                                                             );
                                                         }
                                                     }
@@ -847,33 +873,6 @@ module.exports = {
                                                         ["Type of ID Attached", davData?.id_type || "N/A"],
                                                         ["No of years staying in the address", davData?.years_staying || "N/A"],
                                                     ];
-
-                                                    doc.addPage()
-
-                                                    doc.addImage(imageData, 'PNG', logoX, logoY, LogoimageWidth, LogoimageHeight);
-                                                    yPosition += 30; // Adjust Y after logo
-                                                    doc.setFontSize(10);
-                                                    doc.setFont('helvetica', 'bolditalic');
-
-                                                    doc.text(
-                                                        'Digital Address Verification Form',
-                                                        doc.internal.pageSize.getWidth() - marginX,
-                                                        textY,
-                                                        { align: 'right' }
-                                                    );
-                                                    doc.setFontSize(10);
-                                                    doc.setFont('helvetica', 'bolditalic');
-                                                    doc.text(
-                                                        formattedDate,
-                                                        doc.internal.pageSize.getWidth() - marginX,
-                                                        textY + 6,
-                                                        { align: 'right' }
-                                                    );
-                                                    doc.setDrawColor(0); // black
-                                                    doc.setLineWidth(0.3);
-                                                    doc.line(lineStartX, lineY, lineEndX, lineY);
-                                                    yPosition = lineY + gapY - 2;
-
 
                                                     // Nearby Places Table
                                                     doc.autoTable({
