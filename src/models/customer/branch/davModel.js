@@ -133,7 +133,7 @@ const dav = {
         const values = Object.values(replacements);
 
         // Log the values being inserted for debugging
-        console.log("inerting new entry with values:", values);
+        console.log("inerting new entry with indexes:", indexes);
         console.log("Inserting new entry with values:", values);
 
         const insertSql = `INSERT INTO dav_applications (${indexes.join(', ')}) VALUES (${indexes.map(() => '?').join(', ')})`;
