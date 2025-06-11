@@ -878,37 +878,49 @@ module.exports = {
                                                     // Nearby Places Table
                                                     doc.autoTable({
                                                         startY: yPosition + 10, // Starts after previous table
-                                                        head: [[
-                                                            { content: 'Nearby Place', styles: { fontStyle: 'bold', fillColor: [220, 230, 241] } },
-                                                            { content: 'Name', styles: { fontStyle: 'bold', fillColor: [220, 230, 241] } },
-                                                            { content: 'Address', styles: { fontStyle: 'bold', fillColor: [220, 230, 241] } },
-                                                            { content: 'Latitude', styles: { fontStyle: 'bold', fillColor: [220, 230, 241] } },
-                                                            { content: 'Longitude', styles: { fontStyle: 'bold', fillColor: [220, 230, 241] } }
-                                                        ]],
+                                                        head: [[{
+                                                            content: 'Nearby Place Details',
+                                                            colSpan: 5,
+                                                            styles: {
+                                                                halign: 'left',
+                                                                fontSize: 12,
+                                                                fontStyle: 'bold',
+                                                                fillColor: [197, 217, 241],
+                                                                textColor: [80, 80, 80],
+                                                            }
+                                                        }]],
                                                         body: [
                                                             [
-                                                                "Police Station",
-                                                                davData?.police_station_name || "N/A",
-                                                                davData?.police_station_address || "N/A",
-                                                                davData?.police_station_latitude || "N/A",
-                                                                davData?.police_station_longitude || "N/A"
+                                                                { content: "Nearby Place", styles: { fontStyle: 'bold' } },
+                                                                { content: "Name", styles: { fontStyle: 'bold' } },
+                                                                { content: "Address", styles: { fontStyle: 'bold' } },
+                                                                { content: "Latitude", styles: { fontStyle: 'bold' } },
+                                                                { content: "Longitude", styles: { fontStyle: 'bold' } }
                                                             ],
                                                             [
-                                                                "Post Office",
-                                                                davData?.post_office_name || "N/A",
-                                                                davData?.post_office_address || "N/A",
-                                                                davData?.post_office_latitude || "N/A",
-                                                                davData?.post_office_longitude || "N/A"
+                                                                { content: "Police Station" },
+                                                                { content: davData?.police_station_name || "N/A" },
+                                                                { content: davData?.police_station_address || "N/A" },
+                                                                { content: davData?.police_station_latitude || "N/A" },
+                                                                { content: davData?.police_station_longitude || "N/A" }
                                                             ],
                                                             [
-                                                                "Tourism Place",
-                                                                davData?.tourist_attraction_name || "N/A",
-                                                                davData?.tourist_attraction_address || "N/A",
-                                                                davData?.tourist_attraction_latitude || "N/A",
-                                                                davData?.tourist_attraction_longitude || "N/A"
+                                                                { content: "Post Office" },
+                                                                { content: davData?.post_office_name || "N/A" },
+                                                                { content: davData?.post_office_address || "N/A" },
+                                                                { content: davData?.post_office_latitude || "N/A" },
+                                                                { content: davData?.post_office_longitude || "N/A" }
+                                                            ],
+                                                            [
+                                                                { content: "Tourism Place" },
+                                                                { content: davData?.tourist_attraction_name || "N/A" },
+                                                                { content: davData?.tourist_attraction_address || "N/A" },
+                                                                { content: davData?.tourist_attraction_latitude || "N/A" },
+                                                                { content: davData?.tourist_attraction_longitude || "N/A" }
                                                             ]
                                                         ],
                                                         theme: 'grid',
+                                                        margin: { top: 10, left: 15, right: 15 },
                                                         styles: {
                                                             cellPadding: 2,
                                                             fontSize: 10,
@@ -918,13 +930,14 @@ module.exports = {
                                                             overflow: 'linebreak'
                                                         },
                                                         columnStyles: {
-                                                            0: { cellWidth: 36 }, // Place type
+                                                            0: { cellWidth: 36 }, // Nearby Place Type
                                                             1: { cellWidth: 45 }, // Name
                                                             2: { cellWidth: 60 }, // Address
                                                             3: { cellWidth: 34 }, // Latitude
                                                             4: { cellWidth: 34 }  // Longitude
                                                         }
                                                     });
+
 
 
                                                     yPosition = doc.lastAutoTable.finalY + 10;
