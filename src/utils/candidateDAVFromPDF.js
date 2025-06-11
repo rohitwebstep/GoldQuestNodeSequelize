@@ -5,6 +5,7 @@ const DAV = require("../models/customer/branch/davModel");
 const Customer = require("../models/customer/customerModel");
 const AppModel = require("../models/appModel");
 const polyline = require('@mapbox/polyline');
+const fetch = require('node-fetch');
 const { createCanvas, loadImage } = require('canvas');
 const { jsPDF } = require("jspdf");
 require("jspdf-autotable");
