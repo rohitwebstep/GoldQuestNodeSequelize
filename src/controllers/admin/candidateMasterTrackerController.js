@@ -142,7 +142,7 @@ exports.test = async (req, res) => {
 
 exports.testDAVPDF = async (req, res) => {
   try {
-    const candidate_application_id = 1820;
+    const candidate_application_id = 1836;
     const branch_id = 43;
     const customer_id = 28;
 
@@ -163,7 +163,7 @@ exports.testDAVPDF = async (req, res) => {
     res.json({
       status: true,
       message: "PDF generated successfully",
-      pdfFile,
+      pdfFile: 'https://uploads.goldquestglobal.in/' + pdfFile,
     });
   } catch (error) {
     console.error("Error:", error.message);
