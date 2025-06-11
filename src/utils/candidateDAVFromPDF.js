@@ -810,7 +810,7 @@ module.exports = {
                                                                 marginX,
                                                                 yPosition,
                                                                 imageWidth,
-                                                                100
+                                                                50
                                                             );
                                                         }
                                                     }
