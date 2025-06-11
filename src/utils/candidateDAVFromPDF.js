@@ -881,27 +881,31 @@ module.exports = {
                                                         head: [[
                                                             { content: 'Nearby Place', styles: { fontStyle: 'bold', fillColor: [220, 230, 241] } },
                                                             { content: 'Name', styles: { fontStyle: 'bold', fillColor: [220, 230, 241] } },
+                                                            { content: 'Address', styles: { fontStyle: 'bold', fillColor: [220, 230, 241] } },
                                                             { content: 'Latitude', styles: { fontStyle: 'bold', fillColor: [220, 230, 241] } },
                                                             { content: 'Longitude', styles: { fontStyle: 'bold', fillColor: [220, 230, 241] } }
                                                         ]],
                                                         body: [
                                                             [
                                                                 "Police Station",
-                                                                davData?.nearby_places?.police_station?.name || "N/A",
-                                                                davData?.nearby_places?.police_station?.latitude || "N/A",
-                                                                davData?.nearby_places?.police_station?.longitude || "N/A"
+                                                                davData?.police_station_name || "N/A",
+                                                                davData?.police_station_address || "N/A",
+                                                                davData?.police_station_latitude || "N/A",
+                                                                davData?.police_station_longitude || "N/A"
                                                             ],
                                                             [
                                                                 "Post Office",
-                                                                davData?.nearby_places?.post_office?.name || "N/A",
-                                                                davData?.nearby_places?.post_office?.latitude || "N/A",
-                                                                davData?.nearby_places?.post_office?.longitude || "N/A"
+                                                                davData?.post_office_name || "N/A",
+                                                                davData?.post_office_address || "N/A",
+                                                                davData?.post_office_latitude || "N/A",
+                                                                davData?.post_office_longitude || "N/A"
                                                             ],
                                                             [
                                                                 "Tourism Place",
-                                                                davData?.nearby_places?.tourism_place?.name || "N/A",
-                                                                davData?.nearby_places?.tourism_place?.latitude || "N/A",
-                                                                davData?.nearby_places?.tourism_place?.longitude || "N/A"
+                                                                davData?.tourist_attraction_name || "N/A",
+                                                                davData?.tourist_attraction_address || "N/A",
+                                                                davData?.tourist_attraction_latitude || "N/A",
+                                                                davData?.tourist_attraction_longitude || "N/A"
                                                             ]
                                                         ],
                                                         theme: 'grid',
@@ -914,12 +918,14 @@ module.exports = {
                                                             overflow: 'linebreak'
                                                         },
                                                         columnStyles: {
-                                                            0: { cellWidth: 45 },
-                                                            1: { cellWidth: 45 },
-                                                            2: { cellWidth: 45 },
-                                                            3: { cellWidth: 45 }
+                                                            0: { cellWidth: 36 }, // Place type
+                                                            1: { cellWidth: 45 }, // Name
+                                                            2: { cellWidth: 60 }, // Address
+                                                            3: { cellWidth: 34 }, // Latitude
+                                                            4: { cellWidth: 34 }  // Longitude
                                                         }
                                                     });
+
 
                                                     yPosition = doc.lastAutoTable.finalY + 10;
 
