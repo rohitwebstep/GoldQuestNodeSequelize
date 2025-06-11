@@ -215,7 +215,64 @@ exports.submit = (req, res) => {
                 });
               }
 
-              const staticMapPictureUrl = 'https://img.freepik.com/free-vector/cute-baby-deer-looking-front-vector-illustration_96037-422.jpg';
+              function generateCirclePoints(lat, lng, radiusInMeters, numPoints = 32) {
+                const earthRadius = 6378137;
+                const d = radiusInMeters / earthRadius;
+                const centerLat = (lat * Math.PI) / 180;
+                const centerLng = (lng * Math.PI) / 180;
+
+                const points = [];
+
+                for (let i = 0; i <= numPoints; i++) {
+                  const angle = (2 * Math.PI * i) / numPoints;
+                  const latRad = Math.asin(Math.sin(centerLat) * Math.cos(d) +
+                    Math.cos(centerLat) * Math.sin(d) * Math.cos(angle));
+                  const lngRad = centerLng + Math.atan2(
+                    Math.sin(angle) * Math.sin(d) * Math.cos(centerLat),
+                    Math.cos(d) - Math.sin(centerLat) * Math.sin(latRad)
+                  );
+
+                  points.push([
+                    (latRad * 180) / Math.PI,
+                    (lngRad * 180) / Math.PI
+                  ]);
+                }
+
+                return polyline.encode(points);
+              }
+
+              function haversineDistance(lat1, lng1, lat2, lng2) {
+                const toRad = deg => (deg * Math.PI) / 180;
+                const R = 6371000; // Earth's radius in meters
+
+                const dLat = toRad(lat2 - lat1);
+                const dLng = toRad(lng2 - lng1);
+                const a =
+                  Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                  Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+                  Math.sin(dLng / 2) * Math.sin(dLng / 2);
+
+                const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+                return R * c;
+              }
+
+              const distance = haversineDistance(
+                personal_information.latitude, personal_information.longitude,
+                personal_information.address_latitude, personal_information.address_longitude
+              );
+
+              const radiusA = distance * 0.2;
+              const radiusB = distance * 0.2;
+
+              const encodedCirclePath1 = generateCirclePoints(personal_information.latitude, personal_information.longitude, radiusA); // Circle around A
+              const encodedCirclePath2 = generateCirclePoints(personal_information.address_latitude, personal_information.address_longitude, radiusB);    // Circle around B
+
+
+              const staticMapPictureUrl = `https://maps.googleapis.com/maps/api/staticmap?size=600x400` +
+                `&path=fillcolor:0xFFB40080|color:0xFFB400|weight:1|enc:${encodedCirclePath1}` +
+                `&path=fillcolor:0x0000FF80|color:0x0000FFFF|weight:1|enc:${encodedCirclePath2}` +
+                `&key=${GOOGLE_API_KEY}`.replace(/\s+/g, '');
+                
               let savedStaticMapImage;
               if (staticMapPictureUrl && staticMapPictureUrl !== '') {
                 const downloadedFiles = await downloadImage(staticMapPictureUrl);

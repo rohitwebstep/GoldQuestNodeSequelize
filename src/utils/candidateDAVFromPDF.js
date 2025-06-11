@@ -22,6 +22,28 @@ const {
 
 const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY;
 
+const getImageFormat = (url) => {
+    const ext = url.split(".").pop().toLowerCase();
+    if (ext === "png") return "PNG";
+    if (ext === "jpg" || ext === "jpeg") return "JPEG";
+    if (ext === "webp") return "WEBP";
+    return "PNG"; // Default to PNG if not recognized
+};
+
+async function fetchImageAsBase64(imageUrl) {
+    try {
+        const response = await axios.get(imageUrl, { responseType: "arraybuffer" });
+        return `data:image/png;base64,${Buffer.from(
+            response.data,
+            "binary"
+        ).toString("base64")}`;
+    } catch (error) {
+        console.error("Error fetching or converting image:", error.message);
+        // throw new Error("Failed to fetch image");
+        return null;
+    }
+}
+
 function calculateDateGap(startDate, endDate) {
     const start = new Date(startDate);
     const end = new Date(endDate);
@@ -322,6 +344,7 @@ function generateCirclePoints(lat, lng, radiusInMeters, numPoints = 32) {
 
     return polyline.encode(points);
 }
+
 function haversineDistance(lat1, lng1, lat2, lng2) {
     const toRad = deg => (deg * Math.PI) / 180;
     const R = 6371000; // Earth's radius in meters
@@ -531,16 +554,14 @@ module.exports = {
                                                         davData.state,
                                                         davData.country
                                                     ].filter(Boolean).join(', ');
-                                                    const secondCoord = await getCoordinatesFromAddress(fullAddress);
 
                                                     const distanceKm = calculateDistanceInKm(
                                                         davData.latitude, davData.longitude,
-                                                        secondCoord.lat, secondCoord.lng
+                                                        davData.address_latitude, davData.address_longitude,
                                                     );
 
                                                     console.log(`Distance: ${distanceKm} km`);
 
-                                                    console.log('secondCoord', secondCoord)
                                                     // Section: Candidate Residential Address Detail
                                                     doc.autoTable({
                                                         startY: yPosition,
@@ -641,7 +662,7 @@ module.exports = {
                                                                 { content: '', styles: {} },  // leave blank, we'll draw in it
                                                             ],
                                                             [
-                                                                { content: `${secondCoord?.lat || "N/A"} - ${secondCoord?.lng || "N/A"}` },
+                                                                { content: `${davData?.address_latitude || "N/A"} - ${davData?.address_longitude || "N/A"}` },
                                                                 { content: 'GPS' || "N/A" },
                                                                 { content: distanceKm ? `${distanceKm} km` : "N/A" },
                                                                 { content: 'Google Location API', styles: { whiteSpace: 'nowrap' } },
@@ -686,37 +707,43 @@ module.exports = {
                                                     // === Map Generation ===
                                                     yPosition = doc.autoTable.previous.finalY + gapY;
 
-                                                    const distance = haversineDistance(
-                                                        davData.latitude, davData.longitude,
-                                                        secondCoord.lat, secondCoord.lng
-                                                    );
-
-
-                                                    // Optional: Scale the radius (e.g., 40% of distance)
-                                                    const radiusA = distance * 0.2;
-                                                    const radiusB = distance * 0.2;
-
-                                                    const encodedCirclePath1 = generateCirclePoints(davData.latitude, davData.longitude, radiusA); // Circle around A
-                                                    const encodedCirclePath2 = generateCirclePoints(secondCoord.lat, secondCoord.lng, radiusB);    // Circle around B
-
-                                                    const centerLat = davData.latitude;
-                                                    const centerLng = davData.longitude;
-
-                                                    const mapUrl = `https://maps.googleapis.com/maps/api/staticmap?size=600x400` +
-                                                        `&path=fillcolor:0xFFB40080|color:0xFFB400|weight:1|enc:${encodedCirclePath1}` +
-                                                        `&path=fillcolor:0x0000FF80|color:0x0000FFFF|weight:1|enc:${encodedCirclePath2}` +
-                                                        `&key=${GOOGLE_API_KEY}`.replace(/\s+/g, '');
-
-
-                                                    const mapImage = await axios.get(mapUrl, { responseType: 'arraybuffer' });
-                                                    const base64Map = Buffer.from(mapImage.data, 'binary').toString('base64');
-
                                                     const imageWidth = pageWidth;
                                                     const imageHeight = (imageWidth * 2) / 3; // 3:2 ratio
 
-                                                    doc.addImage(`data:image/png;base64,${base64Map}`, 'PNG', marginX, yPosition, imageWidth, imageHeight);
-                                                    yPosition += imageHeight + gapY;
+                                                    const imageMapUrlFull = davData.static_map_picture.trim();
+                                                    const mapImageFormat = getImageFormat(imageMapUrlFull);
+                                                    let mapImg, mapWidth, mapHeight, mapImageBase64Img, mapImgWidth, mapImgHeight;
+                                                    if (await checkImageExists(imageMapUrlFull)) {
+                                                        mapImg = await validateImage(imageMapUrlFull);
+                                                        if (mapImg) {
+                                                            ({ mapWidth, mapHeight } = scaleImage(
+                                                                mapImg,
+                                                                doc.internal.pageSize.width - 20,
+                                                                80
+                                                            ));
+                                                            mapImageBase64Img = await fetchImageAsBase64(mapImg.src);
+                                                            // Calculate scaled dimensions for the image to fit within the cell
+                                                            const maxCellWidth = 30; // Max width for the image in the cell
+                                                            const maxCellHeight = 30; // Max height for the image in the cell
 
+                                                            const scale = Math.min(
+                                                                maxCellWidth / mapWidth,
+                                                                maxCellHeight / mapHeight
+                                                            );
+
+                                                            mapImgWidth = mapWidth * scale;
+                                                            mapImgHeight = mapHeight * scale;
+
+                                                            doc.addImage(
+                                                                mapImageBase64Img,
+                                                                mapImageFormat,
+                                                                marginX,
+                                                                yPosition,
+                                                                imageWidth,
+                                                                imageHeight
+                                                            );
+                                                        }
+                                                    }
 
                                                     // === Table 2: Personal Information ===
                                                     const personalBody = [
