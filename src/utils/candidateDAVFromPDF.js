@@ -846,6 +846,8 @@ module.exports = {
                                                                 imageWidth,
                                                                 imageHeight
                                                             );
+
+                                                            yPosition += imageHeight + 10; // Adjust Y position after the image
                                                         }
                                                     }
 
@@ -937,9 +939,33 @@ module.exports = {
                                                         }
                                                     });
 
+                                                    doc.addPage()
 
+                                                    doc.addImage(imageData, 'PNG', logoX, logoY, LogoimageWidth, LogoimageHeight);
+                                                    yPosition += 30; // Adjust Y after logo
+                                                    doc.setFontSize(10);
+                                                    doc.setFont('helvetica', 'bolditalic');
 
-                                                    yPosition = doc.lastAutoTable.finalY + 10;
+                                                    doc.text(
+                                                        'Digital Address Verification Form',
+                                                        doc.internal.pageSize.getWidth() - marginX,
+                                                        textY,
+                                                        { align: 'right' }
+                                                    );
+                                                    doc.setFontSize(10);
+                                                    doc.setFont('helvetica', 'bolditalic');
+                                                    doc.text(
+                                                        formattedDate,
+                                                        doc.internal.pageSize.getWidth() - marginX,
+                                                        textY + 6,
+                                                        { align: 'right' }
+                                                    );
+                                                    doc.setDrawColor(0); // black
+                                                    doc.setLineWidth(0.3);
+                                                    doc.line(lineStartX, lineY, lineEndX, lineY);
+                                                    yPosition = lineY + gapY - 2;
+
+                                                    // yPosition = doc.lastAutoTable.finalY + 10;
 
                                                     const rawImageDataBox = [
                                                         { name: 'id / Proof', url: davData?.id_proof },
