@@ -694,8 +694,9 @@ module.exports = {
                                                             fontSize: 10,
                                                             lineWidth: 0.2,
                                                             lineColor: [0, 0, 0],
-                                                            valign: 'middle'
-                                                        }
+                                                            valign: 'middle',
+                                                            0: { cellWidth: 60 }, // Column 1 width
+                                                        },
                                                     });
 
                                                     yPosition = doc.autoTable.previous.finalY + gapY;
