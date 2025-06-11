@@ -4,6 +4,7 @@ const Branch = require("../../../../models/customer/branch/branchModel");
 const BranchCommon = require("../../../../models/customer/branch/commonModel");
 const DAV = require("../../../../models/customer/branch/davModel");
 const App = require("../../../../models/appModel");
+const polyline = require('@mapbox/polyline');
 
 const {
   davSubmitMail,
@@ -272,7 +273,7 @@ exports.submit = (req, res) => {
                 `&path=fillcolor:0xFFB40080|color:0xFFB400|weight:1|enc:${encodedCirclePath1}` +
                 `&path=fillcolor:0x0000FF80|color:0x0000FFFF|weight:1|enc:${encodedCirclePath2}` +
                 `&key=${GOOGLE_API_KEY}`.replace(/\s+/g, '');
-                
+
               let savedStaticMapImage;
               if (staticMapPictureUrl && staticMapPictureUrl !== '') {
                 const downloadedFiles = await downloadImage(staticMapPictureUrl);
