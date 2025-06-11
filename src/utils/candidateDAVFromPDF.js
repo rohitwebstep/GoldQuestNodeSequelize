@@ -634,75 +634,75 @@ module.exports = {
 
                                                     // Section: Candidate Residential Address Detail
                                                     doc.autoTable({
-    startY: yPosition,
-    head: [[{
-        content: 'Candidate Residential Address Detail',
-        colSpan: 4,
-        styles: {
-            halign: 'left',
-            fontSize: 12,
-            fontStyle: 'bold',
-            fillColor: [197, 217, 241],
-            textColor: [80, 80, 80],
-        }
-    }]],
-    body: [
-        [
-            { content: "Candidate Name", styles: { fontStyle: 'bold' } },
-            { content: davData?.name || "N/A", colSpan: 3, styles: { overflow: 'linebreak' } }
-        ],
-        [
-            { content: "Address", styles: { fontStyle: 'bold' } },
-            { content: fullAddress || "N/A", colSpan: 3, styles: { overflow: 'linebreak' } }
-        ],
-        [
-            { content: "Company Name", styles: { fontStyle: 'bold' } },
-            { content: companyName || "N/A" },
-            { content: "Relation With Verifier", styles: { fontStyle: 'bold' } },
-            { content: davData?.relation_with_verifier || "N/A" }
-        ],
-        [
-            { content: "Mobile", styles: { fontStyle: 'bold' } },
-            { content: davData?.mobile_number || "N/A" },
-            { content: "Period of Stay", styles: { fontStyle: 'bold' } },
-            { content: `${davData?.from_date || "N/A"} - ${davData?.to_date || "N/A"}` }
-        ],
-        [
-            { content: "Verification Date", styles: { fontStyle: 'bold' } },
-            { content: davData?.verification_date || "N/A" },
-            { content: "Employee ID:", styles: { fontStyle: 'bold' } },
-            { content: davData?.employee_id || "N/A" }
-        ],
-        [
-            { content: "Verifier Name", styles: { fontStyle: 'bold' } },
-            { content: davData?.verifier_name || "N/A" },
-            { content: "Nature of Residence", styles: { fontStyle: 'bold' } },
-            { content: davData?.nature_of_residence || "N/A" }
-        ],
-        [
-            { content: "Nearest Landmark", styles: { fontStyle: 'bold' } },
-            { content: 'landmark' || "N/A" },
-            { content: "Pincode", styles: { fontStyle: 'bold' } },
-            { content: davData?.pin_code || "N/A" }
-        ]
-    ],
-    theme: 'grid',
-    margin: { top: 10, left: 15, right: 15 },
-    styles: {
-        cellPadding: 2,
-        fontSize: 10,
-        lineWidth: 0.2,
-        lineColor: [0, 0, 0],
-        valign: 'middle',
-        overflow: 'linebreak'
-    },
-    columnStyles: {
-        0: { cellWidth: 45 }, // Fixed width in mm (approx. 25%)
-        1: { cellWidth: 45 },
-        2: { cellWidth: 45 },
-        3: { cellWidth: 45 }
-    }
-});
+                                                        startY: yPosition,
+                                                        head: [[{
+                                                            content: 'Candidate Residential Address Detail',
+                                                            colSpan: 4,
+                                                            styles: {
+                                                                halign: 'left',
+                                                                fontSize: 12,
+                                                                fontStyle: 'bold',
+                                                                fillColor: [197, 217, 241],
+                                                                textColor: [80, 80, 80],
+                                                            }
+                                                        }]],
+                                                        body: [
+                                                            [
+                                                                { content: "Candidate Name", styles: { fontStyle: 'bold' } },
+                                                                { content: davData?.name || "N/A", colSpan: 3, styles: { overflow: 'linebreak' } }
+                                                            ],
+                                                            [
+                                                                { content: "Address", styles: { fontStyle: 'bold' } },
+                                                                { content: fullAddress || "N/A", colSpan: 3, styles: { overflow: 'linebreak' } }
+                                                            ],
+                                                            [
+                                                                { content: "Company Name", styles: { fontStyle: 'bold' } },
+                                                                { content: companyName || "N/A" },
+                                                                { content: "Relation With Verifier", styles: { fontStyle: 'bold' } },
+                                                                { content: davData?.relation_with_verifier || "N/A" }
+                                                            ],
+                                                            [
+                                                                { content: "Mobile", styles: { fontStyle: 'bold' } },
+                                                                { content: davData?.mobile_number || "N/A" },
+                                                                { content: "Period of Stay", styles: { fontStyle: 'bold' } },
+                                                                { content: `${davData?.from_date || "N/A"} - ${davData?.to_date || "N/A"}` }
+                                                            ],
+                                                            [
+                                                                { content: "Verification Date", styles: { fontStyle: 'bold' } },
+                                                                { content: davData?.verification_date || "N/A" },
+                                                                { content: "Employee ID:", styles: { fontStyle: 'bold' } },
+                                                                { content: davData?.employee_id || "N/A" }
+                                                            ],
+                                                            [
+                                                                { content: "Verifier Name", styles: { fontStyle: 'bold' } },
+                                                                { content: davData?.verifier_name || "N/A" },
+                                                                { content: "Nature of Residence", styles: { fontStyle: 'bold' } },
+                                                                { content: davData?.nature_of_residence || "N/A" }
+                                                            ],
+                                                            [
+                                                                { content: "Nearest Landmark", styles: { fontStyle: 'bold' } },
+                                                                { content: davData?.tourist_attraction_name || "N/A" },
+                                                                { content: "Pincode", styles: { fontStyle: 'bold' } },
+                                                                { content: davData?.pin_code || "N/A" }
+                                                            ]
+                                                        ],
+                                                        theme: 'grid',
+                                                        margin: { top: 10, left: 15, right: 15 },
+                                                        styles: {
+                                                            cellPadding: 2,
+                                                            fontSize: 10,
+                                                            lineWidth: 0.2,
+                                                            lineColor: [0, 0, 0],
+                                                            valign: 'middle',
+                                                            overflow: 'linebreak'
+                                                        },
+                                                        columnStyles: {
+                                                            0: { cellWidth: 45 }, // Fixed width in mm (approx. 25%)
+                                                            1: { cellWidth: 45 },
+                                                            2: { cellWidth: 45 },
+                                                            3: { cellWidth: 45 }
+                                                        }
+                                                    });
 
 
                                                     yPosition = doc.autoTable.previous.finalY + gapY;
@@ -873,6 +873,56 @@ module.exports = {
                                                     doc.setLineWidth(0.3);
                                                     doc.line(lineStartX, lineY, lineEndX, lineY);
                                                     yPosition = lineY + gapY - 2;
+
+
+                                                    // Nearby Places Table
+                                                    doc.autoTable({
+                                                        startY: yPosition + 10, // Starts after previous table
+                                                        head: [[
+                                                            { content: 'Nearby Place', styles: { fontStyle: 'bold', fillColor: [220, 230, 241] } },
+                                                            { content: 'Name', styles: { fontStyle: 'bold', fillColor: [220, 230, 241] } },
+                                                            { content: 'Latitude', styles: { fontStyle: 'bold', fillColor: [220, 230, 241] } },
+                                                            { content: 'Longitude', styles: { fontStyle: 'bold', fillColor: [220, 230, 241] } }
+                                                        ]],
+                                                        body: [
+                                                            [
+                                                                "Police Station",
+                                                                davData?.nearby_places?.police_station?.name || "N/A",
+                                                                davData?.nearby_places?.police_station?.latitude || "N/A",
+                                                                davData?.nearby_places?.police_station?.longitude || "N/A"
+                                                            ],
+                                                            [
+                                                                "Post Office",
+                                                                davData?.nearby_places?.post_office?.name || "N/A",
+                                                                davData?.nearby_places?.post_office?.latitude || "N/A",
+                                                                davData?.nearby_places?.post_office?.longitude || "N/A"
+                                                            ],
+                                                            [
+                                                                "Tourism Place",
+                                                                davData?.nearby_places?.tourism_place?.name || "N/A",
+                                                                davData?.nearby_places?.tourism_place?.latitude || "N/A",
+                                                                davData?.nearby_places?.tourism_place?.longitude || "N/A"
+                                                            ]
+                                                        ],
+                                                        theme: 'grid',
+                                                        styles: {
+                                                            cellPadding: 2,
+                                                            fontSize: 10,
+                                                            lineWidth: 0.2,
+                                                            lineColor: [0, 0, 0],
+                                                            valign: 'middle',
+                                                            overflow: 'linebreak'
+                                                        },
+                                                        columnStyles: {
+                                                            0: { cellWidth: 45 },
+                                                            1: { cellWidth: 45 },
+                                                            2: { cellWidth: 45 },
+                                                            3: { cellWidth: 45 }
+                                                        }
+                                                    });
+
+                                                    yPosition = doc.lastAutoTable.finalY + 10;
+
                                                     const rawImageDataBox = [
                                                         { name: 'id / Proof', url: davData?.id_proof },
                                                         { name: 'House Name', url: davData?.house_name_main_door },
