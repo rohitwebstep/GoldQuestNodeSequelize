@@ -20,6 +20,8 @@ const {
   saveImages,
 } = require("../../../../utils/cloudImageSave");
 
+const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY;
+
 exports.isApplicationExist = (req, res) => {
   const { app_id, branch_id, customer_id } = req.query;
 
