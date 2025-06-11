@@ -648,55 +648,54 @@ module.exports = {
                                                         }]],
                                                         body: [
                                                             [
-                                                                { content: "Candidate Name", styles: { fontStyle: 'bold', halign: 'left' } },
+                                                                { content: "Candidate Name", styles: { fontStyle: 'bold' } },
                                                                 { content: davData?.name || "N/A", colSpan: 3 }
                                                             ],
                                                             [
-                                                                { content: "Address", styles: { fontStyle: 'bold', halign: 'left' } },
+                                                                { content: "Address", styles: { fontStyle: 'bold' } },
                                                                 { content: fullAddress || "N/A", colSpan: 3 }
                                                             ],
                                                             [
-                                                                { content: "Company Name", styles: { fontStyle: 'bold', halign: 'left' } },
-                                                                { content: companyName || "N/A" },
-                                                                { content: "Relation With Verifier", styles: { fontStyle: 'bold', halign: 'left' } },
-                                                                { content: davData?.relation_with_verifier || "N/A" }
+                                                                { content: "Company Name", styles: { fontStyle: 'bold' } },
+                                                                companyName || "N/A",
+                                                                { content: "Relation With Verifier", styles: { fontStyle: 'bold' } },
+                                                                davData?.relation_with_verifier || "N/A"
                                                             ],
                                                             [
-                                                                { content: "Mobile", styles: { fontStyle: 'bold', halign: 'left' } },
-                                                                { content: davData?.mobile_number || "N/A" },
-                                                                { content: "Period of Stay", styles: { fontStyle: 'bold', halign: 'left' } },
-                                                                { content: `${davData?.from_date || "N/A"} - ${davData?.to_date || "N/A"}` }
+                                                                { content: "Mobile", styles: { fontStyle: 'bold' } },
+                                                                davData?.mobile_number || "N/A",
+                                                                { content: "Period of Stay", styles: { fontStyle: 'bold' } },
+                                                                `${davData?.from_date || "N/A"} - ${davData?.to_date || "N/A"}`,
                                                             ],
                                                             [
-                                                                { content: "Verification Date", styles: { fontStyle: 'bold', halign: 'left' } },
-                                                                { content: davData?.verification_date || "N/A" },
-                                                                { content: "Employee ID:", styles: { fontStyle: 'bold', halign: 'left' } },
-                                                                { content: davData?.employee_id || "N/A" }
+                                                                { content: "Verification Date", styles: { fontStyle: 'bold' } },
+                                                                davData?.verification_date || "N/A",
+                                                                { content: "Employee ID:", styles: { fontStyle: 'bold' } },
+                                                                davData?.employee_id || "N/A"
                                                             ],
                                                             [
-                                                                { content: "Verifier Name", styles: { fontStyle: 'bold', halign: 'left' } },
-                                                                { content: davData?.verifier_name || "N/A" },
-                                                                { content: "Nature of Residence", styles: { fontStyle: 'bold', halign: 'left' } },
-                                                                { content: davData?.nature_of_residence || "N/A" }
+                                                                { content: "Verifier Name", styles: { fontStyle: 'bold' } },
+                                                                davData?.verifier_name || "N/A",
+                                                                { content: "Nature of Residence", styles: { fontStyle: 'bold' } },
+                                                                davData?.nature_of_residence || "N/A"
                                                             ],
                                                             [
-                                                                { content: "Nearest Landmark", styles: { fontStyle: 'bold', halign: 'left' } },
-                                                                { content: davData?.nearest_landmark || "N/A" },
-                                                                { content: "Pincode", styles: { fontStyle: 'bold', halign: 'left' } },
-                                                                { content: davData?.pin_code || "N/A" }
+                                                                { content: "Nearest Landmark", styles: { fontStyle: 'bold' } },
+                                                                'landmark' || "N/A",
+                                                                { content: "Pincode", styles: { fontStyle: 'bold' } },
+                                                                davData?.pin_code || "N/A"
                                                             ]
                                                         ],
                                                         theme: 'grid',
                                                         margin: { top: 10, left: 15, right: 15 },
                                                         styles: {
-                                                            cellPadding: { top: 2, bottom: 2, left: 2, right: 2 },
+                                                            cellPadding: 2,
                                                             fontSize: 10,
                                                             lineWidth: 0.2,
                                                             lineColor: [0, 0, 0],
                                                             valign: 'middle'
                                                         }
                                                     });
-
 
                                                     yPosition = doc.autoTable.previous.finalY + gapY;
                                                     doc.autoTable({
