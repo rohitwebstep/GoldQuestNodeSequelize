@@ -562,6 +562,10 @@ module.exports = {
 
                                                     // console.log(`Distance: ${distanceKm} km`);
 
+                                                    if (typeof doc.autoTable !== 'function') {
+                                                        throw new Error('jspdf-autotable plugin is not loaded.');
+                                                    }
+
                                                     // Section: Candidate Residential Address Detail
                                                     doc.autoTable({
                                                         startY: yPosition,
