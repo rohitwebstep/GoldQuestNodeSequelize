@@ -649,7 +649,7 @@ module.exports = {
                                                         }]],
                                                         body: [
                                                             [
-                                                                { content: "Candidate Name", styles: { fontStyle: 'bold', overflow: 'visible', } },
+                                                                { content: "Candidate Name", styles: { fontStyle: 'bold', overflow: 'visible', cellWidth: 'auto' } },
                                                                 { content: davData?.name || "N/A", colSpan: 3 }
                                                             ],
                                                             [
