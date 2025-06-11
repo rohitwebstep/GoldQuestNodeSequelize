@@ -697,7 +697,7 @@ module.exports = {
                                                             overflow: 'linebreak'
                                                         },
                                                         columnStyles: {
-                                                            0: { cellWidth: 45 }, // Fixed width in mm (approx. 25%)
+                                                            0: { cellWidth: 45 },
                                                             1: { cellWidth: 45 },
                                                             2: { cellWidth: 45 },
                                                             3: { cellWidth: 45 }
@@ -930,11 +930,11 @@ module.exports = {
                                                             overflow: 'linebreak'
                                                         },
                                                         columnStyles: {
-                                                            0: { cellWidth: 36 }, // Nearby Place Type
-                                                            1: { cellWidth: 45 }, // Name
-                                                            2: { cellWidth: 60 }, // Address
-                                                            3: { cellWidth: 34 }, // Latitude
-                                                            4: { cellWidth: 34 }  // Longitude
+                                                            0: { cellWidth: 45 },
+                                                            1: { cellWidth: 45 },
+                                                            2: { cellWidth: 45 },
+                                                            3: { cellWidth: 45 },
+                                                            4: { cellWidth: 45 }
                                                         }
                                                     });
 
