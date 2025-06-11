@@ -23,24 +23,24 @@ const {
 const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY;
 
 function scaleImage(img, maxWidth, maxHeight) {
-  const imgWidth = img.width;
-  const imgHeight = img.height;
+    const imgWidth = img.width;
+    const imgHeight = img.height;
 
-  let width = imgWidth;
-  let height = imgHeight;
+    let width = imgWidth;
+    let height = imgHeight;
 
-  // Scale image to fit within maxWidth and maxHeight
-  if (imgWidth > maxWidth) {
-    width = maxWidth;
-    height = (imgHeight * maxWidth) / imgWidth;
-  }
+    // Scale image to fit within maxWidth and maxHeight
+    if (imgWidth > maxWidth) {
+        width = maxWidth;
+        height = (imgHeight * maxWidth) / imgWidth;
+    }
 
-  if (height > maxHeight) {
-    height = maxHeight;
-    width = (imgWidth * maxHeight) / imgHeight;
-  }
+    if (height > maxHeight) {
+        height = maxHeight;
+        width = (imgWidth * maxHeight) / imgHeight;
+    }
 
-  return { width, height };
+    return { width, height };
 }
 
 async function checkImageExists(url) {
@@ -648,54 +648,55 @@ module.exports = {
                                                         }]],
                                                         body: [
                                                             [
-                                                                { content: " Candidate Name", styles: { fontStyle: 'bold' } },
-                                                                { content: davData?.name || "N/A", colSpan: 3 }
+                                                                { content: "Candidate Name", styles: { fontStyle: 'bold', halign: 'left', valign: 'middle' } },
+                                                                { content: davData?.name || "N/A", colSpan: 3, styles: { valign: 'middle' } }
                                                             ],
                                                             [
-                                                                { content: "Address", styles: { fontStyle: 'bold' } },
-                                                                { content: fullAddress || "N/A", colSpan: 3 }
+                                                                { content: "Address", styles: { fontStyle: 'bold', halign: 'left', valign: 'middle' } },
+                                                                { content: fullAddress || "N/A", colSpan: 3, styles: { valign: 'middle' } }
                                                             ],
                                                             [
-                                                                { content: "Company Name", styles: { fontStyle: 'bold' } },
-                                                                companyName || "N/A",
-                                                                { content: "Relation With Verifier", styles: { fontStyle: 'bold' } },
-                                                                davData?.relation_with_verifier || "N/A"
+                                                                { content: "Company Name", styles: { fontStyle: 'bold', halign: 'left', valign: 'middle' } },
+                                                                { content: companyName || "N/A", styles: { valign: 'middle' } },
+                                                                { content: "Relation With Verifier", styles: { fontStyle: 'bold', halign: 'left', valign: 'middle' } },
+                                                                { content: davData?.relation_with_verifier || "N/A", styles: { valign: 'middle' } }
                                                             ],
                                                             [
-                                                                { content: "Mobile", styles: { fontStyle: 'bold' } },
-                                                                davData?.mobile_number || "N/A",
-                                                                { content: "Period of Stay", styles: { fontStyle: 'bold' } },
-                                                                `${davData?.from_date || "N/A"} - ${davData?.to_date || "N/A"}`,
+                                                                { content: "Mobile", styles: { fontStyle: 'bold', halign: 'left', valign: 'middle' } },
+                                                                { content: davData?.mobile_number || "N/A", styles: { valign: 'middle' } },
+                                                                { content: "Period of Stay", styles: { fontStyle: 'bold', halign: 'left', valign: 'middle' } },
+                                                                { content: `${davData?.from_date || "N/A"} - ${davData?.to_date || "N/A"}`, styles: { valign: 'middle' } }
                                                             ],
                                                             [
-                                                                { content: "Verification Date", styles: { fontStyle: 'bold' } },
-                                                                davData?.verification_date || "N/A",
-                                                                { content: "Employee ID:", styles: { fontStyle: 'bold' } },
-                                                                davData?.employee_id || "N/A"
+                                                                { content: "Verification Date", styles: { fontStyle: 'bold', halign: 'left', valign: 'middle' } },
+                                                                { content: davData?.verification_date || "N/A", styles: { valign: 'middle' } },
+                                                                { content: "Employee ID:", styles: { fontStyle: 'bold', halign: 'left', valign: 'middle' } },
+                                                                { content: davData?.employee_id || "N/A", styles: { valign: 'middle' } }
                                                             ],
                                                             [
-                                                                { content: "Verifier Name", styles: { fontStyle: 'bold' } },
-                                                                davData?.verifier_name || "N/A",
-                                                                { content: "Nature of Residence", styles: { fontStyle: 'bold' } },
-                                                                davData?.nature_of_residence || "N/A"
+                                                                { content: "Verifier Name", styles: { fontStyle: 'bold', halign: 'left', valign: 'middle' } },
+                                                                { content: davData?.verifier_name || "N/A", styles: { valign: 'middle' } },
+                                                                { content: "Nature of Residence", styles: { fontStyle: 'bold', halign: 'left', valign: 'middle' } },
+                                                                { content: davData?.nature_of_residence || "N/A", styles: { valign: 'middle' } }
                                                             ],
                                                             [
-                                                                { content: "Nearest Landmark", styles: { fontStyle: 'bold' } },
-                                                                'landmark' || "N/A",
-                                                                { content: "Pincode", styles: { fontStyle: 'bold' } },
-                                                                davData?.pin_code || "N/A"
+                                                                { content: "Nearest Landmark", styles: { fontStyle: 'bold', halign: 'left', valign: 'middle' } },
+                                                                { content: davData?.nearest_landmark || "N/A", styles: { valign: 'middle' } },
+                                                                { content: "Pincode", styles: { fontStyle: 'bold', halign: 'left', valign: 'middle' } },
+                                                                { content: davData?.pin_code || "N/A", styles: { valign: 'middle' } }
                                                             ]
                                                         ],
                                                         theme: 'grid',
                                                         margin: { top: 10, left: 15, right: 15 },
                                                         styles: {
-                                                            cellPadding: 2,
+                                                            cellPadding: { top: 2, bottom: 2, left: 2, right: 2 },
                                                             fontSize: 10,
                                                             lineWidth: 0.2,
                                                             lineColor: [0, 0, 0],
                                                             valign: 'middle'
                                                         }
                                                     });
+
 
                                                     yPosition = doc.autoTable.previous.finalY + gapY;
                                                     doc.autoTable({
