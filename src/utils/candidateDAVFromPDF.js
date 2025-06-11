@@ -22,6 +22,27 @@ const {
 
 const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY;
 
+function scaleImage(img, maxWidth, maxHeight) {
+  const imgWidth = img.width;
+  const imgHeight = img.height;
+
+  let width = imgWidth;
+  let height = imgHeight;
+
+  // Scale image to fit within maxWidth and maxHeight
+  if (imgWidth > maxWidth) {
+    width = maxWidth;
+    height = (imgHeight * maxWidth) / imgWidth;
+  }
+
+  if (height > maxHeight) {
+    height = maxHeight;
+    width = (imgWidth * maxHeight) / imgHeight;
+  }
+
+  return { width, height };
+}
+
 async function checkImageExists(url) {
     try {
         const response = await fetch(url, { method: "HEAD" });
