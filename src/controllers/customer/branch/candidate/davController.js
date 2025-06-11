@@ -184,12 +184,25 @@ exports.submit = (req, res) => {
             const extension = path.extname(url.split("?")[0]) || ".jpg";
             const filename = `${Date.now()}_${uuidv4()}${extension}`;
             const filepath = path.join("uploads", filename);
-            const response = await axios({ method: "GET", url, responseType: "stream" });
+
+            const response = await axios({
+              method: "GET",
+              url,
+              responseType: "stream",
+            });
+
             const writer = fs.createWriteStream(filepath);
             response.data.pipe(writer);
 
             return new Promise((resolve, reject) => {
-              writer.on("finish", () => resolve({ filename, path: filepath }));
+              writer.on("finish", () => {
+                resolve({
+                  filename: filename,
+                  originalname: path.basename(url),
+                  mimetype: response.headers["content-type"] || "image/jpeg",
+                  path: filepath,
+                });
+              });
               writer.on("error", reject);
             });
           };
@@ -258,12 +271,11 @@ exports.submit = (req, res) => {
               await fs.promises.mkdir(targetDir, { recursive: true });
 
               const downloaded = await downloadImage(staticMapPictureUrl);
-              const finalPath = path.join(targetDir, downloaded.filename);
-              await fs.promises.rename(downloaded.path, finalPath);
+              const savedPath = await saveImage(downloaded, targetDir);
 
               savedStaticMapImage = {
                 filename: downloaded.filename,
-                path: finalPath,
+                path: savedPath,
               };
 
               console.log(`savedStaticMapImage - `, savedStaticMapImage);
