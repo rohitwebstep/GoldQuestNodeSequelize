@@ -653,37 +653,37 @@ module.exports = {
                                                                 { content: davData?.name || "N/A", colSpan: 3 }
                                                             ],
                                                             [
-                                                                { content: "Address", styles: { fontStyle: 'bold' } },
+                                                                { content: "Address", styles: { fontStyle: 'bold', overflow: 'visible' } },
                                                                 { content: fullAddress || "N/A", colSpan: 3 }
                                                             ],
                                                             [
-                                                                { content: "Company Name", styles: { fontStyle: 'bold' } },
+                                                                { content: "Company Name", styles: { fontStyle: 'bold', overflow: 'visible' } },
                                                                 companyName || "N/A",
-                                                                { content: "Relation With Verifier", styles: { fontStyle: 'bold' } },
+                                                                { content: "Relation With Verifier", styles: { fontStyle: 'bold', overflow: 'visible' } },
                                                                 davData?.relation_with_verifier || "N/A"
                                                             ],
                                                             [
-                                                                { content: "Mobile", styles: { fontStyle: 'bold' } },
+                                                                { content: "Mobile", styles: { fontStyle: 'bold', overflow: 'visible' } },
                                                                 davData?.mobile_number || "N/A",
-                                                                { content: "Period of Stay", styles: { fontStyle: 'bold' } },
+                                                                { content: "Period of Stay", styles: { fontStyle: 'bold', overflow: 'visible' } },
                                                                 `${davData?.from_date || "N/A"} - ${davData?.to_date || "N/A"}`,
                                                             ],
                                                             [
-                                                                { content: "Verification Date", styles: { fontStyle: 'bold' } },
+                                                                { content: "Verification Date", styles: { fontStyle: 'bold', overflow: 'visible' } },
                                                                 davData?.verification_date || "N/A",
-                                                                { content: "Employee ID:", styles: { fontStyle: 'bold' } },
+                                                                { content: "Employee ID:", styles: { fontStyle: 'bold', overflow: 'visible' } },
                                                                 davData?.employee_id || "N/A"
                                                             ],
                                                             [
-                                                                { content: "Verifier Name", styles: { fontStyle: 'bold' } },
+                                                                { content: "Verifier Name", styles: { fontStyle: 'bold', overflow: 'visible' } },
                                                                 davData?.verifier_name || "N/A",
-                                                                { content: "Nature of Residence", styles: { fontStyle: 'bold' } },
+                                                                { content: "Nature of Residence", styles: { fontStyle: 'bold', overflow: 'visible' } },
                                                                 davData?.nature_of_residence || "N/A"
                                                             ],
                                                             [
-                                                                { content: "Nearest Landmark", styles: { fontStyle: 'bold' } },
+                                                                { content: "Nearest Landmark", styles: { fontStyle: 'bold', overflow: 'visible' } },
                                                                 'landmark' || "N/A",
-                                                                { content: "Pincode", styles: { fontStyle: 'bold' } },
+                                                                { content: "Pincode", styles: { fontStyle: 'bold', overflow: 'visible' } },
                                                                 davData?.pin_code || "N/A"
                                                             ]
                                                         ],
