@@ -5,7 +5,7 @@ const BranchCommon = require("../../../../models/customer/branch/commonModel");
 const DAV = require("../../../../models/customer/branch/davModel");
 const App = require("../../../../models/appModel");
 const polyline = require('@mapbox/polyline');
-
+const { v4: uuidv4 } = require("uuid");
 const {
   davSubmitMail,
 } = require("../../../../mailer/customer/branch/candidate/davSubmitMail");
