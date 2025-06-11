@@ -644,13 +644,12 @@ module.exports = {
                                                                 fontStyle: 'bold',
                                                                 fillColor: [197, 217, 241],
                                                                 textColor: [80, 80, 80],
-                                                                overflow: 'visible',
                                                                 cellWidth: 'auto'
                                                             }
                                                         }]],
                                                         body: [
                                                             [
-                                                                { content: "Candidate Name", styles: { fontStyle: 'bold' } },
+                                                                { content: "Candidate Name", styles: { fontStyle: 'bold', overflow: 'visible', } },
                                                                 { content: davData?.name || "N/A", colSpan: 3 }
                                                             ],
                                                             [
