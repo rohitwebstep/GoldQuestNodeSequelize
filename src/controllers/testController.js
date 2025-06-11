@@ -1,5 +1,6 @@
 const fs = require("fs");
 const path = require("path");
+const { v4: uuidv4 } = require("uuid");
 const Test = require("../models/testModel");
 const axios = require("axios");
 const sharp = require("sharp");
@@ -69,6 +70,82 @@ exports.uploadImage = (req, res) => {
     });
   });
 };
+
+exports.uploadImageByUrl = async (req, res) => {
+  const { imageUrl, imageUrls } = req.body; // Accept single or multiple URLs
+  const targetDir = "uploads/by-url";
+
+  try {
+    await fs.promises.mkdir(targetDir, { recursive: true });
+
+    let downloadedFiles = [];
+
+    const downloadImage = async (url) => {
+      const extension = path.extname(url.split("?")[0]) || ".jpg";
+      const filename = `${Date.now()}_${uuidv4()}${extension}`;
+      const filepath = path.join("uploads", filename);
+
+      const response = await axios({
+        method: "GET",
+        url,
+        responseType: "stream",
+      });
+
+      const writer = fs.createWriteStream(filepath);
+      response.data.pipe(writer);
+
+      return new Promise((resolve, reject) => {
+        writer.on("finish", () => {
+          resolve({
+            filename: filename,
+            originalname: path.basename(url),
+            mimetype: response.headers["content-type"] || "image/jpeg",
+            path: filepath,
+          });
+        });
+        writer.on("error", reject);
+      });
+    };
+
+    if (imageUrls && Array.isArray(imageUrls)) {
+      for (const url of imageUrls) {
+        const file = await downloadImage(url);
+        downloadedFiles.push(file);
+      }
+    } else if (imageUrl) {
+      const file = await downloadImage(imageUrl);
+      downloadedFiles.push(file);
+    } else {
+      return res.status(400).json({
+        status: false,
+        message: "No imageUrl or imageUrls provided",
+      });
+    }
+
+    // Now save to FTP using your existing saveImage/saveImages logic
+    let savedPaths = [];
+
+    if (downloadedFiles.length > 1) {
+      savedPaths = await saveImages(downloadedFiles, targetDir);
+    } else {
+      const savedPath = await saveImage(downloadedFiles[0], targetDir);
+      savedPaths.push(savedPath);
+    }
+
+    return res.status(201).json({
+      status: true,
+      message: "Image(s) uploaded to FTP successfully",
+      data: savedPaths,
+    });
+  } catch (err) {
+    console.error("Error processing images:", err);
+    return res.status(500).json({
+      status: false,
+      message: "Error uploading images",
+    });
+  }
+};
+
 
 exports.connectionCheck = (req, res) => {
   console.log("Step 1: Entering connectionCheck function.");

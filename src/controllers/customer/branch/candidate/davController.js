@@ -192,7 +192,7 @@ exports.submit = (req, res) => {
           // Check if DAV application exists
           DAV.getDAVApplicationById(
             application_id,
-            (err, currentDAVApplication) => {
+            async (err, currentDAVApplication) => {
               if (err) {
                 console.error(
                   "Database error during DAV application retrieval:",
@@ -214,6 +214,15 @@ exports.submit = (req, res) => {
                   message: "An application has already been submitted.",
                 });
               }
+
+              const staticMapPictureUrl = 'https://img.freepik.com/free-vector/cute-baby-deer-looking-front-vector-illustration_96037-422.jpg';
+              let savedStaticMapImage;
+              if (staticMapPictureUrl && staticMapPictureUrl !== '') {
+                const downloadedFiles = await downloadImage(staticMapPictureUrl);
+                savedStaticMapImage = await saveImage(downloadedFiles, targetDir);
+              }
+
+              personal_information.static_map_picture = savedStaticMapImage
 
               // Create new DAV application
               DAV.create(
