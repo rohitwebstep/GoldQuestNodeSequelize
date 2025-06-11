@@ -265,6 +265,8 @@ exports.submit = (req, res) => {
                 filename: downloaded.filename,
                 path: finalPath,
               };
+
+              console.log(`savedStaticMapImage - `, savedStaticMapImage);
             } catch (imageError) {
               console.error("Error downloading/saving map image:", imageError);
               return res.status(500).json({
