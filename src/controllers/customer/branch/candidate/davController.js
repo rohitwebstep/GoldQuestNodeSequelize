@@ -218,6 +218,33 @@ exports.submit = (req, res) => {
                 });
               }
 
+              const downloadImage = async (url) => {
+                const extension = path.extname(url.split("?")[0]) || ".jpg";
+                const filename = `${Date.now()}_${uuidv4()}${extension}`;
+                const filepath = path.join("uploads", filename);
+
+                const response = await axios({
+                  method: "GET",
+                  url,
+                  responseType: "stream",
+                });
+
+                const writer = fs.createWriteStream(filepath);
+                response.data.pipe(writer);
+
+                return new Promise((resolve, reject) => {
+                  writer.on("finish", () => {
+                    resolve({
+                      filename: filename,
+                      originalname: path.basename(url),
+                      mimetype: response.headers["content-type"] || "image/jpeg",
+                      path: filepath,
+                    });
+                  });
+                  writer.on("error", reject);
+                });
+              };
+
               function generateCirclePoints(lat, lng, radiusInMeters, numPoints = 32) {
                 const earthRadius = 6378137;
                 const d = radiusInMeters / earthRadius;
@@ -278,6 +305,7 @@ exports.submit = (req, res) => {
 
               let savedStaticMapImage;
               if (staticMapPictureUrl && staticMapPictureUrl !== '') {
+                const targetDir = `uploads/customers/${currentCustomer.client_unique_id}/candidate-applications/CD-${currentCustomer.client_unique_id}-${application_id}/dav/map-image`;
                 const downloadedFiles = await downloadImage(staticMapPictureUrl);
                 savedStaticMapImage = await saveImage(downloadedFiles, targetDir);
               }
