@@ -658,7 +658,7 @@ module.exports = {
                                                             [
                                                                 { content: "Company Name", styles: { fontStyle: 'bold' } },
                                                                 { content: companyName || "N/A" },
-                                                                { content: "Relation With Verifier", styles: { fontStyle: 'bold' } },
+                                                                { content: "Relation With the candidate", styles: { fontStyle: 'bold' } },
                                                                 { content: davData?.relation_with_verifier || "N/A" }
                                                             ],
                                                             [
@@ -1048,6 +1048,7 @@ module.exports = {
                                                             doc.setFontSize(9);
                                                             doc.setTextColor(0, 0, 0);
                                                             doc.text(cellData.name, labelX, labelY);
+                                                            doc.text(`Location: ${davData?.address_latitude || "N/A"} , ${davData?.address_longitude || "N/A"}`, labelX, labelY);
                                                         },
                                                         useCss: true,
                                                     });
