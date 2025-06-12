@@ -7,6 +7,7 @@ const App = require("../../../../models/appModel");
 const polyline = require('@mapbox/polyline');
 const { v4: uuidv4 } = require("uuid");
 const axios = require("axios");
+const Admin = require("../../../../models/admin/adminModel");
 const {
   davSubmitMail,
 } = require("../../../../mailer/customer/branch/candidate/davSubmitMail");
@@ -377,74 +378,95 @@ const sendNotificationEmails = (candidateAppId, customer_id, branch_id, res) => 
               });
             }
 
-            App.appInfo("backend", async (err, appInfo) => {
+            Admin.filterAdmins({ status: "active", role: "admin" }, (err, adminResult) => {
               if (err) {
                 console.error("Database error:", err);
                 return res.status(500).json({
                   status: false,
-                  err,
-                  message: err.message,
+                  message: "Error retrieving admin details.",
+                  token: newToken,
                 });
               }
 
-              let imageHost = "www.example.in";
-
-              if (appInfo) {
-                imageHost = appInfo.cloud_host || "www.example.in";
-              }
-
-              const { branch, customer } = emailData;
-              const toArr = [{ name: branch.name, email: branch.email }];
-              const ccArr = JSON.parse(customer.emails).map((email) => ({
-                name: customer.name,
-                email: email.trim(),
-              }));
-
-              const pdfTargetDirectory = `uploads/customers/${customer.client_unique_id}/candidate-applications/CD-${customer.client_unique_id}-${candidateAppId}/address-form-reports`;
-
-              const pdfFileName = `candidate-dav-form.pdf`;
-
-              const pdfFile = await candidateDAVFromPDF(
-                candidateAppId,
-                branch_id,
-                customer_id,
-                pdfFileName,
-                pdfTargetDirectory
-              );
-
-              let newAttachments = [];
-              let attachments = [];
-
-              if (pdfFile) newAttachments.push(`${imageHost}/${pdfFile}`);
-
-              if (newAttachments.length > 0) {
-                attachments += (attachments ? "," : "") + newAttachments.join(",");
-              }
-
-              // Send application creation email
-              davSubmitMail(
-                'candidate application',
-                'dav-submit',
-                currentCandidateApplication.name,
-                customer.name,
-                attachments,
-                toArr,
-                ccArr
-              )
-                .then(() => {
-                  return res.status(200).json({
-                    status: true,
-                    message:
-                      "DAV Application submitted successfully and notifications sent.",
+              App.appInfo("backend", async (err, appInfo) => {
+                if (err) {
+                  console.error("Database error:", err);
+                  return res.status(500).json({
+                    status: false,
+                    err,
+                    message: err.message,
                   });
-                })
-                .catch((emailError) => {
-                  return res.status(200).json({
-                    status: true,
-                    message:
-                      "DAV Application submitted successfully and notifications not sent.",
+                }
+
+                let imageHost = "www.example.in";
+
+                if (appInfo) {
+                  imageHost = appInfo.cloud_host || "www.example.in";
+                }
+
+                const { branch, customer } = emailData;
+                const toArr = [{ name: branch.name, email: branch.email }];
+
+                const toBGVTeam = [
+                  { name: 'BGV Team', email: 'bgvcst@goldquestglobal.in' },
+                ];
+
+                const adminEmails = adminResult.map((admin) => ({
+                  name: admin.name,
+                  email: admin.email,
+                }));
+                
+                const ccArr = JSON.parse(customer.emails).map((email) => ({
+                  name: customer.name,
+                  email: email.trim(),
+                }));
+
+                const pdfTargetDirectory = `uploads/customers/${customer.client_unique_id}/candidate-applications/CD-${customer.client_unique_id}-${candidateAppId}/address-form-reports`;
+
+                const pdfFileName = `candidate-dav-form.pdf`;
+
+                const pdfFile = await candidateDAVFromPDF(
+                  candidateAppId,
+                  branch_id,
+                  customer_id,
+                  pdfFileName,
+                  pdfTargetDirectory
+                );
+
+                let newAttachments = [];
+                let attachments = [];
+
+                if (pdfFile) newAttachments.push(`${imageHost}/${pdfFile}`);
+
+                if (newAttachments.length > 0) {
+                  attachments += (attachments ? "," : "") + newAttachments.join(",");
+                }
+
+                // Send application creation email
+                davSubmitMail(
+                  'candidate application',
+                  'dav-submit',
+                  currentCandidateApplication.name,
+                  customer.name,
+                  attachments,
+                  toBGVTeam || [],
+                  adminEmails || []
+                )
+                  .then(() => {
+                    return res.status(200).json({
+                      status: true,
+                      message:
+                        "DAV Application submitted successfully and notifications sent.",
+                    });
+                  })
+                  .catch((emailError) => {
+                    return res.status(200).json({
+                      status: true,
+                      message:
+                        "DAV Application submitted successfully and notifications not sent.",
+                    });
                   });
-                });
+              });
             });
           }
         );
