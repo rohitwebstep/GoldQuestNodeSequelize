@@ -1044,10 +1044,13 @@ module.exports = {
 
                                                             // Add image label
                                                             const labelX = cell.x + 8;
-                                                            const labelY = imageYTop + imageHeightBox + 5;
+                                                            let labelY = imageYTop + imageHeightBox + 5;
+
                                                             doc.setFontSize(9);
                                                             doc.setTextColor(0, 0, 0);
                                                             doc.text(cellData.name, labelX, labelY);
+
+                                                            labelY += 5; // Move the next label slightly below the previous one
                                                             doc.text(`Location: ${davData?.address_latitude || "N/A"} , ${davData?.address_longitude || "N/A"}`, labelX, labelY);
                                                         },
                                                         useCss: true,
