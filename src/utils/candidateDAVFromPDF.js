@@ -766,20 +766,24 @@ module.exports = {
                                                         didDrawCell: function (data) {
                                                             // Only for legend cells (column index 4, rows 1 and 2)
                                                             if (data.column.index === 4 && (data.row.index === 1 || data.row.index === 2)) {
-                                                                const boxSize = 6; // size of the square box
-                                                                const padding = 2;
-                                                                const x = data.cell.x + padding;
-                                                                const y = data.cell.y + (data.cell.height - boxSize) / 2; // center vertically
+                                                                const boxSize = 6; // Size of the square box
 
+                                                                // Center the box horizontally and vertically in the cell
+                                                                const x = data.cell.x + (data.cell.width - boxSize) / 2;
+                                                                const y = data.cell.y + (data.cell.height - boxSize) / 2;
+
+                                                                // Set fill color based on row
                                                                 if (data.row.index === 1) {
                                                                     doc.setFillColor(255, 165, 0); // Orange
                                                                 } else if (data.row.index === 2) {
                                                                     doc.setFillColor(0, 0, 255); // Blue
                                                                 }
 
-                                                                doc.rect(x, y, boxSize, boxSize, 'F'); // Draw the filled square
+                                                                // Draw the filled box
+                                                                doc.rect(x, y, boxSize, boxSize, 'F');
                                                             }
                                                         }
+
                                                     });
 
                                                     doc.addPage()
