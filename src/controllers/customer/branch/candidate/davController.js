@@ -415,7 +415,7 @@ const sendNotificationEmails = (candidateAppId, customer_id, branch_id, res) => 
                   name: admin.name,
                   email: admin.email,
                 }));
-                
+
                 const ccArr = JSON.parse(customer.emails).map((email) => ({
                   name: customer.name,
                   email: email.trim(),
@@ -651,6 +651,10 @@ exports.upload = async (req, res) => {
                         case "nearest_landmark":
                           targetDir = `uploads/customers/${currentCustomer.client_unique_id}/candidate-applications/CD-${currentCustomer.client_unique_id}-${application_id}/dav/documents/nearest-landmark`;
                           db_column = `nearest_landmark`;
+                          break;
+                        case "map_screenshot":
+                          targetDir = `uploads/customers/${currentCustomer.client_unique_id}/candidate-applications/CD-${currentCustomer.client_unique_id}-${application_id}/dav/documents/map-screenshot`;
+                          db_column = `map_screenshot`;
                           break;
                         default:
                           return res.status(400).json({
