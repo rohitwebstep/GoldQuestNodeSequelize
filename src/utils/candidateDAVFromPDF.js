@@ -664,8 +664,8 @@ module.exports = {
                                                             [
                                                                 { content: "Mobile", styles: { fontStyle: 'bold' } },
                                                                 { content: davData?.mobile_number || "N/A" },
-                                                                { content: "Period of Stay", styles: { fontStyle: 'bold' } },
-                                                                { content: `${davData?.from_date || "N/A"} - ${davData?.to_date || "N/A"}` }
+                                                                { content: "Email", styles: { fontStyle: 'bold' } },
+                                                                { content: `${davData?.email || "N/A"}` }
                                                             ],
                                                             [
                                                                 { content: "Verification Date", styles: { fontStyle: 'bold' } },
@@ -680,8 +680,8 @@ module.exports = {
                                                                 { content: davData?.nature_of_residence || "N/A" }
                                                             ],
                                                             [
-                                                                { content: "Nearest Landmark", styles: { fontStyle: 'bold' } },
-                                                                { content: davData?.tourist_attraction_name || "N/A" },
+                                                                { content: "Period of Stay", styles: { fontStyle: 'bold' } },
+                                                                { content: `${davData?.from_date || "N/A"} - ${davData?.to_date || "N/A"}` },
                                                                 { content: "Pincode", styles: { fontStyle: 'bold' } },
                                                                 { content: davData?.pin_code || "N/A" }
                                                             ]
@@ -975,8 +975,9 @@ module.exports = {
                                                         { name: 'id / Proof', url: davData?.id_proof },
                                                         { name: 'House Name', url: davData?.house_name_main_door },
                                                         { name: 'Building Photo', url: davData?.building_photo },
+                                                        { name: 'Street Photo', url: davData?.street_photo },
                                                         { name: 'Nearest Landmark', url: davData?.nearest_landmark },
-                                                        { name: 'Street Photo', url: davData?.street_photo }
+                                                        { name: 'Map Screenshot', url: davData?.map_screenshot },
                                                     ];
 
                                                     const imageDataBox = await Promise.all(
