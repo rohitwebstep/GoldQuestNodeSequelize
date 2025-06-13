@@ -22,6 +22,27 @@ const {
 
 const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY;
 
+function scaleImage(img, maxWidth, maxHeight) {
+    const imgWidth = img.width;
+    const imgHeight = img.height;
+
+    let width = imgWidth;
+    let height = imgHeight;
+
+    // Scale image to fit within maxWidth and maxHeight
+    if (imgWidth > maxWidth) {
+        width = maxWidth;
+        height = (imgHeight * maxWidth) / imgWidth;
+    }
+
+    if (height > maxHeight) {
+        height = maxHeight;
+        width = (imgWidth * maxHeight) / imgHeight;
+    }
+
+    return { width, height };
+}
+
 async function checkImageExists(url) {
     try {
         const response = await fetch(url, { method: "HEAD" });
@@ -29,6 +50,41 @@ async function checkImageExists(url) {
     } catch (error) {
         console.error(`Error checking image existence at ${url}:`, error);
         return false;
+    }
+}
+
+async function validateImage(url) {
+    try {
+        const response = await axios.get(url, { responseType: "arraybuffer" });
+        if (response.status !== 200) {
+            console.warn(
+                `Image fetch failed for URL: ${url} with status: ${response.status}`
+            );
+            return null;
+        }
+
+        if (!response.data) {
+            console.warn(`No data found in the response for URL: ${url}`);
+            return null;
+        }
+
+        const buffer = Buffer.from(response.data);
+        const metadata = await sharp(buffer).metadata();
+
+        if (!metadata) {
+            console.warn(`Unable to fetch metadata for image from URL: ${url}`);
+            return null;
+        }
+
+        return {
+            src: url,
+            width: metadata.width,
+            height: metadata.height,
+            format: metadata.format,
+        };
+    } catch (error) {
+        console.error(`Error validating image from ${url}:`, error);
+        return null;
     }
 }
 
@@ -592,42 +648,42 @@ module.exports = {
                                                         }]],
                                                         body: [
                                                             [
-                                                                { content: " Candidate Name", styles: { fontStyle: 'bold' } },
-                                                                { content: davData?.name || "N/A", colSpan: 3 }
+                                                                { content: "Candidate Name", styles: { fontStyle: 'bold' } },
+                                                                { content: davData?.name || "N/A", colSpan: 3, styles: { overflow: 'linebreak' } }
                                                             ],
                                                             [
                                                                 { content: "Address", styles: { fontStyle: 'bold' } },
-                                                                { content: fullAddress || "N/A", colSpan: 3 }
+                                                                { content: fullAddress || "N/A", colSpan: 3, styles: { overflow: 'linebreak' } }
                                                             ],
                                                             [
                                                                 { content: "Company Name", styles: { fontStyle: 'bold' } },
-                                                                companyName || "N/A",
-                                                                { content: "Relation With Verifier", styles: { fontStyle: 'bold' } },
-                                                                davData?.relation_with_verifier || "N/A"
+                                                                { content: companyName || "N/A" },
+                                                                { content: "Relation With the candidate", styles: { fontStyle: 'bold' } },
+                                                                { content: davData?.relation_with_verifier || "N/A" }
                                                             ],
                                                             [
                                                                 { content: "Mobile", styles: { fontStyle: 'bold' } },
-                                                                davData?.mobile_number || "N/A",
-                                                                { content: "Period of Stay", styles: { fontStyle: 'bold' } },
-                                                                `${davData?.from_date || "N/A"} - ${davData?.to_date || "N/A"}`,
+                                                                { content: davData?.mobile_number || "N/A" },
+                                                                { content: "Email", styles: { fontStyle: 'bold' } },
+                                                                { content: `${davData?.email || "N/A"}` }
                                                             ],
                                                             [
                                                                 { content: "Verification Date", styles: { fontStyle: 'bold' } },
-                                                                davData?.verification_date || "N/A",
+                                                                { content: davData?.verification_date || "N/A" },
                                                                 { content: "Employee ID:", styles: { fontStyle: 'bold' } },
-                                                                davData?.employee_id || "N/A"
+                                                                { content: davData?.employee_id || "N/A" }
                                                             ],
                                                             [
                                                                 { content: "Verifier Name", styles: { fontStyle: 'bold' } },
-                                                                davData?.verifier_name || "N/A",
+                                                                { content: davData?.verifier_name || "N/A" },
                                                                 { content: "Nature of Residence", styles: { fontStyle: 'bold' } },
-                                                                davData?.nature_of_residence || "N/A"
+                                                                { content: davData?.nature_of_residence || "N/A" }
                                                             ],
                                                             [
-                                                                { content: "Nearest Landmark", styles: { fontStyle: 'bold' } },
-                                                                'landmark' || "N/A",
+                                                                { content: "Period of Stay", styles: { fontStyle: 'bold' } },
+                                                                { content: `${davData?.from_date || "N/A"} - ${davData?.to_date || "N/A"}` },
                                                                 { content: "Pincode", styles: { fontStyle: 'bold' } },
-                                                                davData?.pin_code || "N/A"
+                                                                { content: davData?.pin_code || "N/A" }
                                                             ]
                                                         ],
                                                         theme: 'grid',
@@ -637,9 +693,17 @@ module.exports = {
                                                             fontSize: 10,
                                                             lineWidth: 0.2,
                                                             lineColor: [0, 0, 0],
-                                                            valign: 'middle'
+                                                            valign: 'middle',
+                                                            overflow: 'linebreak'
+                                                        },
+                                                        columnStyles: {
+                                                            0: { cellWidth: 45 },
+                                                            1: { cellWidth: 45 },
+                                                            2: { cellWidth: 45 },
+                                                            3: { cellWidth: 45 }
                                                         }
                                                     });
+
 
                                                     yPosition = doc.autoTable.previous.finalY + gapY;
                                                     doc.autoTable({
@@ -702,24 +766,54 @@ module.exports = {
                                                         didDrawCell: function (data) {
                                                             // Only for legend cells (column index 4, rows 1 and 2)
                                                             if (data.column.index === 4 && (data.row.index === 1 || data.row.index === 2)) {
-                                                                const boxSize = 6; // size of the square box
-                                                                const padding = 2;
-                                                                const x = data.cell.x + padding;
-                                                                const y = data.cell.y + (data.cell.height - boxSize) / 2; // center vertically
+                                                                const boxSize = 6; // Size of the square box
 
+                                                                // Center the box horizontally and vertically in the cell
+                                                                const x = data.cell.x + (data.cell.width - boxSize) / 2;
+                                                                const y = data.cell.y + (data.cell.height - boxSize) / 2;
+
+                                                                // Set fill color based on row
                                                                 if (data.row.index === 1) {
                                                                     doc.setFillColor(255, 165, 0); // Orange
                                                                 } else if (data.row.index === 2) {
                                                                     doc.setFillColor(0, 0, 255); // Blue
                                                                 }
 
-                                                                doc.rect(x, y, boxSize, boxSize, 'F'); // Draw the filled square
+                                                                // Draw the filled box
+                                                                doc.rect(x, y, boxSize, boxSize, 'F');
                                                             }
                                                         }
+
                                                     });
 
+                                                    doc.addPage()
+
+                                                    doc.addImage(imageData, 'PNG', logoX, logoY, LogoimageWidth, LogoimageHeight);
+                                                    yPosition += 30; // Adjust Y after logo
+                                                    doc.setFontSize(10);
+                                                    doc.setFont('helvetica', 'bolditalic');
+
+                                                    doc.text(
+                                                        'Digital Address Verification Form',
+                                                        doc.internal.pageSize.getWidth() - marginX,
+                                                        textY,
+                                                        { align: 'right' }
+                                                    );
+                                                    doc.setFontSize(10);
+                                                    doc.setFont('helvetica', 'bolditalic');
+                                                    doc.text(
+                                                        formattedDate,
+                                                        doc.internal.pageSize.getWidth() - marginX,
+                                                        textY + 6,
+                                                        { align: 'right' }
+                                                    );
+                                                    doc.setDrawColor(0); // black
+                                                    doc.setLineWidth(0.3);
+                                                    doc.line(lineStartX, lineY, lineEndX, lineY);
+                                                    yPosition = lineY + gapY - 2;
+
                                                     // === Map Generation ===
-                                                    yPosition = doc.autoTable.previous.finalY + gapY;
+                                                    // yPosition = doc.autoTable.previous.finalY + gapY;
 
                                                     const imageWidth = pageWidth;
                                                     const imageHeight = (imageWidth * 2) / 3; // 3:2 ratio
@@ -756,6 +850,8 @@ module.exports = {
                                                                 imageWidth,
                                                                 imageHeight
                                                             );
+
+                                                            yPosition += imageHeight + 10; // Adjust Y position after the image
                                                         }
                                                     }
 
@@ -784,6 +880,69 @@ module.exports = {
                                                         ["No of years staying in the address", davData?.years_staying || "N/A"],
                                                     ];
 
+                                                    // Nearby Places Table
+                                                    doc.autoTable({
+                                                        startY: yPosition + 10, // Starts after previous table
+                                                        head: [[{
+                                                            content: 'Nearby Place Details',
+                                                            colSpan: 5,
+                                                            styles: {
+                                                                halign: 'left',
+                                                                fontSize: 12,
+                                                                fontStyle: 'bold',
+                                                                fillColor: [197, 217, 241],
+                                                                textColor: [80, 80, 80],
+                                                            }
+                                                        }]],
+                                                        body: [
+                                                            [
+                                                                { content: "Nearby Place", styles: { fontStyle: 'bold' } },
+                                                                { content: "Name", styles: { fontStyle: 'bold' } },
+                                                                { content: "Address", styles: { fontStyle: 'bold' } },
+                                                                { content: "Latitude", styles: { fontStyle: 'bold' } },
+                                                                { content: "Longitude", styles: { fontStyle: 'bold' } }
+                                                            ],
+                                                            [
+                                                                { content: "Police Station" },
+                                                                { content: davData?.police_station_name || "N/A" },
+                                                                { content: davData?.police_station_address || "N/A" },
+                                                                { content: davData?.police_station_latitude || "N/A" },
+                                                                { content: davData?.police_station_longitude || "N/A" }
+                                                            ],
+                                                            [
+                                                                { content: "Post Office" },
+                                                                { content: davData?.post_office_name || "N/A" },
+                                                                { content: davData?.post_office_address || "N/A" },
+                                                                { content: davData?.post_office_latitude || "N/A" },
+                                                                { content: davData?.post_office_longitude || "N/A" }
+                                                            ],
+                                                            [
+                                                                { content: "Tourism Place" },
+                                                                { content: davData?.tourist_attraction_name || "N/A" },
+                                                                { content: davData?.tourist_attraction_address || "N/A" },
+                                                                { content: davData?.tourist_attraction_latitude || "N/A" },
+                                                                { content: davData?.tourist_attraction_longitude || "N/A" }
+                                                            ]
+                                                        ],
+                                                        theme: 'grid',
+                                                        margin: { top: 10, left: 15, right: 15 },
+                                                        styles: {
+                                                            cellPadding: 2,
+                                                            fontSize: 10,
+                                                            lineWidth: 0.2,
+                                                            lineColor: [0, 0, 0],
+                                                            valign: 'middle',
+                                                            overflow: 'linebreak'
+                                                        },
+                                                        columnStyles: {
+                                                            0: { cellWidth: 36 },
+                                                            1: { cellWidth: 36 },
+                                                            2: { cellWidth: 36 },
+                                                            3: { cellWidth: 36 },
+                                                            4: { cellWidth: 36 }
+                                                        }
+                                                    });
+
                                                     doc.addPage()
 
                                                     doc.addImage(imageData, 'PNG', logoX, logoY, LogoimageWidth, LogoimageHeight);
@@ -809,19 +968,30 @@ module.exports = {
                                                     doc.setLineWidth(0.3);
                                                     doc.line(lineStartX, lineY, lineEndX, lineY);
                                                     yPosition = lineY + gapY - 2;
+
+                                                    // yPosition = doc.lastAutoTable.finalY + 10;
+
                                                     const rawImageDataBox = [
                                                         { name: 'id / Proof', url: davData?.id_proof },
                                                         { name: 'House Name', url: davData?.house_name_main_door },
                                                         { name: 'Building Photo', url: davData?.building_photo },
+                                                        { name: 'Street Photo', url: davData?.street_photo },
                                                         { name: 'Nearest Landmark', url: davData?.nearest_landmark },
-                                                        { name: 'Street Photo', url: davData?.street_photo }
+                                                        { name: 'Map Screenshot', url: davData?.map_screenshot },
                                                     ];
 
                                                     const imageDataBox = await Promise.all(
-                                                        rawImageDataBox.map(async (img, index) => {
+                                                        rawImageDataBox.map(async (img) => {
                                                             try {
-                                                                console.log(`🔄 Converting image to base64: ${img.name} -> ${img.url}`);
-                                                                const base64Url = await toBase64FromUrl(img.url);
+                                                                const urls = img.url?.split(',').map(u => u.trim()).filter(Boolean); // Split and clean
+
+                                                                if (!urls || urls.length === 0) {
+                                                                    return { name: img.name, url: null };
+                                                                }
+
+                                                                // Convert only the first image to base64 (you can loop all if needed)
+                                                                console.log(`🔄 Converting image to base64: ${img.name} -> ${urls[0]}`);
+                                                                const base64Url = await toBase64FromUrl(urls[0]);
                                                                 console.log(`✅ Converted: ${img.name}`);
                                                                 return { name: img.name, url: base64Url };
                                                             } catch (error) {
@@ -830,7 +1000,6 @@ module.exports = {
                                                             }
                                                         })
                                                     );
-
 
                                                     const imageWidthBox = 70;
                                                     const imageHeightBox = 50;
@@ -880,10 +1049,14 @@ module.exports = {
 
                                                             // Add image label
                                                             const labelX = cell.x + 8;
-                                                            const labelY = imageYTop + imageHeightBox + 5;
+                                                            let labelY = imageYTop + imageHeightBox + 5;
+
                                                             doc.setFontSize(9);
                                                             doc.setTextColor(0, 0, 0);
                                                             doc.text(cellData.name, labelX, labelY);
+
+                                                            labelY += 5; // Move the next label slightly below the previous one
+                                                            doc.text(`Location: ${davData?.address_latitude || "N/A"} , ${davData?.address_longitude || "N/A"}`, labelX, labelY);
                                                         },
                                                         useCss: true,
                                                     });
