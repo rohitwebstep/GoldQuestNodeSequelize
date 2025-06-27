@@ -8,6 +8,7 @@ router.post("/bulk-create", clientController.bulkCreate);
 router.post("/upload", clientController.upload);
 router.get("/list", clientController.list);
 router.put("/update", clientController.update);
+router.put("/add-to-stopcheck", clientController.addToStopCheck);
 router.delete("/delete", clientController.delete);
 
 module.exports = router;

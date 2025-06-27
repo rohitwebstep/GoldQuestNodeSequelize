@@ -1067,7 +1067,7 @@ const Customer = {
       holdCount: `AND (b.overall_status = 'hold')`,
       closureAdviceCount: `AND (b.overall_status = 'closure advice')`,
       qcStatusPendingCount: `AND (LOWER(b.is_verify) = 'no' OR b.is_verify IS NULL OR b.is_verify = '') AND a.status='completed'`,
-      notReadyCount: `AND b.overall_status !='completed'`,
+      notReadyCount: `AND b.overall_status NOT IN ('completed', 'stopcheck')`,
       downloadReportCount: `AND (b.overall_status = 'completed')`
     };
 
@@ -1171,7 +1171,7 @@ const Customer = {
       holdCount: `AND (b.overall_status = 'hold')`,
       closureAdviceCount: `AND (b.overall_status = 'closure advice')`,
       qcStatusPendingCount: `AND (LOWER(b.is_verify) = 'no' OR b.is_verify IS NULL OR b.is_verify = '') AND a.status='completed'`,
-      notReadyCount: `AND b.overall_status !='completed'`,
+      notReadyCount: `AND b.overall_status NOT IN ('completed', 'stopcheck')`,
       downloadReportCount: `AND (b.overall_status = 'completed')`
     };
 

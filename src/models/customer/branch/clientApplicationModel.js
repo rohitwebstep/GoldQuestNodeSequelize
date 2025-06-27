@@ -415,6 +415,58 @@ const clientApplication = {
     }
   },
 
+  addToStopCheck: async (client_application_id, branch_id, customer_id, callback) => {
+    try {
+      // Check if the record already exists with all 3 identifiers
+      const [rows] = await sequelize.query(
+        `SELECT 1 FROM \`cmt_applications\` 
+       WHERE \`client_application_id\` = ? 
+       AND \`branch_id\` = ? 
+       AND \`customer_id\` = ? 
+       LIMIT 1`,
+        {
+          replacements: [client_application_id, branch_id, customer_id],
+          type: QueryTypes.SELECT,
+        }
+      );
+
+      let results;
+
+      if (rows) {
+        // Record exists — perform UPDATE
+        const updateSql = `
+        UPDATE \`cmt_applications\`
+        SET \`overall_status\` = 'stopcheck'
+        WHERE \`client_application_id\` = ? 
+        AND \`branch_id\` = ? 
+        AND \`customer_id\` = ?
+      `;
+
+        results = await sequelize.query(updateSql, {
+          replacements: [client_application_id, branch_id, customer_id],
+          type: QueryTypes.UPDATE,
+        });
+      } else {
+        // Record does not exist — perform INSERT
+        const insertSql = `
+        INSERT INTO \`cmt_applications\` 
+        (\`client_application_id\`, \`branch_id\`, \`customer_id\`, \`overall_status\`)
+        VALUES (?, ?, ?, 'stopcheck')
+      `;
+
+        results = await sequelize.query(insertSql, {
+          replacements: [client_application_id, branch_id, customer_id],
+          type: QueryTypes.INSERT,
+        });
+      }
+
+      callback(null, results);
+    } catch (error) {
+      console.error("Database check/update/insert error:", error);
+      callback(error, null);
+    }
+  },
+  
   updateStatus: async (status, client_application_id, callback) => {
     try {
       // If status is empty or null, set it to 'wip'

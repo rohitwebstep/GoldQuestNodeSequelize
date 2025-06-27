@@ -10,6 +10,10 @@ const Admin = require("../../../../models/admin/adminModel");
 const Candidate = require("../../../../models/customer/branch/candidateApplicationModel");
 
 const {
+  addToStopcheck,
+} = require("../../../../mailer/customer/branch/client/addToStopcheck");
+
+const {
   createMail,
 } = require("../../../../mailer/customer/branch/client/createMail");
 
@@ -1659,6 +1663,181 @@ exports.update = (req, res) => {
         );
       }
     );
+  });
+};
+
+exports.addToStopCheck = (req, res) => {
+  const { branch_id, sub_user_id, _token, client_application_id } = req.body;
+
+  // Step 1: Validate Required Fields
+  const requiredFields = { branch_id, _token, client_application_id };
+  const missingFields = Object.keys(requiredFields)
+    .filter((field) => !requiredFields[field])
+    .map((field) => field.replace(/_/g, " "));
+
+  if (missingFields.length > 0) {
+    return res.status(400).json({
+      status: false,
+      message: `The following fields are required: ${missingFields.join(", ")}`,
+    });
+  }
+
+  const action = "client_application";
+  BranchCommon.isBranchAuthorizedForAction(branch_id, action, (result) => {
+    if (!result.status) {
+      return res.status(403).json({
+        status: false,
+        message: "You are not authorized to perform this action.",
+      });
+    }
+
+    BranchCommon.isBranchTokenValid(_token, sub_user_id || null, branch_id, (err, result) => {
+      if (err) {
+        console.error("Token validation error:", err);
+        return res.status(500).json({
+          status: false,
+          message: "An error occurred while verifying your session. Please try again.",
+        });
+      }
+
+      if (!result.status) {
+        return res.status(401).json({
+          status: false,
+          message: result.message || "Your session is invalid or expired. Please log in again.",
+        });
+      }
+
+      const newToken = result.newToken;
+
+      Branch.getBranchById(branch_id, (err, currentBranch) => {
+        if (err) {
+          console.error("Branch retrieval error:", err);
+          return res.status(500).json({
+            status: false,
+            message: "An error occurred while retrieving branch details.",
+            token: newToken,
+          });
+        }
+
+        if (!currentBranch) {
+          return res.status(404).json({
+            status: false,
+            message: "Branch not found.",
+            token: newToken,
+          });
+        }
+
+        Customer.getCustomerById(parseInt(currentBranch.customer_id), (err, currentCustomer) => {
+          if (err) {
+            console.error("Customer retrieval error:", err);
+            return res.status(500).json({
+              status: false,
+              message: "An error occurred while retrieving customer details.",
+              token: newToken,
+            });
+          }
+
+          if (!currentCustomer) {
+            return res.status(404).json({
+              status: false,
+              message: "Customer not found.",
+              token: newToken,
+            });
+          }
+
+          ClientApplication.getClientApplicationById(client_application_id, (err, currentClientApplication) => {
+            if (err) {
+              console.error("Client Application retrieval error:", err);
+              return res.status(500).json({
+                status: false,
+                message: "Unable to retrieve client application details. Please try again.",
+                token: newToken,
+              });
+            }
+
+            if (!currentClientApplication) {
+              return res.status(404).json({
+                status: false,
+                message: "Client application not found.",
+                token: newToken,
+              });
+            }
+
+            if (currentClientApplication.branch_id !== branch_id) {
+              return res.status(403).json({
+                status: false,
+                message: "This client application does not belong to the current branch.",
+                token: newToken,
+              });
+            }
+
+            // Proceed with adding to stop check
+            ClientApplication.addToStopCheck(client_application_id, branch_id, currentCustomer.id, (err, result) => {
+              if (err) {
+                console.error("Error updating client application status:", err);
+                BranchCommon.branchActivityLog(
+                  branch_id,
+                  "Client Application",
+                  "addToStopCheck",
+                  "0",
+                  JSON.stringify({ client_application_id }),
+                  err,
+                  () => { }
+                );
+                return res.status(500).json({
+                  status: false,
+                  message: "Failed to update client application status.",
+                  token: newToken,
+                });
+              }
+
+              Admin.filterAdmins({ status: "active", role: "admin" }, (err, adminResult) => {
+                if (err) {
+                  console.error("Admin retrieval error:", err);
+                  return res.status(500).json({
+                    status: false,
+                    message: "Unable to retrieve admin details.",
+                    token: newToken,
+                  });
+                }
+
+                const toArr = [{ name: currentCustomer.name, email: JSON.parse(currentCustomer.emails)[0] }];
+                const ccArr = adminResult.map(admin => ({
+                  name: admin.name,
+                  email: admin.email,
+                }));
+
+                addToStopcheck(
+                  "client application",
+                  "add-to-stopcheck",
+                  currentClientApplication.name,
+                  currentClientApplication.application_id,
+                  currentCustomer.name,
+                  currentCustomer.client_unique_id,
+                  toArr,
+                  ccArr
+                )
+                  .then(() => {
+                    return res.status(201).json({
+                      status: true,
+                      message: "Client application successfully updated and notification sent.",
+                      token: newToken,
+                    });
+                  })
+                  .catch((emailError) => {
+                    console.error("Email sending error:", emailError);
+                    return res.status(201).json({
+                      status: true,
+                      message: "Client application updated, but failed to send notification email.",
+                      token: newToken,
+                    });
+                  });
+              });
+            });
+          });
+        });
+      });
+    });
   });
 };
 
