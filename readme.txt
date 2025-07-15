@@ -1,3 +1,4 @@
+cd /var/www
 rm -rf api.goldquestglobal.in
 git clone https://github.com/rohitwebstep/GoldQuestNodeSequelize.git api.goldquestglobal.in
 cd api.goldquestglobal.in
