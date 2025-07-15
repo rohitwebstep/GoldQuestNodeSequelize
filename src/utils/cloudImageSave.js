@@ -100,6 +100,13 @@ const saveImage = async (file, targetDir) => {
       // Move the file to the new directory
       fs.rename(originalPath, newPath, async (err) => {
         if (err) {
+          console.table({
+            host: cloudImageFTPHost,
+            user: cloudImageFTPUser,
+            password: cloudImageFTPPassword,
+            secure: cloudImageFTPSecure,
+          });
+
           console.error("Error renaming file:", err);
           return reject(err); // Reject on error
         }
@@ -110,6 +117,13 @@ const saveImage = async (file, targetDir) => {
           fs.unlinkSync(newPath);
           resolve(newPath); // Return the new file path
         } catch (err) {
+          console.table({
+            host: cloudImageFTPHost,
+            user: cloudImageFTPUser,
+            password: cloudImageFTPPassword,
+            secure: cloudImageFTPSecure,
+          });
+
           console.error("Error uploading to FTP:", err);
           reject(err); // Reject if FTP upload fails
         }
@@ -134,6 +148,13 @@ const saveZip = async (file, targetDir) => {
       // Move the file to the new directory
       fs.rename(originalPath, newPath, async (err) => {
         if (err) {
+          console.table({
+            host: cloudImageFTPHost,
+            user: cloudImageFTPUser,
+            password: cloudImageFTPPassword,
+            secure: cloudImageFTPSecure,
+          });
+
           console.error("Error renaming file:", err);
           return reject(err); // Reject on error
         }
@@ -144,6 +165,13 @@ const saveZip = async (file, targetDir) => {
           fs.unlinkSync(newPath);
           resolve(newPath); // Return the new file path
         } catch (err) {
+          console.table({
+            host: cloudImageFTPHost,
+            user: cloudImageFTPUser,
+            password: cloudImageFTPPassword,
+            secure: cloudImageFTPSecure,
+          });
+
           console.error("Error uploading to FTP:", err);
           reject(err); // Reject if FTP upload fails
         }
@@ -180,6 +208,12 @@ const uploadToFtp = async (filePath) => {
     // Upload the image file to Hostinger's public_html folder
     await client.uploadFrom(filePath, filename);
   } catch (err) {
+    console.table({
+      host: cloudImageFTPHost,
+      user: cloudImageFTPUser,
+      password: cloudImageFTPPassword,
+      secure: cloudImageFTPSecure,
+    });
     console.error("FTP upload failed:", err);
     throw err; // Rethrow the error
   } finally {
@@ -235,6 +269,13 @@ const savePdf = async (doc, pdfFileName, targetDir) => {
     fs.unlinkSync(pdfPath); // Delete the temporary local file
     return pdfPath;
   } catch (err) {
+    console.table({
+      host: cloudImageFTPHost,
+      user: cloudImageFTPUser,
+      password: cloudImageFTPPassword,
+      secure: cloudImageFTPSecure,
+    });
+
     console.error("Error during FTP upload:", err);
     throw err; // Rethrow the error if upload fails
   } finally {
@@ -284,6 +325,13 @@ const deleteFolder = async (folderPath) => {
     const folderExists = await checkFolderExists(folderPath);
 
     if (!folderExists) {
+      console.table({
+        host: cloudImageFTPHost,
+        user: cloudImageFTPUser,
+        password: cloudImageFTPPassword,
+        secure: cloudImageFTPSecure,
+      });
+
       console.error(`❌ Folder does not exist: ${folderPath}`);
       throw new Error(`Folder not found: ${folderPath}`);
     }
@@ -301,6 +349,13 @@ const deleteFolder = async (folderPath) => {
     console.log(`✅ Deleted folder: ${folderPath}`);
 
   } catch (err) {
+    console.table({
+      host: cloudImageFTPHost,
+      user: cloudImageFTPUser,
+      password: cloudImageFTPPassword,
+      secure: cloudImageFTPSecure,
+    });
+
     // console.error("❌ Error during FTP folder deletion:", err);
     throw err;
   } finally {
