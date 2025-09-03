@@ -111,6 +111,20 @@ const Service = {
     }
   },
 
+  digitlAddressService: async (callback) => {
+    const sql = `
+      SELECT * FROM \`services\`
+      WHERE LOWER(\`title\`) LIKE '%digital%'
+      AND (LOWER(\`title\`) LIKE '%verification%' OR LOWER(\`title\`) LIKE '%address%')
+      LIMIT 1
+    `;
+    const results = await sequelize.query(sql, {
+      type: QueryTypes.SELECT,
+    });
+    const singleEntry = results.length > 0 ? results[0] : null;
+    callback(null, singleEntry); // Return single entry or null if not found
+  },
+
   getServiceById: async (id, callback) => {
     try {
       const sql = "SELECT * FROM `services` WHERE `id` = ?";
