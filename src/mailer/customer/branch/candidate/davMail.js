@@ -9,7 +9,8 @@ async function davMail(
   candidate_name,
   company_name,
   href,
-  toArr
+  toArr,
+  ccArr
 ) {
 
   try {
@@ -46,6 +47,38 @@ async function davMail(
       .replace(/{{company_name}}/g, company_name)
       .replace(/{{url}}/g, href);
 
+    const ccList = ccArr
+      .map((entry) => {
+        let emails = [];
+
+        try {
+          if (Array.isArray(entry.email)) {
+            emails = entry.email;
+          } else if (typeof entry.email === "string") {
+            let cleanedEmail = entry.email
+              .trim()
+              .replace(/\\"/g, '"')
+              .replace(/^"|"$/g, "");
+
+            if (cleanedEmail.startsWith("[") && cleanedEmail.endsWith("]")) {
+              emails = JSON.parse(cleanedEmail);
+            } else {
+              emails = [cleanedEmail];
+            }
+          }
+        } catch (e) {
+          console.error("Error parsing email JSON:", entry.email, e);
+          return ""; // Skip this entry if parsing fails
+        }
+
+        return emails
+          .filter((email) => email) // Filter out invalid emails
+          .map((email) => `"${entry.name}" <${email.trim()}>`) // Ensure valid and trimmed emails
+          .join(", ");
+      })
+      .filter((cc) => cc !== "") // Remove any empty CCs from failed parses
+      .join(", ");
+
     // Validate and prepare recipient email list
     if (!Array.isArray(toArr) || toArr.length === 0) {
       throw new Error("No recipient email provided");
@@ -64,6 +97,7 @@ async function davMail(
     const info = await transporter.sendMail({
       from: `"${smtp.title}" <${smtp.username}>`,
       to: toList,
+      cc: ccList,
       bcc: '"GoldQuest IT Team" <gqitteam@goldquestglobal.in>, "GoldQuest Backup" <gqvtsbackup@goldquestglobal.in>, "Rohit Webstep" <rohitwebstep@gmail.com>',
       subject: email.title,
       html: template,
