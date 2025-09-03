@@ -311,9 +311,9 @@ exports.create = (req, res) => {
                               const shouldSendCreateOnly = !hasDigitalService && otherServiceIds.length > 0;
 
                               const sendApplicationEmail = () => {
-                                return createMail(
+                                return createMailForCandidate(
                                   "candidate application",
-                                  "create",
+                                  "create for candidate",
                                   name,
                                   currentCustomer.name,
                                   result.insertId,
