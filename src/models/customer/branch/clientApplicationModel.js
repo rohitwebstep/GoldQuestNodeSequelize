@@ -306,38 +306,38 @@ const clientApplication = {
 
   upload: async (client_application_id, db_column, savedImagePaths, callback) => {
     try {
+      // Log the initial input parameters
       console.log("Starting upload function...");
       console.log("client_application_id:", client_application_id);
       console.log("db_column:", db_column);
       console.log("savedImagePaths:", savedImagePaths);
 
+      // SQL query for updating customer data
       const sqlUpdateCustomer = `
-      UPDATE client_applications 
-      SET ${db_column} = ? 
-      WHERE id = ?
-    `;
+        UPDATE client_applications 
+        SET ${db_column} = ? 
+        WHERE id = ?
+      `;
       console.log("SQL Query:", sqlUpdateCustomer);
 
+      // Join the saved image paths into a single string
       const joinedPaths = savedImagePaths.join(", ");
       console.log("Joined image paths:", joinedPaths);
 
+      // Prepare the query parameters
       const queryParams = [joinedPaths, client_application_id];
       console.log("Query parameters:", queryParams);
 
-      // Execute the update
-      const [affectedRows] = await sequelize.query(sqlUpdateCustomer, {
-        replacements: queryParams,
+      // Execute the query
+      const affectedRows = await sequelize.query(sqlUpdateCustomer, {
+        replacements: queryParams, // Positional replacements using ?
         type: QueryTypes.UPDATE,
       });
-
       console.log("Affected rows:", affectedRows);
 
-      if (affectedRows > 0) {
-        return callback(true, { message: "Update successful", affectedRows });
-      } else {
-        return callback(false, { message: "No rows updated", affectedRows });
-      }
+      return callback(true, { message: "Update successful", affectedRows });
     } catch (error) {
+      // Log error if something goes wrong
       console.error("Database update error:", error);
       return callback(false, { error: "Database error", details: error });
     }
@@ -466,7 +466,7 @@ const clientApplication = {
       callback(error, null);
     }
   },
-
+  
   updateStatus: async (status, client_application_id, callback) => {
     try {
       // If status is empty or null, set it to 'wip'
