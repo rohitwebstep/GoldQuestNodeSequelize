@@ -653,7 +653,7 @@ exports.create = (req, res) => {
                 if (send_mail == 0) {
                   return res.status(201).json({
                     status: true,
-                    message: "Client application created successfully.",
+                    message: "Client application created successfully .",
                     token: newToken,
                     result,
                   });
