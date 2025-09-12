@@ -2027,8 +2027,10 @@ exports.upload = async (req, res) => {
                       });
                     }
 
+                    console.log(`result - `, result);
+
                     // Handle the case where the upload was successful
-                    if (result && result.affectedRows > 0) {
+                    if (success) {
                       // Return success response if there are affected rows
                       if (send_mail == 1) {
                         let newAttachedDocsString = "";
