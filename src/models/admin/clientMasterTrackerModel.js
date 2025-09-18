@@ -380,10 +380,7 @@ const Customer = {
                             INNER JOIN
                                 client_applications ca ON b.branch_id = ca.branch_id
                             WHERE
-                                b.overall_status ='completed'
-                                AND (b.report_date LIKE '${yearMonth}-%' OR b.report_date LIKE '%-${monthYear}')
-                                AND LOWER(b.final_verification_status) IN ('green', 'red', 'yellow', 'pink', 'orange')
-                                AND c.status=1
+                                ca.status = 'completed'
                             GROUP BY
                                 b.customer_id
                         ) AS completed_counts ON customers.id = completed_counts.customer_id
