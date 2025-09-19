@@ -368,8 +368,7 @@ const Customer = {
                             INNER JOIN
                                 client_applications ca ON b.branch_id = ca.branch_id
                             WHERE
-                                ${client_application_ids_query_condition}
-                                AND (
+                                (
                                   b.overall_status = 'wip'
                                   OR b.overall_status = 'insuff'
                                   OR (b.overall_status = 'completed' 
@@ -377,6 +376,7 @@ const Customer = {
                                     AND (b.report_date LIKE '${yearMonth}-%' OR b.report_date LIKE '%-${monthYear}')
                                   )
                                 )
+                                ${client_application_ids_query_condition}
                             GROUP BY
                                 b.customer_id
                         ) AS application_counts ON customers.id = application_counts.customer_id
