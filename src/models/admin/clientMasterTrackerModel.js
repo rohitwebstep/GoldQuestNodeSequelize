@@ -418,10 +418,12 @@ const Customer = {
                         WHERE
                             customers.status = 1
                             ${customer_ids_query_condition}
-                            AND COALESCE(application_counts.application_count, 0) > 0
                         ORDER BY
                             application_counts.latest_application_date DESC;
                         `;
+
+                            // AND COALESCE(application_counts.application_count, 0) > 0
+                            
                         console.log(`finalSql - `, finalSql);
       const results = await sequelize.query(finalSql, {
         type: QueryTypes.SELECT,
