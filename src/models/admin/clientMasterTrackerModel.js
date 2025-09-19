@@ -407,8 +407,11 @@ const Customer = {
                                 BranchesCTE b
                             INNER JOIN
                                 client_applications ca ON b.branch_id = ca.branch_id
+                            INNER JOIN
+                                cmt_applications cmt ON ca.id = cmt.client_application_id
                             WHERE
-                                ca.status <> 'completed'
+                                (LOWER(cmt.is_verify) = 'no' OR cmt.is_verify IS NULL OR b.is_verify = '')
+                                AND ca.status = 'completed'
                             GROUP BY
                                 b.customer_id
                         ) AS pending_counts ON customers.id = pending_counts.customer_id
