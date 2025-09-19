@@ -410,7 +410,7 @@ const Customer = {
                             INNER JOIN
                                 cmt_applications cmt ON ca.id = cmt.client_application_id
                             WHERE
-                                (LOWER(cmt.is_verify) = 'no' OR cmt.is_verify IS NULL OR b.is_verify = '')
+                                (LOWER(cmt.is_verify) = 'no' OR cmt.is_verify IS NULL OR cmt.is_verify = '')
                                 AND ca.status = 'completed'
                             GROUP BY
                                 b.customer_id
