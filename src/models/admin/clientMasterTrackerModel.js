@@ -367,13 +367,14 @@ const Customer = {
                                 BranchesCTE b
                             INNER JOIN
                                 client_applications ca ON b.branch_id = ca.branch_id
+                                cmt_applications cmt ON ca.id = cmt.client_application_id
                             WHERE
                                 (
-                                  b.status = 'wip'
-                                  OR b.status = 'insuff'
-                                  OR (b.status = 'completed' 
-                                    AND LOWER(b.final_verification_status) IN ('green', 'red', 'yellow', 'pink', 'orange')
-                                    AND (b.report_date LIKE '${yearMonth}-%' OR b.report_date LIKE '%-${monthYear}')
+                                  cmt.overall_status = 'wip'
+                                  OR cmt.overall_status = 'insuff'
+                                  OR (cmt.overall_status = 'completed' 
+                                    AND LOWER(cmt.final_verification_status) IN ('green', 'red', 'yellow', 'pink', 'orange')
+                                    AND (cmt.report_date LIKE '${yearMonth}-%' OR cmt.report_date LIKE '%-${monthYear}')
                                   )
                                 )
                                 ${client_application_ids_query_condition}
@@ -388,10 +389,11 @@ const Customer = {
                                 BranchesCTE b
                             INNER JOIN
                                 client_applications ca ON b.branch_id = ca.branch_id
+                                cmt_applications cmt ON ca.id = cmt.client_application_id
                             WHERE
-                                b.status = 'completed'
-                                AND (b.report_date LIKE '${yearMonth}-%' OR b.report_date LIKE '%-${monthYear}')
-                                AND LOWER(b.final_verification_status) IN ('green', 'red', 'yellow', 'pink', 'orange')
+                                cmt.overall_status ='completed'
+                                AND (cmt.report_date LIKE '${yearMonth}-%' OR cmt.report_date LIKE '%-${monthYear}')
+                                AND LOWER(cmt.final_verification_status) IN ('green', 'red', 'yellow', 'pink', 'orange')
                             GROUP BY
                                 b.customer_id
                         ) AS completed_counts ON customers.id = completed_counts.customer_id
