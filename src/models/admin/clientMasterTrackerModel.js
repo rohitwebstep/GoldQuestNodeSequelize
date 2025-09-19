@@ -319,7 +319,7 @@ const Customer = {
         // Generate client_application_ids query condition if the array is not empty
 
         if (client_application_ids.length > 0) {
-          client_application_ids_query_condition = `ca.id IN (${client_application_ids.join(",")})`;
+          client_application_ids_query_condition = `AND ca.id IN (${client_application_ids.join(",")})`;
         }
 
         // Generate customer_ids query condition if the array is not empty
