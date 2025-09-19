@@ -369,9 +369,9 @@ const Customer = {
                                 client_applications ca ON b.branch_id = ca.branch_id
                             WHERE
                                 (
-                                  b.overall_status = 'wip'
-                                  OR b.overall_status = 'insuff'
-                                  OR (b.overall_status = 'completed' 
+                                  b.status = 'wip'
+                                  OR b.status = 'insuff'
+                                  OR (b.status = 'completed' 
                                     AND LOWER(b.final_verification_status) IN ('green', 'red', 'yellow', 'pink', 'orange')
                                     AND (b.report_date LIKE '${yearMonth}-%' OR b.report_date LIKE '%-${monthYear}')
                                   )
@@ -389,7 +389,7 @@ const Customer = {
                             INNER JOIN
                                 client_applications ca ON b.branch_id = ca.branch_id
                             WHERE
-                                b.overall_status ='completed'
+                                b.status = 'completed'
                                 AND (b.report_date LIKE '${yearMonth}-%' OR b.report_date LIKE '%-${monthYear}')
                                 AND LOWER(b.final_verification_status) IN ('green', 'red', 'yellow', 'pink', 'orange')
                             GROUP BY
