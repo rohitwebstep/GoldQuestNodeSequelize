@@ -319,7 +319,7 @@ const Customer = {
         // Generate client_application_ids query condition if the array is not empty
 
         if (client_application_ids.length > 0) {
-          client_application_ids_query_condition = `WHERE ca.id IN (${client_application_ids.join(",")})`;
+          client_application_ids_query_condition = `ca.id IN (${client_application_ids.join(",")})`;
         }
 
         // Generate customer_ids query condition if the array is not empty
@@ -367,7 +367,16 @@ const Customer = {
                                 BranchesCTE b
                             INNER JOIN
                                 client_applications ca ON b.branch_id = ca.branch_id
-                              ${client_application_ids_query_condition}
+                            WHERE
+                                ${client_application_ids_query_condition}
+                                AND (
+                                  b.overall_status = 'wip'
+                                  OR b.overall_status = 'insuff'
+                                  OR (b.overall_status = 'completed' 
+                                    AND LOWER(b.final_verification_status) IN ('green', 'red', 'yellow', 'pink', 'orange')
+                                    AND (b.report_date LIKE '${yearMonth}-%' OR b.report_date LIKE '%-${monthYear}')
+                                  )
+                                )
                             GROUP BY
                                 b.customer_id
                         ) AS application_counts ON customers.id = application_counts.customer_id
@@ -380,7 +389,9 @@ const Customer = {
                             INNER JOIN
                                 client_applications ca ON b.branch_id = ca.branch_id
                             WHERE
-                                ca.status = 'completed'
+                                b.overall_status ='completed'
+                                AND (b.report_date LIKE '${yearMonth}-%' OR b.report_date LIKE '%-${monthYear}')
+                                AND LOWER(b.final_verification_status) IN ('green', 'red', 'yellow', 'pink', 'orange')
                             GROUP BY
                                 b.customer_id
                         ) AS completed_counts ON customers.id = completed_counts.customer_id
