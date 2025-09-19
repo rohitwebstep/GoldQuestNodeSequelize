@@ -367,6 +367,7 @@ const Customer = {
                                 BranchesCTE b
                             INNER JOIN
                                 client_applications ca ON b.branch_id = ca.branch_id
+                            INNER JOIN
                                 cmt_applications cmt ON ca.id = cmt.client_application_id
                             WHERE
                                 (
@@ -389,6 +390,7 @@ const Customer = {
                                 BranchesCTE b
                             INNER JOIN
                                 client_applications ca ON b.branch_id = ca.branch_id
+                            INNER JOIN
                                 cmt_applications cmt ON ca.id = cmt.client_application_id
                             WHERE
                                 cmt.overall_status ='completed'
