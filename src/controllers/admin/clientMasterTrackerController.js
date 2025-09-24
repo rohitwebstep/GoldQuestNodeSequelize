@@ -620,56 +620,67 @@ exports.applicationByID = (req, res) => {
                         token: newToken,
                       });
                     }
-                    Customer.getCustomerById(
-                      parseInt(currentBranch.customer_id),
-                      (err, currentCustomer) => {
-                        if (err) {
-                          console.error(
-                            "Database error during customer retrieval:",
-                            err
-                          );
-                          return res.status(500).json({
-                            status: false,
-                            message:
-                              "Failed to retrieve Customer. Please try again.",
-                            token: newToken,
-                          });
-                        }
-
-                        if (!currentCustomer) {
-                          return res.status(404).json({
-                            status: false,
-                            message: "Customer not found.",
-                            token: newToken,
-                          });
-                        }
-
-                        if (!CMTApplicationData) {
-                          return res.json({
-                            status: true,
-                            message: "Application fetched successfully 1",
-                            application,
-                            branchInfo: currentBranch,
-                            customerInfo: currentCustomer,
-                            qcVerificationTeam,
-                            reportGenerationTeam,
-                            token: newToken,
-                          });
-                        } else {
-                          return res.json({
-                            status: true,
-                            message: "Application fetched successfully 2",
-                            application,
-                            CMTData: CMTApplicationData,
-                            branchInfo: currentBranch,
-                            customerInfo: currentCustomer,
-                            qcVerificationTeam,
-                            reportGenerationTeam,
-                            token: newToken,
-                          });
-                        }
+                    Admin.filterAdminsForReport({ status: "active", type: "all" }, (err, reportGenerationTeam) => {
+                      if (err) {
+                        console.error("Database error:", err);
+                        return res.status(500).json({
+                          status: false,
+                          message: err.message,
+                          token: newToken,
+                        });
                       }
-                    );
+                      Customer.getCustomerById(
+                        parseInt(currentBranch.customer_id),
+                        (err, currentCustomer) => {
+                          if (err) {
+                            console.error(
+                              "Database error during customer retrieval:",
+                              err
+                            );
+                            return res.status(500).json({
+                              status: false,
+                              message:
+                                "Failed to retrieve Customer. Please try again.",
+                              token: newToken,
+                            });
+                          }
+
+                          if (!currentCustomer) {
+                            return res.status(404).json({
+                              status: false,
+                              message: "Customer not found.",
+                              token: newToken,
+                            });
+                          }
+
+                          if (!CMTApplicationData) {
+                            return res.json({
+                              status: true,
+                              message: "Application fetched successfully 1",
+                              application,
+                              branchInfo: currentBranch,
+                              customerInfo: currentCustomer,
+                              qcVerificationTeam,
+                              reportGenerationTeam,
+                              token: newToken,
+                            });
+                          } else {
+                            return res.json({
+                              status: true,
+                              message: "Application fetched successfully 2",
+                              application,
+                              CMTData: CMTApplicationData,
+                              branchInfo: currentBranch,
+                              customerInfo: currentCustomer,
+                              qcVerificationTeam,
+                              reportGenerationTeam,
+                              admins,
+                              token: newToken,
+                            });
+                          }
+                        }
+                      );
+                    });
                   });
                 });
               });

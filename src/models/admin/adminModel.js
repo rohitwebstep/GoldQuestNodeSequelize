@@ -92,6 +92,9 @@ const Admin = {
 
     let column;
     switch (type) {
+      case 'all':
+        column = null;
+        break;
       case 'QCVerificationTeam':
         column = 'is_qc_verifier';
         break;
@@ -104,29 +107,29 @@ const Admin = {
 
     try {
       let sql = `
-        SELECT 
-          id, emp_id, name, role, profile_picture, email, 
-          service_ids, status, mobile 
-        FROM admins
-      `;
+      SELECT 
+        id, emp_id, name, role, profile_picture, email, 
+        service_ids, status, mobile 
+      FROM admins
+    `;
 
       const conditions = [];
       const values = [];
 
-      // Handle status filter
+      // Status filter
       if (status !== undefined) {
         const statusValue = (status === "active" || status === "1") ? "1" : "0";
         conditions.push("status = ?");
         values.push(statusValue);
       }
 
-      // Add type-specific column filter
+      // Type-specific filter
       if (column) {
         conditions.push(`${column} = ?`);
         values.push("1");
       }
 
-      // Append conditions if any
+      // Combine conditions if any
       if (conditions.length > 0) {
         sql += " WHERE " + conditions.join(" AND ");
       }
@@ -142,7 +145,6 @@ const Admin = {
       return callback({ message: "Database query error", error: err }, null);
     }
   },
-
 
   create: async (data, callback) => {
     try {
