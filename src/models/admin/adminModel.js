@@ -759,9 +759,9 @@ const Admin = {
 
           // Step 3: Fetch all services where group is in the allowed IDs
           const servicesSql = `
-          SELECT id, name, \`group\` 
+          SELECT id, title, group 
           FROM services
-          WHERE \`group\` IN (:groups)
+          WHERE group IN (:groups)
         `;
 
           const services = await sequelize.query(servicesSql, {
