@@ -759,13 +759,13 @@ const Admin = {
 
           // Step 3: Fetch all services where group is in the allowed IDs
           const servicesSql = `
-          SELECT id, title, group 
-          FROM services
-          WHERE group IN (:groups)
-        `;
+  SELECT id, title, \`group\`
+  FROM services
+  WHERE LOWER(\`group\`) IN (:groups)
+`;
 
           const services = await sequelize.query(servicesSql, {
-            replacements: { groups: serviceGroupsArr },
+            replacements: { groups: serviceGroupsArr.map(g => g.toLowerCase()) },
             type: QueryTypes.SELECT,
           });
 
