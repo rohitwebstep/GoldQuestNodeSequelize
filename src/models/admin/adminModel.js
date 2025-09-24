@@ -764,6 +764,9 @@ const Admin = {
   WHERE LOWER(\`group\`) IN (:groups)
 `;
 
+          console.log(`servicesSql - `, servicesSql);
+          console.log(`serviceGroupsArr - `, serviceGroupsArr.map(g => g.toLowerCase()));
+
           const services = await sequelize.query(servicesSql, {
             replacements: { groups: serviceGroupsArr.map(g => g.toLowerCase()) },
             type: QueryTypes.SELECT,
