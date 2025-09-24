@@ -27,7 +27,7 @@ const Admin = {
   list: async (callback) => {
     try {
       const sql = `
-        SELECT id, emp_id, name, role, profile_picture, email, service_ids, status, mobile, is_qc_verifier, is_report_generator 
+        SELECT id, emp_id, name, role, profile_picture, email, service_groups, status, mobile, is_qc_verifier, is_report_generator 
         FROM admins
       `;
 
@@ -48,7 +48,7 @@ const Admin = {
       let sql = `
         SELECT 
           id, emp_id, name, role, profile_picture, email, 
-          service_ids, status, mobile 
+          service_groups, status, mobile 
         FROM admins
       `;
       const conditions = [];
@@ -109,7 +109,7 @@ const Admin = {
       let sql = `
       SELECT 
         id, emp_id, name, role, profile_picture, email, 
-        service_ids, status, mobile 
+        service_groups, status, mobile 
       FROM admins
     `;
 
@@ -148,7 +148,7 @@ const Admin = {
 
   create: async (data, callback) => {
     try {
-      const { name, mobile, email, employee_id, role, password, service_ids, is_qc_verifier, is_report_generator } = data;
+      const { name, mobile, email, employee_id, role, password, service_groups, is_qc_verifier, is_report_generator } = data;
 
       // SQL query to check if any field already exists in the admins table
       const checkExistingQuery = `
@@ -179,18 +179,18 @@ const Admin = {
         }
       }
 
-      // If role is 'admin', exclude service_ids
+      // If role is 'admin', exclude service_groups
       const sql =
         role.toLowerCase() === "admin"
           ? `INSERT INTO \`admins\` (\`name\`, \`emp_id\`, \`mobile\`, \`email\`, \`role\`, \`is_qc_verifier\`, \`is_report_generator\`, \`status\`, \`password\`) 
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, md5(?))`
-          : `INSERT INTO \`admins\` (\`name\`, \`emp_id\`, \`mobile\`, \`email\`, \`role\`, \`is_qc_verifier\`, \`is_report_generator\`, \`service_ids\`, \`status\`, \`password\`) 
+          : `INSERT INTO \`admins\` (\`name\`, \`emp_id\`, \`mobile\`, \`email\`, \`role\`, \`is_qc_verifier\`, \`is_report_generator\`, \`service_groups\`, \`status\`, \`password\`) 
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, md5(?))`;
 
       const queryParams =
         role.toLowerCase() === "admin"
           ? [name, employee_id, mobile, email, role, is_qc_verifier, is_report_generator, "1", password]
-          : [name, employee_id, mobile, email, role, is_qc_verifier, is_report_generator, service_ids, "1", password];
+          : [name, employee_id, mobile, email, role, is_qc_verifier, is_report_generator, service_groups, "1", password];
 
       const results = await sequelize.query(sql, {
         replacements: queryParams,
@@ -206,7 +206,7 @@ const Admin = {
 
   update: async (data, callback) => {
     try {
-      const { id, name, mobile, email, employee_id, role, status, service_ids, is_qc_verifier, is_report_generator } = data;
+      const { id, name, mobile, email, employee_id, role, status, service_groups, is_qc_verifier, is_report_generator } = data;
 
       // SQL query to check if any field already exists in the admins table (excluding current ID)
       const checkExistingQuery = `
@@ -245,13 +245,13 @@ const Admin = {
              SET \`name\` = ?, \`emp_id\` = ?, \`mobile\` = ?, \`email\` = ?, \`role\` = ?, \`is_qc_verifier\` = ?, \`is_report_generator\` = ?, \`status\` = ? 
              WHERE \`id\` = ?`
           : `UPDATE \`admins\` 
-             SET \`name\` = ?, \`emp_id\` = ?, \`mobile\` = ?, \`email\` = ?, \`role\` = ?, \`is_qc_verifier\` = ?, \`is_report_generator\` = ?, \`service_ids\` = ?, \`status\` = ? 
+             SET \`name\` = ?, \`emp_id\` = ?, \`mobile\` = ?, \`email\` = ?, \`role\` = ?, \`is_qc_verifier\` = ?, \`is_report_generator\` = ?, \`service_groups\` = ?, \`status\` = ? 
              WHERE \`id\` = ?`;
 
       const queryParams =
         role.toLowerCase() === "admin"
           ? [name, employee_id, mobile, email, role, is_qc_verifier, is_report_generator, status, id]
-          : [name, employee_id, mobile, email, role, is_qc_verifier, is_report_generator, service_ids, status, id];
+          : [name, employee_id, mobile, email, role, is_qc_verifier, is_report_generator, service_groups, status, id];
 
       const results = await sequelize.query(sql, {
         replacements: queryParams,
@@ -682,10 +682,11 @@ const Admin = {
     }
   },
 
+  /*
   fetchAllowedServiceIds: async (id, callback) => {
     try {
       const sql = `
-        SELECT service_ids, role FROM admins
+        SELECT service_groups, role FROM admins
         WHERE id = ?
       `;
 
@@ -698,23 +699,91 @@ const Admin = {
         return callback({ message: "Admin not found" }, null);
       }
 
-      const { role, service_ids } = results[0];
+      const { role, service_groups } = results[0];
 
       // If the role is not "admin" or "admin_user"
       if (!["admin", "admin_user"].includes(role)) {
         try {
-          // Convert service_ids string to an array and map to numbers
-          const serviceIdsArr = service_ids ? service_ids.split(",").map(Number) : [];
+          // Convert service_groups string to an array and map to numbers
+          const serviceIdsArr = service_groups ? service_groups.split(",").map(Number) : [];
 
           return callback(null, { finalServiceIds: serviceIdsArr });
         } catch (parseErr) {
-          console.error("Error parsing service_ids:", parseErr);
-          return callback({ message: "Error parsing service_ids data", error: parseErr }, null);
+          console.error("Error parsing service_groups:", parseErr);
+          return callback({ message: "Error parsing service_groups data", error: parseErr }, null);
         }
       }
 
       // If the role is "admin" or "admin_user"
       return callback(null, { finalServiceIds: [] });
+    } catch (error) {
+      console.error("Database query error:", error);
+      return callback({ message: "Database query error", error }, null);
+    }
+  }
+  */
+
+  fetchAllowedServiceIds: async (id, callback) => {
+    try {
+      // Step 1: Fetch admin role and service groups
+      const sql = `
+      SELECT service_groups, role FROM admins
+      WHERE id = ?
+    `;
+
+      const results = await sequelize.query(sql, {
+        replacements: [id],
+        type: QueryTypes.SELECT,
+      });
+
+      if (results.length === 0) {
+        return callback({ message: "Admin not found" }, null);
+      }
+
+      const { role, service_groups } = results[0];
+
+      // Step 2: If role is not "admin" or "admin_user"
+      if (!["admin", "admin_user"].includes(role)) {
+        try {
+          // Convert service_groups string into an array of numbers
+          const serviceGroupsArr = service_groups
+            ? service_groups
+              .split(",")
+              .map((id) => Number(id.trim()))
+              .filter((id) => !isNaN(id))
+            : [];
+
+          if (serviceGroupsArr.length === 0) {
+            return callback(null, { finalServiceIds: [], services: [] });
+          }
+
+          // Step 3: Fetch all services where group is in the allowed IDs
+          const servicesSql = `
+          SELECT id, name, \`group\` 
+          FROM services
+          WHERE \`group\` IN (:groups)
+        `;
+
+          const services = await sequelize.query(servicesSql, {
+            replacements: { groups: serviceGroupsArr },
+            type: QueryTypes.SELECT,
+          });
+
+          // Extract service IDs from the result
+          const finalServiceIds = services.map((s) => s.id);
+
+          return callback(null, { finalServiceIds, services });
+        } catch (parseErr) {
+          console.error("Error parsing service_groups:", parseErr);
+          return callback(
+            { message: "Error parsing service_groups data", error: parseErr },
+            null
+          );
+        }
+      }
+
+      // Step 4: If the role is "admin" or "admin_user"
+      return callback(null, { finalServiceIds: [], services: [] });
     } catch (error) {
       console.error("Database query error:", error);
       return callback({ message: "Database query error", error }, null);

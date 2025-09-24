@@ -268,7 +268,7 @@ exports.create = (req, res) => {
     password,
     employee_id,
     send_mail,
-    service_ids,
+    service_groups,
     is_qc_verifier,
     is_report_generator
   } = req.body;
@@ -286,7 +286,7 @@ exports.create = (req, res) => {
   };
 
   if (role.trim().toLowerCase() !== "admin") {
-    requiredFields.service_ids = service_ids;
+    requiredFields.service_groups = service_groups;
   }
 
   // Check for missing fields
@@ -344,7 +344,7 @@ exports.create = (req, res) => {
           mobile,
           role: role.toLowerCase(),
           password,
-          service_ids: service_ids || "",
+          service_groups: service_groups || "",
           is_qc_verifier: is_qc_verifier || 0,
           is_report_generator: is_report_generator || 0
         },
@@ -433,7 +433,7 @@ exports.update = (req, res) => {
     email,
     mobile,
     status,
-    service_ids,
+    service_groups,
     employee_id,
     is_qc_verifier,
     is_report_generator
@@ -453,7 +453,7 @@ exports.update = (req, res) => {
   };
 
   if (role.trim().toLowerCase() !== "admin") {
-    requiredFields.service_ids = service_ids;
+    requiredFields.service_groups = service_groups;
   }
 
   // Check for missing fields
@@ -533,7 +533,7 @@ exports.update = (req, res) => {
             mobile,
             role: role.toLowerCase(),
             status,
-            service_ids: service_ids || "",
+            service_groups: service_groups || "",
             is_qc_verifier: is_qc_verifier || 0,
             is_report_generator: is_report_generator || 0
           },
