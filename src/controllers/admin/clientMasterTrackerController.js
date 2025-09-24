@@ -620,7 +620,7 @@ exports.applicationByID = (req, res) => {
                         token: newToken,
                       });
                     }
-                    Admin.filterAdminsForReport({ status: "active", type: "all" }, (err, reportGenerationTeam) => {
+                    Admin.filterAdminsForReport({ status: "active", type: "all" }, (err, admins) => {
                       if (err) {
                         console.error("Database error:", err);
                         return res.status(500).json({
@@ -662,6 +662,7 @@ exports.applicationByID = (req, res) => {
                               customerInfo: currentCustomer,
                               qcVerificationTeam,
                               reportGenerationTeam,
+                              admins,
                               token: newToken,
                             });
                           } else {
