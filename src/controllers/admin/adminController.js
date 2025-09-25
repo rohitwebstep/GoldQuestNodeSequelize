@@ -551,9 +551,8 @@ exports.update = (req, res) => {
               );
               return res.status(500).json({
                 status: false,
-                message: "Failed to update Admin. Please try again later.",
-                token: newToken,
-                error: err,
+                message: err.message || "Failed to update Admin. Please try again later.",
+                token: newToken
               });
             }
 
