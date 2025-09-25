@@ -49,7 +49,7 @@ const clientApplication = {
       LIMIT 1
     `;
 
-      const applicationIdParam = `${client_unique_id}%`;
+      const applicationIdParam = `${client_unique_id}-%`;
 
       const applicationResults = await sequelize.query(getApplicationIdSql, {
         replacements: [applicationIdParam],

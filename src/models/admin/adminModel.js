@@ -724,6 +724,7 @@ const Admin = {
   */
 
   fetchAllowedServiceIds: async (id, callback) => {
+
     try {
       // Step 1: Fetch admin role and service groups
       const sql = `
@@ -736,7 +737,9 @@ const Admin = {
         type: QueryTypes.SELECT,
       });
 
-      if (results.length === 0) {
+      // Defensive check: results may be undefined
+      if (!results || results.length === 0) {
+        console.warn("Admin not found for id:", id);
         return callback({ message: "Admin not found" }, null);
       }
 
@@ -744,54 +747,49 @@ const Admin = {
 
       // Step 2: If role is not "admin" or "admin_user"
       if (!["admin", "admin_user"].includes(role)) {
+        // Convert service_groups string into an array of strings
+        const serviceGroupsArr = service_groups
+          ? service_groups
+            .split(",")
+            .map((g) => g.trim())
+            .filter((g) => g)
+          : [];
+
+        if (serviceGroupsArr.length === 0) {
+          return callback(null, { finalServiceIds: [], services: [], isAdmin: false });
+        }
+
         try {
-          // Convert service_groups string into an array of numbers
-          const serviceGroupsArr = service_groups
-            ? service_groups
-              .split(",")
-              .map((id) => Number(id.trim()))
-              .filter((id) => !isNaN(id))
-            : [];
-
-          if (serviceGroupsArr.length === 0) {
-            return callback(null, { finalServiceIds: [], services: [] });
-          }
-
           // Step 3: Fetch all services where group is in the allowed IDs
           const servicesSql = `
-  SELECT id, title, \`group\`
-  FROM services
-  WHERE LOWER(\`group\`) IN (:groups)
-`;
-
-          console.log(`servicesSql - `, servicesSql);
-          console.log(`serviceGroupsArr - `, serviceGroupsArr.map(g => g.toLowerCase()));
+          SELECT id, title, \`group\`
+          FROM services
+          WHERE LOWER(\`group\`) IN (:groups)
+        `;
 
           const services = await sequelize.query(servicesSql, {
-            replacements: { groups: serviceGroupsArr.map(g => g.toLowerCase()) },
+            replacements: { groups: serviceGroupsArr.map((g) => g.toLowerCase()) },
             type: QueryTypes.SELECT,
           });
 
-          // Extract service IDs from the result
-          const finalServiceIds = services.map((s) => s.id);
+          // Defensive check: services may be undefined
+          const finalServiceIds = Array.isArray(services) ? services.map((s) => s.id) : [];
 
-          return callback(null, { finalServiceIds, services });
-        } catch (parseErr) {
-          console.error("Error parsing service_groups:", parseErr);
-          return callback(
-            { message: "Error parsing service_groups data", error: parseErr },
-            null
-          );
+          return callback(null, { finalServiceIds, services: services || [], isAdmin: false });
+        } catch (serviceErr) {
+          console.error("Error fetching services:", serviceErr);
+          return callback({ message: "Error fetching services", error: serviceErr }, null);
         }
       }
 
       // Step 4: If the role is "admin" or "admin_user"
-      return callback(null, { finalServiceIds: [], services: [] });
+      return callback(null, { finalServiceIds: [], services: [], isAdmin: true });
     } catch (error) {
       console.error("Database query error:", error);
       return callback({ message: "Database query error", error }, null);
     }
   }
+
 };
 
 module.exports = Admin;

@@ -2524,6 +2524,7 @@ exports.annexureDataByServiceIds = (req, res) => {
       }
       const allowedServiceIds = allowedServiceIdsResult.finalServiceIds;
       const addressServicesPermission = allowedServiceIdsResult.addressServicesPermission;
+      const isAdmin = allowedServiceIdsResult.isAdmin;
 
       // Verify admin token
       AdminCommon.isAdminTokenValid(_token, admin_id, (err, result) => {
@@ -2542,11 +2543,16 @@ exports.annexureDataByServiceIds = (req, res) => {
         const rawServiceIds = service_ids.split(",").map((id) => id.trim());
         // Check if allowedServiceIds is not null
         let serviceIds;
-        if (allowedServiceIds && allowedServiceIds.length > 0) {
-          // Filter serviceIds based on allowedServiceIds if it's not null
-          serviceIds = rawServiceIds.filter(serviceId =>
-            allowedServiceIds.includes(Number(serviceId)) // Convert string to number
-          );
+        if (!isAdmin) {
+          if (allowedServiceIds && allowedServiceIds.length > 0) {
+            // Filter serviceIds based on allowedServiceIds if it's not null
+            serviceIds = rawServiceIds.filter(serviceId =>
+              allowedServiceIds.includes(Number(serviceId)) // Convert string to number
+            );
+          } else {
+            // No allowedServiceIds provided, return empty array
+            serviceIds = [];
+          }
         } else {
           // If allowedServiceIds is null, just pass serviceIds as raw
           serviceIds = rawServiceIds;
