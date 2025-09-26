@@ -76,34 +76,45 @@ exports.isApplicationExist = (req, res) => {
       }
 
       if (currentCandidateApplication) {
-        DAV.getDAVApplicationById(app_id, (err, currentDAVApplication) => {
-          if (err) {
-            console.error(
-              "Database error during DAV application retrieval:",
-              err
-            );
-            return res.status(500).json({
-              status: false,
-              message: "Failed to retrieve DAV Application. Please try again.",
-            });
-          }
+        DAV.davFormOpened(
+          app_id,
+          (err, davFormOpenedResult) => {
+            if (err) {
+              console.error("Database error:", err);
+              return res.status(500).json({
+                status: false,
+                message: err.message,
+              });
+            }
+            DAV.getDAVApplicationById(app_id, (err, currentDAVApplication) => {
+              if (err) {
+                console.error(
+                  "Database error during DAV application retrieval:",
+                  err
+                );
+                return res.status(500).json({
+                  status: false,
+                  message: "Failed to retrieve DAV Application. Please try again.",
+                });
+              }
 
-          if (
-            currentDAVApplication &&
-            Object.keys(currentDAVApplication).length > 0 && currentDAVApplication.is_submitted
-          ) {
-            return res.status(400).json({
-              status: false,
-              message: "An application has already been submitted.",
-            });
-          }
+              if (
+                currentDAVApplication &&
+                Object.keys(currentDAVApplication).length > 0 && currentDAVApplication.is_submitted
+              ) {
+                return res.status(400).json({
+                  status: false,
+                  message: "An application has already been submitted.",
+                });
+              }
 
-          return res.status(200).json({
-            status: true,
-            data: currentCandidateApplication,
-            message: "Application exists.",
+              return res.status(200).json({
+                status: true,
+                data: currentCandidateApplication,
+                message: "Application exists.",
+              });
+            });
           });
-        });
       } else {
         return res.status(404).json({
           status: false,

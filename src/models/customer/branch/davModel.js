@@ -18,6 +18,26 @@ const dav = {
     }
   },
 
+  davFormOpened: async (candidate_application_id, callback) => {
+    try {
+      const sql = `
+            UPDATE \`candidate_applications\` 
+            SET 
+              \`is_dav_form_opened\` = ?
+            WHERE \`id\` = ?
+        `;
+
+      const [results] = await sequelize.query(sql, {
+        replacements: ['1', candidate_application_id],
+        type: QueryTypes.UPDATE, // Correct query type
+      });
+
+      callback(null, results);
+    } catch (error) {
+      callback(error, null);
+    }
+  },
+
   create: async (
     personal_information,
     candidate_application_id,
