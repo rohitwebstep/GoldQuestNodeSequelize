@@ -417,7 +417,7 @@ exports.create = (req, res) => {
                           }
 
                           if (currentService?.title) {
-                            serviceNames.push(`${currentService.title}: ${currentService.description}`);
+                            serviceNames.push(`${currentService.title}: ${currentService.email_description}`);
                           }
 
                           // Continue to next service
@@ -1074,7 +1074,7 @@ function sendNotificationEmails(
                     return fetchServiceNames(index + 1);
                   }
 
-                  // Add the service name and description to the serviceNames array
+                  // Add the service name and email_description to the serviceNames array
                   serviceNames.push(
                     `${currentService.title}: ${currentService.email_description}`
                   );
