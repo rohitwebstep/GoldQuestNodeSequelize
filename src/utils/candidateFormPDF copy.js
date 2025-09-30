@@ -1759,8 +1759,6 @@ module.exports = {
                                                                     });
 
 
-
-
                                                                     newYPosition = doc.autoTable.previous.finalY + 20; // Adjusting for space from the last table
 
                                                                     doc.text("Attach Signature.", doc.internal.pageSize.width / 2, newYPosition, { align: 'center' });

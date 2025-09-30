@@ -528,8 +528,8 @@ exports.submit = (req, res) => {
       if (currentCandidateApplication.is_custom_bgv !== 1) {
         if (personal_information) {
           [
-            "name_declaration",
-            "declaration_date",
+            // "name_declaration",
+            // "declaration_date",
             "blood_group",
             "pan_card_name",
             "aadhar_card_name",
