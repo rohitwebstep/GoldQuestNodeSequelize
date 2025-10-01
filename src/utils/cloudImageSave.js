@@ -4,29 +4,44 @@ const multer = require("multer");
 const ftp = require("basic-ftp");
 const App = require("../models/appModel");
 
-// Fetch app information (database query) once
-let cloudImageFTPHost,
-  cloudImageFTPUser,
-  cloudImageFTPPassword,
-  cloudImageFTPSecure;
+// Function to fetch FTP client info
+async function getFTPClientInfo() {
+  try {
+    const appInfo = await new Promise((resolve, reject) => {
+      App.appInfo("backend", (err, appInfo) => {
+        if (err) {
+          console.error("Database error:", err);
+          return reject(err);
+        }
 
-App.appInfo("backend", (err, appInfo) => {
-  if (err) {
-    console.error("Database error:", err);
-    return;
+        let cloudImageFTPHost = appInfo.cloud_ftp_host;
+        let cloudImageFTPUser = appInfo.cloud_ftp_user;
+        let cloudImageFTPPassword = appInfo.cloud_ftp_password;
+        let cloudImageFTPSecure = appInfo.cloud_ftp_secure;
+
+        // Validate required details
+        if (!cloudImageFTPHost || !cloudImageFTPUser || !cloudImageFTPPassword) {
+          console.error("FTP configuration missing required details.");
+          return reject(new Error("Missing FTP configuration"));
+        }
+
+        // Normalize secure flag (0 = false, anything else = true)
+        cloudImageFTPSecure = cloudImageFTPSecure === 0 ? false : true;
+
+        resolve({
+          host: cloudImageFTPHost,
+          user: cloudImageFTPUser,
+          password: cloudImageFTPPassword,
+          secure: cloudImageFTPSecure
+        });
+      });
+    });
+
+    return { status: true, data: appInfo };
+  } catch (error) {
+    return { status: false, data: null };
   }
-  cloudImageFTPHost = appInfo.cloud_ftp_host;
-  cloudImageFTPUser = appInfo.cloud_ftp_user;
-  cloudImageFTPPassword = appInfo.cloud_ftp_password;
-  cloudImageFTPSecure = appInfo.cloud_ftp_secure;
-  // Check if any FTP details are missing and handle the error
-  if (!cloudImageFTPHost || !cloudImageFTPUser || !cloudImageFTPPassword) {
-    console.error("FTP configuration missing required details.");
-    return;
-  }
-  // Set cloudImageFTPSecure based on its value (0 = false, anything else = true)
-  cloudImageFTPSecure = cloudImageFTPSecure === 0 ? false : true;
-});
+}
 
 // Set up multer storage
 const storage = multer.diskStorage({
@@ -87,7 +102,7 @@ const upload = multer({
 });
 // Function to save a single image and upload it to FTP
 const saveImage = async (file, targetDir) => {
-  return new Promise((resolve, reject) => {
+  return new Promise(async (resolve, reject) => {
     if (file) {
       const originalPath = path.join("uploads", file.filename); // Original file path
       const newPath = path.join(targetDir, file.filename); // New file path
@@ -96,6 +111,15 @@ const saveImage = async (file, targetDir) => {
       if (!fs.existsSync(targetDir)) {
         fs.mkdirSync(targetDir, { recursive: true }); // Create directory if it doesn't exist
       }
+
+      // ✅ Get FTP details before proceeding
+      const ftpInfo = await getFTPClientInfo();
+
+      if (!ftpInfo.status) {
+        return reject(new Error("Failed to fetch FTP configuration"));
+      }
+
+      const { host: cloudImageFTPHost, user: cloudImageFTPUser, password: cloudImageFTPPassword, secure: cloudImageFTPSecure } = ftpInfo.data;
 
       // Move the file to the new directory
       fs.rename(originalPath, newPath, async (err) => {
@@ -135,7 +159,7 @@ const saveImage = async (file, targetDir) => {
 };
 
 const saveZip = async (file, targetDir) => {
-  return new Promise((resolve, reject) => {
+  return new Promise(async (resolve, reject) => {
     if (file) {
       const originalPath = path.join("uploads", file.filename); // Original file path
       const newPath = path.join(targetDir, file.filename); // New file path
@@ -144,6 +168,15 @@ const saveZip = async (file, targetDir) => {
       if (!fs.existsSync(targetDir)) {
         fs.mkdirSync(targetDir, { recursive: true }); // Create directory if it doesn't exist
       }
+
+      // ✅ Get FTP details before proceeding
+      const ftpInfo = await getFTPClientInfo();
+
+      if (!ftpInfo.status) {
+        return reject(new Error("Failed to fetch FTP configuration"));
+      }
+
+      const { host: cloudImageFTPHost, user: cloudImageFTPUser, password: cloudImageFTPPassword, secure: cloudImageFTPSecure } = ftpInfo.data;
 
       // Move the file to the new directory
       fs.rename(originalPath, newPath, async (err) => {
@@ -189,6 +222,16 @@ const uploadToFtp = async (filePath) => {
   client.ftp.timeout = 300000;
 
   try {
+
+    // ✅ Get FTP details before proceeding
+    const ftpInfo = await getFTPClientInfo();
+
+    if (!ftpInfo.status) {
+      return reject(new Error("Failed to fetch FTP configuration"));
+    }
+
+    const { host: cloudImageFTPHost, user: cloudImageFTPUser, password: cloudImageFTPPassword, secure: cloudImageFTPSecure } = ftpInfo.data;
+
     // Connect to FTP server using previously fetched app information
     await client.access({
       host: cloudImageFTPHost,
@@ -239,6 +282,15 @@ const savePdf = async (doc, pdfFileName, targetDir) => {
   client.ftp.timeout = 300000;
 
   try {
+    // ✅ Get FTP details before proceeding
+    const ftpInfo = await getFTPClientInfo();
+
+    if (!ftpInfo.status) {
+      return reject(new Error("Failed to fetch FTP configuration"));
+    }
+
+    const { host: cloudImageFTPHost, user: cloudImageFTPUser, password: cloudImageFTPPassword, secure: cloudImageFTPSecure } = ftpInfo.data;
+
     // Connect to FTP server using previously fetched app information
     await client.access({
       host: cloudImageFTPHost,
@@ -291,6 +343,15 @@ const deleteFolder = async (folderPath) => {
   client.ftp.timeout = 300000;
 
   try {
+    // ✅ Get FTP details before proceeding
+    const ftpInfo = await getFTPClientInfo();
+
+    if (!ftpInfo.status) {
+      return reject(new Error("Failed to fetch FTP configuration"));
+    }
+
+    const { host: cloudImageFTPHost, user: cloudImageFTPUser, password: cloudImageFTPPassword, secure: cloudImageFTPSecure } = ftpInfo.data;
+
     console.log("🖥 Connecting to FTP server...");
     await client.access({
       host: cloudImageFTPHost,
