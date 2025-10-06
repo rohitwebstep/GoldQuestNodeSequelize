@@ -100,35 +100,65 @@ function calculateOverallCosts(serviceStats, percentage) {
 }
 
 async function getServiceNames(serviceIds) {
-  // Helper function to fetch a service by ID
+
+  if (!Array.isArray(serviceIds) || serviceIds.length === 0) {
+    console.warn("⚠️ [getServiceNames] No valid service IDs provided.");
+    return [];
+  }
+
+  // Helper: fetch a service by ID (returns Promise)
   const fetchServiceById = (serviceId) => {
+
     return new Promise((resolve, reject) => {
       Service.getServiceById(serviceId, (err, service) => {
-        if (err) return reject(err);
+        if (err) {
+          console.error(`❌ [fetchServiceById] Error for ID ${serviceId}:`, err);
+          return reject(err);
+        }
+
+        if (!service) {
+          console.warn(`⚠️ [fetchServiceById] No service found for ID: ${serviceId}`);
+          return resolve(null);
+        }
         resolve(service);
       });
     });
   };
 
   try {
-    // Fetch all services concurrently using Promise.all
-    const servicePromises = serviceIds.map(async (serviceId) => {
-      const service = await fetchServiceById(serviceId);
-      if (service && service.title) {
-        return {
-          id: service.id,
-          title: service.title,
-          shortCode: service.short_code,
-        };
+
+    // Fetch all services concurrently
+    const servicePromises = serviceIds.map(async (id) => {
+      try {
+        const service = await fetchServiceById(id);
+
+        if (service && service.title) {
+          const result = {
+            id: service.id,
+            title: service.title.trim(),
+            shortCode: service.short_code || null,
+          };
+          return result;
+        } else {
+          console.warn(`⚠️ [getServiceNames] Invalid or missing title for ID: ${id}`);
+          return null;
+        }
+      } catch (err) {
+        console.error(`💥 [getServiceNames] Failed to fetch service for ID ${id}:`, err);
+        return null;
       }
-      return null;
     });
 
-    // Wait for all promises to resolve and filter out any null results
-    const serviceNames = (await Promise.all(servicePromises)).filter(Boolean);
-    return serviceNames;
+    const allResults = await Promise.allSettled(servicePromises);
+
+    // Extract only fulfilled and valid results
+    const validServices = allResults
+      .filter((r) => r.status === "fulfilled" && r.value)
+      .map((r) => r.value);
+
+    return validServices;
   } catch (error) {
-    console.error("Error fetching service data:", error);
+    console.error("💥 [getServiceNames] Unexpected error during processing:", error);
     return [];
   }
 }
