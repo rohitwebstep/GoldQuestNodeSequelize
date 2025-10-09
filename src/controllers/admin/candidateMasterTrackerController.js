@@ -1313,15 +1313,9 @@ exports.sendLink = (req, res) => {
                           id,
                           (err, currentService) => {
                             if (err) {
-                              console.error(
-                                "Error fetching service data:",
-                                err
-                              );
-                              return res.status(500).json({
-                                status: false,
-                                message: "Service data error.",
-                                token: newToken,
-                              });
+                              console.error("Error fetching service data:", err);
+                              // ❌ Don't stop — just continue to next service
+                              return fetchServiceNames(index + 1);
                             }
 
                             if (!currentService || !currentService.title) {

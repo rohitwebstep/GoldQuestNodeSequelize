@@ -469,15 +469,9 @@ exports.convertToClient = (req, res) => {
 
                                       Service.getServiceById(id, (err, currentService) => {
                                         if (err) {
-                                          console.error(
-                                            "Error fetching service data:",
-                                            err
-                                          );
-                                          return res.status(500).json({
-                                            status: false,
-                                            message: err.message,
-                                            token: newToken,
-                                          });
+                                          console.error("Error fetching service data:", err);
+                                          // ❌ Don't stop — just continue to next service
+                                          return fetchServiceNames(index + 1);
                                         }
 
                                         // Skip invalid services and continue to the next index
@@ -839,15 +833,9 @@ exports.create = (req, res) => {
 
                           Service.getServiceById(id, (err, currentService) => {
                             if (err) {
-                              console.error(
-                                "Error fetching service data:",
-                                err
-                              );
-                              return res.status(500).json({
-                                status: false,
-                                message: err.message,
-                                token: newToken,
-                              });
+                              console.error("Error fetching service data:", err);
+                              // ❌ Don't stop — just continue to next service
+                              return fetchServiceNames(index + 1);
                             }
 
                             // Skip invalid services and continue to the next index
@@ -1318,14 +1306,8 @@ function sendNotificationEmails(
               Service.getServiceById(id, (err, currentService) => {
                 if (err) {
                   console.error("Error fetching service data:", err);
-                  if (!responseSent) {
-                    responseSent = true; // Mark the response as sent
-                    return res.status(500).json({
-                      status: false,
-                      message: err.message,
-                      token: newToken,
-                    });
-                  }
+                  // ❌ Don't stop — just continue to next service
+                  return fetchServiceNames(index + 1);
                 }
 
                 if (!currentService || !currentService.title) {
@@ -2248,19 +2230,9 @@ exports.upload = async (req, res) => {
                                           id,
                                           (err, currentService) => {
                                             if (err) {
-                                              console.error(
-                                                "Error fetching service data:",
-                                                err
-                                              );
-                                              if (!res.headersSent) {
-                                                return res.status(500).json({
-                                                  status: false,
-                                                  message: err.message,
-                                                  token: newToken,
-                                                  savedImagePaths,
-                                                });
-                                              }
-                                              return;
+                                              console.error("Error fetching service data:", err);
+                                              // ❌ Don't stop — just continue to next service
+                                              return fetchServiceNames(index + 1);
                                             }
 
                                             // Skip invalid services and continue to the next index

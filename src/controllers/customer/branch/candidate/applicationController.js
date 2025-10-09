@@ -409,11 +409,8 @@ exports.create = (req, res) => {
                         Service.getServiceRequiredDocumentsByServiceId(id, (err, currentService) => {
                           if (err) {
                             console.error("Error fetching service data:", err);
-                            return res.status(500).json({
-                              status: false,
-                              message: err.message,
-                              token: newToken,
-                            });
+                            // ❌ Don't stop — just continue to next service
+                            return fetchServiceNames(index + 1);
                           }
 
                           if (currentService?.title) {
@@ -1062,11 +1059,8 @@ function sendNotificationEmails(
                 (err, currentService) => {
                   if (err) {
                     console.error("Error fetching service data:", err);
-                    return res.status(500).json({
-                      status: false,
-                      message: err.message,
-                      token: newToken,
-                    });
+                    // ❌ Don't stop — just continue to next service
+                    return fetchServiceNames(index + 1);
                   }
 
                   if (!currentService || !currentService.title) {
