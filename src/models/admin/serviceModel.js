@@ -213,31 +213,202 @@ const Service = {
     }
   },
 
-  delete: async (id, callback) => {
+  /*
+  delete: async (serviceId, callback) => {
     try {
-      const deleteSql = `
-        DELETE FROM \`services\`
-        WHERE \`id\` = ?
-      `;
+      // 1️⃣ Fetch customers having the serviceId in their JSON services
+      const customers = await sequelize.query(
+        'SELECT id, services FROM customers WHERE JSON_CONTAINS(services, ?, "$")',
+        {
+          replacements: [JSON.stringify({ serviceId })],
+          type: QueryTypes.SELECT,
+        }
+      );
 
-      // Perform the delete query
+      if (!customers.length) {
+        return callback(null, { status: false, message: 'No customer found with the given serviceId' });
+      }
+
+      for (let customer of customers) {
+        // Remove service from customers JSON
+        let services = JSON.parse(customer.services);
+        const newServices = services.filter(s => s.serviceId !== serviceId);
+
+        if (newServices.length !== services.length) {
+          await sequelize.query(
+            'UPDATE customers SET services = ? WHERE id = ?',
+            {
+              replacements: [JSON.stringify(newServices), customer.id],
+              type: QueryTypes.UPDATE,
+            }
+          );
+        }
+
+        // 2️⃣ Fetch client_applications where services CSV contains serviceId
+        const client_applications = await sequelize.query(
+          'SELECT id, services FROM client_applications WHERE FIND_IN_SET(?, services) AND customer_id = ?',
+          {
+            replacements: [serviceId.toString(), customer.id],
+            type: QueryTypes.SELECT,
+          }
+        );
+
+        // Remove the serviceId from each application
+        for (let clientApp of client_applications) {
+          let servicesArray = clientApp.services.split(',');
+          const newServicesArray = servicesArray.filter(s => s !== serviceId.toString());
+
+          if (newServicesArray.length !== servicesArray.length) {
+            await sequelize.query(
+              'UPDATE client_applications SET services = ? WHERE id = ?',
+              {
+                replacements: [newServicesArray.join(','), clientApp.id],
+                type: QueryTypes.UPDATE,
+              }
+            );
+          }
+        }
+
+        // 2️⃣ Fetch candidate_applications where services CSV contains serviceId
+        const candidate_applications = await sequelize.query(
+          'SELECT id, services FROM candidate_applications WHERE FIND_IN_SET(?, services) AND customer_id = ?',
+          {
+            replacements: [serviceId.toString(), customer.id],
+            type: QueryTypes.SELECT,
+          }
+        );
+
+        // Remove the serviceId from each application
+        for (let candidateApp of candidate_applications) {
+          let servicesArray = candidateApp.services.split(',');
+          const newServicesArray = servicesArray.filter(s => s !== serviceId.toString());
+
+          if (newServicesArray.length !== servicesArray.length) {
+            await sequelize.query(
+              'UPDATE candidate_applications SET services = ? WHERE id = ?',
+              {
+                replacements: [newServicesArray.join(','), candidateApp.id],
+                type: QueryTypes.UPDATE,
+              }
+            );
+          }
+        }
+      }
+
+      return callback(null, { status: true, message: 'Service deleted successfully' });
+
+    } catch (err) {
+      console.error('Database query error:', err);
+      return callback({ message: 'Database query error', error: err }, null);
+    }
+  },
+*/
+
+  delete: async (serviceId, callback) => {
+    try {
+      // 1️⃣ Delete the service from the services table
+      const deleteSql = 'DELETE FROM `services` WHERE `id` = ?';
       const result = await sequelize.query(deleteSql, {
-        replacements: [id],
+        replacements: [serviceId],
         type: QueryTypes.DELETE,
       });
 
-      // If result is an object, check affectedRows or similar fields
-      if (result && result.affectedRows > 0) {
-        return callback(null, { status: true, message: "Service deleted successfully", result });
-      } else {
-        return callback(null, { status: false, message: "No service found with the given ID" });
+      // Check if any service was actually deleted
+      if (!result || result.affectedRows === 0) {
+        return callback(null, { status: false, message: 'No service found with the given ID' });
       }
+
+      // 2️⃣ Fetch customers having this serviceId in their JSON services
+      const customers = await sequelize.query(
+        `SELECT id, services FROM customers WHERE JSON_CONTAINS(services, '{"serviceId": ${serviceId}}', '$')`,
+        {
+          type: QueryTypes.SELECT,
+        }
+      );
+
+      if (customers.length) {
+        for (let customer of customers) {
+          try {
+            // Remove the service from the customer's JSON services
+            const services = JSON.parse(customer.services);
+            const newServices = services.filter(
+              s => String(s.serviceId) !== String(serviceId)
+            );
+
+            if (newServices.length !== services.length) {
+              await sequelize.query(
+                'UPDATE customers SET services = ? WHERE id = ?',
+                {
+                  replacements: [JSON.stringify(newServices), customer.id],
+                  type: QueryTypes.UPDATE,
+                }
+              );
+            }
+
+            /*
+            // 2️⃣ Fetch client_applications where services CSV contains serviceId
+            const client_applications = await sequelize.query(
+              'SELECT id, services FROM client_applications WHERE FIND_IN_SET(?, services) AND customer_id = ?',
+              {
+                replacements: [serviceId.toString(), customer.id],
+                type: QueryTypes.SELECT,
+              }
+            );
+  
+            // Remove the serviceId from each application
+            for (let clientApp of client_applications) {
+              let servicesArray = clientApp.services.split(',');
+              const newServicesArray = servicesArray.filter(s => s !== serviceId.toString());
+  
+              if (newServicesArray.length !== servicesArray.length) {
+                await sequelize.query(
+                  'UPDATE client_applications SET services = ? WHERE id = ?',
+                  {
+                    replacements: [newServicesArray.join(','), clientApp.id],
+                    type: QueryTypes.UPDATE,
+                  }
+                );
+              }
+            }
+  
+            // 2️⃣ Fetch candidate_applications where services CSV contains serviceId
+            const candidate_applications = await sequelize.query(
+              'SELECT id, services FROM candidate_applications WHERE FIND_IN_SET(?, services) AND customer_id = ?',
+              {
+                replacements: [serviceId.toString(), customer.id],
+                type: QueryTypes.SELECT,
+              }
+            );
+  
+            // Remove the serviceId from each application
+            for (let candidateApp of candidate_applications) {
+              let servicesArray = candidateApp.services.split(',');
+              const newServicesArray = servicesArray.filter(s => s !== serviceId.toString());
+  
+              if (newServicesArray.length !== servicesArray.length) {
+                await sequelize.query(
+                  'UPDATE candidate_applications SET services = ? WHERE id = ?',
+                  {
+                    replacements: [newServicesArray.join(','), candidateApp.id],
+                    type: QueryTypes.UPDATE,
+                  }
+                );
+              }
+            }
+            */
+          } catch (innerErr) {
+            console.error(`❌ Error processing customer ID: ${customer.id}`, innerErr);
+          }
+        }
+      }
+
+      return callback(null, { status: true, message: 'Service deleted successfully' });
+
     } catch (err) {
-      console.error("Database query error: 51", err);
-      return callback({ message: "Database query error", error: err }, null);
+      console.error('Database query error:', err);
+      return callback({ message: 'Database query error', error: err }, null);
     }
   }
-
 };
 
 module.exports = Service;
