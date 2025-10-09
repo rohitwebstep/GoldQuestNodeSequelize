@@ -471,6 +471,8 @@ const Customer = {
 
       // Fetch all service titles in parallel (if there are any services)
       if (Array.isArray(servicesData) && servicesData.length > 0) {
+        const updatedServices = [];
+
         for (const group of servicesData) {
           if (group.serviceId) {
             const serviceSql = `SELECT title FROM services WHERE id = ? LIMIT 1`;
@@ -479,11 +481,20 @@ const Customer = {
               replacements: [group.serviceId],
             });
 
+            // ✅ If service exists, add it to the new array
             if (serviceResult && serviceResult.title) {
               group.serviceTitle = serviceResult.title;
+              updatedServices.push(group);
+            } else {
+              console.log(
+                `⚠️ Service ID ${group.serviceId} not found — removing from list.`
+              );
             }
           }
         }
+
+        // ✅ Replace original array with filtered one
+        servicesData = updatedServices;
       }
 
       // Attach updated service titles to customer data
