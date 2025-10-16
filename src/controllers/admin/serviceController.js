@@ -369,6 +369,12 @@ exports.delete = (req, res) => {
 
       const newToken = result.newToken;
 
+      return res.status(500).json({
+        status: false,
+        message: 'Service deletion is temporarily unavailable. Please try again later.',
+        token: newToken,
+      });
+
       Service.getServiceById(id, (err, currentService) => {
         if (err) {
           console.error("Error fetching service data:", err);
