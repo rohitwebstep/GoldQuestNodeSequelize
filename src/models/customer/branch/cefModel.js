@@ -164,7 +164,7 @@ const cef = {
           const sanitizedJson = rawJson
             .replace(/\\"/g, '"')
             .replace(/\\'/g, "'");
-          const jsonData = JSON.parse(sanitizedJson);
+          jsonData = JSON.parse(sanitizedJson);
         } catch (jsonErr) {
           console.error(`Invalid JSON for service: ${service}`, jsonErr);
           serviceData[service] = { heading: `Service ${service}`, is_submitted: false };
@@ -181,7 +181,7 @@ const cef = {
         }
 
         // Check submission status in cef_{dbTable}
-        const sql = `SELECT is_submitted FROM \`cef_${dbTable}\` WHERE \`candidate_application_id\` = ?`;
+        const sql = `SELECT id FROM \`cef_${dbTable}\` WHERE \`candidate_application_id\` = ?`;
 
         try {
           const dbTableResults = await sequelize.query(sql, {
@@ -189,7 +189,7 @@ const cef = {
             type: QueryTypes.SELECT,
           });
 
-          const isSubmitted = dbTableResults.length > 0 && dbTableResults[0].is_submitted === 1;
+          const isSubmitted = dbTableResults.length > 0;
           serviceData[service] = { heading, is_submitted: isSubmitted };
         } catch (queryErr) {
           if (queryErr.code === "ER_NO_SUCH_TABLE") {
