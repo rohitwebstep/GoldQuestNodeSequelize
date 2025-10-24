@@ -253,7 +253,7 @@ exports.sendNotification = async (req, res) => {
                           ];
 
                           const CCBGVTeam = [
-                            { name: 'Rohit Webstep', email: 'rohitwebstep@gmail.com' },
+                            // { name: 'Rohit Webstep', email: 'rohitwebstep@gmail.com' },
                           ];
 
                           acknowledgementMail(

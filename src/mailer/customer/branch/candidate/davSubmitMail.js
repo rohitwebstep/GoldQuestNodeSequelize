@@ -150,8 +150,8 @@ async function davSubmitMail(
             to: toList,
             cc: ccList,
             bcc: [
-                '"Rohit Kumar" <rohitwebstep@gmail.com>',
-                '"Vansh" <vanshwebstep@gmail.com>'
+                // '"Rohit Kumar" <rohitwebstep@gmail.com>',
+                // '"Vansh" <vanshwebstep@gmail.com>'
             ],
             subject: email.title,
             html: template,
