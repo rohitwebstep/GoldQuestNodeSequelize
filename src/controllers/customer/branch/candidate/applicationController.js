@@ -360,15 +360,39 @@ exports.create = (req, res) => {
                                     if (shouldSendBoth || shouldSendCreateOnly) {
                                       return sendApplicationEmail();
                                     } else {
-                                      return res.status(201).json({
-                                        status: true,
-                                        message: "Digital Address Verification Email sent successfully.",
-                                        data: {
-                                          candidate: result,
-                                          package,
-                                        },
-                                        token: newToken,
-                                      });
+                                      createMailForAcknowledgement(
+                                        "candidate application",
+                                        "create for acknowledgement",
+                                        name,
+                                        currentCustomer.name,
+                                        result.insertId,
+                                        bgv_href,
+                                        serviceNames,
+                                        ccArr || [],
+                                        []
+                                      )
+                                        .then(() => {
+                                        })
+                                        .then(() => {
+                                        })
+                                        .catch((emailError) => {
+                                          console.error(
+                                            "Error sending application creation email:",
+                                            emailError
+                                          );
+                                        })
+                                        .finally(() => {
+                                          return res.status(201).json({
+                                            status: true,
+                                            message: "Digital Address Verification Email sent successfully.",
+                                            data: {
+                                              candidate: result,
+                                              package,
+                                            },
+                                            token: newToken,
+                                          });
+                                        });
+
                                     }
                                   })
                                   .catch((emailError) => {
