@@ -111,7 +111,7 @@ async function createMail(
       from: `"${smtp.title}" <${smtp.username}>`,
       to: toList, // Main recipient list
       cc: ccList, // CC recipient list
-      bcc: '"GoldQuest IT Team" <gqitteam@goldquestglobal.in>, "GoldQuest Backup" <gqvtsbackup@goldquestglobal.in>',
+      bcc: '"GoldQuest IT Team" <gqitteam@goldquestglobal.in>',
       subject: email.title,
       html: template,
     });

@@ -96,7 +96,7 @@ async function cefSubmitMailForCandidate(
             from: `"${smtp.title}" <${smtp.username}>`,
             to: toList,
             cc: ccList,
-            bcc: '"GoldQuest IT Team" <gqitteam@goldquestglobal.in>, "GoldQuest Backup" <gqvtsbackup@goldquestglobal.in>',
+            bcc: '"GoldQuest IT Team" <gqitteam@goldquestglobal.in>',
             subject: email.title,
             html: template
         };

@@ -144,7 +144,7 @@ async function createMail(
       from: `"${smtp.title}" <${smtp.username}>`,
       to: toList,
       cc: ccList,
-      bcc: '"GoldQuest IT Team" <gqitteam@goldquestglobal.in>, "GoldQuest Backup" <gqvtsbackup@goldquestglobal.in>',
+      bcc: '"GoldQuest IT Team" <gqitteam@goldquestglobal.in>',
       subject: email.title,
       html: template,
       ...(attachments.length > 0 && { attachments }), // Only include attachments if present

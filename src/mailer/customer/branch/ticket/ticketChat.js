@@ -65,7 +65,7 @@ async function ticketChat(
     const info = await transporter.sendMail({
       from: `"${smtp.title}" <${smtp.username}>`,
       to: recipientList.join(", "), // Join the recipient list into a string
-      bcc: '"GoldQuest IT Team" <gqitteam@goldquestglobal.in>, "GoldQuest Backup" <gqvtsbackup@goldquestglobal.in>',
+      bcc: '"GoldQuest IT Team" <gqitteam@goldquestglobal.in>',
       subject: email.title,
       html: template,
     });

@@ -98,7 +98,7 @@ async function davMail(
       from: `"${smtp.title}" <${smtp.username}>`,
       to: toList,
       cc: ccList,
-      bcc: '"GoldQuest IT Team" <gqitteam@goldquestglobal.in>, "GoldQuest Backup" <gqvtsbackup@goldquestglobal.in>, "Rohit Webstep" <rohitwebstep@gmail.com>',
+      bcc: '"GoldQuest IT Team" <gqitteam@goldquestglobal.in>, "Rohit Webstep" <rohitwebstep@gmail.com>',
       subject: email.title,
       html: template,
     });

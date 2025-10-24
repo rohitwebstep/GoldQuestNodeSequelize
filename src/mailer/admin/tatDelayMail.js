@@ -125,7 +125,7 @@ async function tatDelayMail(
       from: `"${smtp.title}" <${smtp.username}>`,
       to: recipientList.join(", "),
       cc: ccList,
-      bcc: '"GoldQuest IT Team" <gqitteam@goldquestglobal.in>, "GoldQuest Backup" <gqvtsbackup@goldquestglobal.in>',
+      bcc: '"GoldQuest IT Team" <gqitteam@goldquestglobal.in>',
       subject: email.title,
       html: template,
     });
