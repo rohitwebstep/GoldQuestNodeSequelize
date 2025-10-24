@@ -118,8 +118,7 @@ async function qcReportCheckMail(
       .join(", ");
 
     // Add "GQG HRSPL" email to CC
-    // const additionalCc = '"GQG HRSPL" <reportsatgoldquest@gmail.com>';
-    const additionalCc = '';
+    const additionalCc = '"GQG HRSPL" <reportsbackup@goldquestglobal.in>';
     const finalCcList = ccList ? `${ccList}, ${additionalCc}` : additionalCc;
 
     // Validate recipient email(s)
