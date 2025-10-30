@@ -191,7 +191,7 @@ exports.create = async (req, res) => {
                         // Return success response if there are affected rows
                         if (send_mail == 1) {
                           // Retrieve admins and send email
-                          Admin.list((err, adminResult) => {
+                          Admin.filterAdmins({ status: "active", role: "admin" }, (err, adminResult) => {
                             if (err) {
                               console.error("Database error:", err);
                               return res.status(500).json({
@@ -351,7 +351,7 @@ exports.delete = (req, res) => {
                 "0",
                 JSON.stringify({ id }),
                 err,
-                () => {}
+                () => { }
               );
               return res.status(500).json({
                 status: false,
@@ -367,7 +367,7 @@ exports.delete = (req, res) => {
               "1",
               JSON.stringify({ id }),
               null,
-              () => {}
+              () => { }
             );
 
             res.status(200).json({

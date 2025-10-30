@@ -747,7 +747,7 @@ exports.create = (req, res) => {
                                     }
 
                                     const { branch, customer } = emailData;
-                                    Admin.list((err, adminResult) => {
+                                    Admin.filterAdmins({ status: "active", role: "admin" }, (err, adminResult) => {
                                       if (err) {
                                         console.error("Database error:", err);
                                         return res.status(500).json({
@@ -1179,7 +1179,7 @@ function sendNotificationEmails(
         });
       }
 
-      Admin.list((err, adminResult) => {
+      Admin.filterAdmins({ status: "active", role: "admin" }, (err, adminResult) => {
         if (err) {
           console.error("Database error:", err);
           return res.status(500).json({
@@ -2041,7 +2041,7 @@ exports.upload = async (req, res) => {
                               });
                             }
 
-                            Admin.list((err, adminResult) => {
+                            Admin.filterAdmins({ status: "active", role: "admin" }, (err, adminResult) => {
                               if (err) {
                                 console.error("Database error:", err);
                                 return res.status(500).json({
