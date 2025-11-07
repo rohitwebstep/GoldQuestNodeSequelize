@@ -30,7 +30,7 @@ const {
 
 // Branch login handler
 exports.login = (req, res) => {
-  const { username, password, admin_id, admin_token } = req.body;
+  const { username, password, branch_id, admin_id, admin_token } = req.body;
   const missingFields = [];
 
   // Validate required fields
@@ -45,7 +45,7 @@ exports.login = (req, res) => {
     });
   }
 
-  BranchAuth.findByEmailOrMobile(username, (err, result) => {
+  BranchAuth.findByEmailOrMobileForBranchLogin(username, password, (err, result) => {
     if (err) {
       console.error("Database error:", err);
       return res.status(500).json({ status: false, message: err.message });
@@ -60,13 +60,126 @@ exports.login = (req, res) => {
       });
     }
 
+    console.log(`result - `, result);
     const record = result[0];
+
+    if (record.type === 'additional_user' && result.length > 0) {
+      if (branch_id && record.branchDetails && record.branchDetails.length > 0) {
+        const matchedBranch = record.branchDetails.find(
+          (branch) => branch.branch_id === branch_id
+        );
+
+        console.log("matchedBranch - ", matchedBranch);
+
+        if (matchedBranch) {
+          // Check if parent customer is active
+          return BranchAuth.isCustomerActive(record.customer_id, (customerErr, isCustomerActive) => {
+            if (customerErr) {
+              console.error("Database error:", customerErr);
+              return res
+                .status(500)
+                .json({ status: false, message: customerErr });
+            }
+
+            if (!isCustomerActive) {
+              return res.status(404).json({
+                status: false,
+                message: "Parent Company is not active",
+              });
+            }
+
+            // Check if branch is active
+            BranchAuth.isBranchActive(matchedBranch.branch_id, (err, isBranchActive) => {
+              if (err) {
+                console.error("Database error:", err);
+                return res
+                  .status(500)
+                  .json({ status: false, message: err.message });
+              }
+
+              if (!isBranchActive) {
+                return res.status(404).json({
+                  status: false,
+                  message: "Branch not active",
+                });
+              }
+
+              // Generate token and expiry
+              const token = generateToken();
+              const newTokenExpiry = getTokenExpiry();
+
+              // Update token in DB
+              BranchAuth.updateToken(
+                record.customer_id,
+                token,
+                newTokenExpiry,
+                record.type,
+                (err, updateResult) => {
+                  if (err) {
+                    console.error("Database error:", err);
+                    Common.branchLoginLog(
+                      record.customer_id,
+                      "Additional login",
+                      "0",
+                      "Error updating token: " + err,
+                      () => { }
+                    );
+                    return res.status(500).json({
+                      status: false,
+                      message: `Error updating token: ${err}`,
+                    });
+                  }
+
+                  // Success: Log and respond
+                  Common.branchLoginLog(
+                    record.customer_id,
+                    "Additional login",
+                    "1",
+                    null,
+                    () => { }
+                  );
+
+                  return res.json({
+                    status: true,
+                    message: "Login successful",
+                    branchData: {
+                      customer_id: record.customer_id,
+                      branch_id: matchedBranch.branch_id,
+                      name: matchedBranch.name,
+                      email: matchedBranch.email,
+                      mobile_number: matchedBranch.mobile_number,
+                      type: 'additional_user'
+                    },
+                    token,
+                  });
+                }
+              );
+            });
+          });
+        } else {
+          return res.status(500).json({
+            status: false,
+            message: "Login options found for additional user (no branch match)",
+            matchedBranch,
+          });
+        }
+      }
+
+      // Case: additional user found but no branch_id provided
+      return res.status(500).json({
+        status: false,
+        message: "Login options found for additional user",
+        result,
+      });
+    }
+
+
     BranchAuth.isCustomerActive(
       record.customer_id,
       (customerErr, isCustomerActive) => {
         if (customerErr) {
           console.error("Database error:", customerErr);
-          return res.status(500).json({ status: false, message: customererr });
+          return res.status(500).json({ status: false, message: customerErr });
         }
 
         // If customer is not active, return a 404 response
@@ -466,7 +579,7 @@ exports.verifyTwoFactor = (req, res) => {
     }
 
     const branch = result[0];
-    
+
     // Validate account status
     if (branch.status === 0) {
       Common.branchLoginLog(
@@ -621,7 +734,7 @@ exports.verifyTwoFactor = (req, res) => {
 };
 
 exports.updatePassword = (req, res) => {
-  const { new_password, branch_id, sub_user_id, _token } = req.body;
+  const { new_password, branch_id, customer_id, sub_user_id, _token } = req.body;
 
   // Validate required fields
   const missingFields = [];
@@ -664,6 +777,7 @@ exports.updatePassword = (req, res) => {
   // Validate branch token
   Common.isBranchTokenValid(
     _token,
+    customer_id,
     sub_user_id || null,
     branch_id,
     (err, result) => {
@@ -721,7 +835,7 @@ exports.updatePassword = (req, res) => {
 
 // Branch logout handler
 exports.logout = (req, res) => {
-  const { branch_id, sub_user_id, _token } = req.query;
+  const { branch_id, customer_id, sub_user_id, _token } = req.query;
 
   // Validate required fields and create a custom message
   let missingFields = [];
@@ -737,6 +851,7 @@ exports.logout = (req, res) => {
   // Validate the branch token
   Common.isBranchTokenValid(
     _token,
+    customer_id,
     sub_user_id || null,
     branch_id,
     (err, result) => {
@@ -770,7 +885,7 @@ exports.logout = (req, res) => {
 
 // Branch login validation handler
 exports.validateLogin = (req, res) => {
-  const { sub_user_id, branch_id, _token } = req.body;
+  const { sub_user_id, branch_id, customer_id, _token } = req.body;
   const missingFields = [];
 
   // Validate required fields
@@ -785,7 +900,7 @@ exports.validateLogin = (req, res) => {
   }
 
   // Fetch branch by ID
-  BranchAuth.findById(sub_user_id || "", branch_id, (err, branch) => {
+  BranchAuth.findById(customer_id, sub_user_id || "", branch_id, (err, branch) => {
     if (err) {
       console.error("Database error:", err);
       return res.status(500).json({ status: false, message: err.message });
@@ -815,7 +930,7 @@ exports.validateLogin = (req, res) => {
     }
 
     // Check if the existing token is still valid
-    Common.isBranchTokenValid(_token, sub_user_id || "", branch_id, (err, result) => {
+    Common.isBranchTokenValid(_token, customer_id, sub_user_id || "", branch_id, (err, result) => {
       if (err) {
         console.error("Error checking token validity:", err);
         return res.status(500).json({ status: false, message: "Error validating token." });

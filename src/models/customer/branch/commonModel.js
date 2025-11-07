@@ -14,7 +14,7 @@ const getTokenExpiry = () => {
 };
 
 const common = {
-  isBranchTokenValid: async (_token, sub_user_id, branch_id, callback) => {
+  isBranchTokenValid: async (_token, customer_id, sub_user_id, branch_id, callback) => {
     try {
       if (typeof callback !== "function") {
         console.error("Callback is not a function");
@@ -24,7 +24,11 @@ const common = {
       let sql, queryParams, currentRole;
 
       // Determine which table to query based on sub_user_id presence
-      if (sub_user_id && String(sub_user_id).trim() !== "") {
+      if (customer_id && String(customer_id).trim() !== "") {
+        sql = `SELECT login_token, token_expiry FROM customers WHERE id = ?`;
+        queryParams = [customer_id];
+        currentRole = "Additional User";
+      }else if (sub_user_id && String(sub_user_id).trim() !== "") {
         sql = `SELECT login_token, token_expiry FROM branch_sub_users WHERE id = ?`;
         queryParams = [sub_user_id];
         currentRole = "Sub User";
@@ -62,13 +66,23 @@ const common = {
       const newToken = generateToken();
       const newTokenExpiry = getTokenExpiry();
 
-      // Use the correct table based on role
-      const updateSql = sub_user_id
-        ? `UPDATE branch_sub_users SET login_token = ?, token_expiry = ? WHERE id = ?`
-        : `UPDATE branches SET login_token = ?, token_expiry = ? WHERE id = ?`;
 
+      let updateSql, updateQueryParams;
+
+      // Determine which table to query based on sub_user_id presence
+      if (customer_id && String(customer_id).trim() !== "") {
+        updateSql = `UPDATE customers SET login_token = ?, token_expiry = ? WHERE id = ?`;
+        updateQueryParams = [newToken, newTokenExpiry, customer_id];
+      }else if (sub_user_id && String(sub_user_id).trim() !== "") {
+        updateSql = `UPDATE branch_sub_users SET login_token = ?, token_expiry = ? WHERE id = ?`;
+        updateQueryParams = [newToken, newTokenExpiry, sub_user_id];
+      } else {
+        updateSql = `UPDATE branches SET login_token = ?, token_expiry = ? WHERE id = ?`;
+        updateQueryParams = [newToken, newTokenExpiry, branch_id];
+      }
+      
       await sequelize.query(updateSql, {
-        replacements: [newToken, newTokenExpiry, sub_user_id || branch_id],
+        replacements: updateQueryParams,
         type: QueryTypes.UPDATE,
       });
 

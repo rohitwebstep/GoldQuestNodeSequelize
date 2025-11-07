@@ -14,7 +14,7 @@ const generatePassword = (companyName) => {
 };
 
 exports.index = (req, res) => {
-  const { branch_id, sub_user_id, _token } = req.query;
+  const { branch_id, customer_id, sub_user_id, _token } = req.query;
 
   // Validate required fields
   const missingFields = [];
@@ -41,6 +41,7 @@ exports.index = (req, res) => {
     // Step 2: Verify the branch token
     BranchCommon.isBranchTokenValid(
       _token,
+      customer_id,
       sub_user_id || null,
       branch_id,
       (tokenErr, tokenResult) => {
@@ -94,7 +95,7 @@ exports.index = (req, res) => {
 
 // Controller to list all branches
 exports.callbackRequest = (req, res) => {
-  const { branch_id, sub_user_id, _token } = req.body;
+  const { branch_id, customer_id, sub_user_id, _token } = req.body;
 
   let missingFields = [];
   if (
@@ -127,6 +128,7 @@ exports.callbackRequest = (req, res) => {
   // Step 3: Verify the branch token
   BranchCommon.isBranchTokenValid(
     _token,
+    customer_id,
     sub_user_id || null,
     branch_id,
     (tokenErr, tokenResult) => {
@@ -386,7 +388,7 @@ exports.listByCustomerID = (req, res) => {
 };
 
 exports.filterOptionsForClientApplications = (req, res) => {
-  const { branch_id, sub_user_id, _token } = req.query;
+  const { branch_id, customer_id, sub_user_id, _token } = req.query;
 
   let missingFields = [];
   if (
@@ -427,6 +429,7 @@ exports.filterOptionsForClientApplications = (req, res) => {
     // Step 3: Verify the branch token
     BranchCommon.isBranchTokenValid(
       _token,
+      customer_id,
       sub_user_id || null,
       branch_id,
       (tokenErr, tokenResult) => {
@@ -481,7 +484,7 @@ exports.filterOptionsForClientApplications = (req, res) => {
 };
 
 exports.filterOptionsForCandidateApplications = (req, res) => {
-  const { branch_id, sub_user_id, _token } = req.query;
+  const { branch_id, customer_id, sub_user_id, _token } = req.query;
 
   let missingFields = [];
   if (
@@ -522,6 +525,7 @@ exports.filterOptionsForCandidateApplications = (req, res) => {
     // Step 3: Verify the branch token
     BranchCommon.isBranchTokenValid(
       _token,
+      customer_id,
       sub_user_id || null,
       branch_id,
       (tokenErr, tokenResult) => {
@@ -1080,7 +1084,7 @@ exports.delete = (req, res) => {
 };
 
 exports.getServiceById = (req, res) => {
-  const { id, branch_id, sub_user_id, _token } = req.query;
+  const { id, branch_id, customer_id, sub_user_id, _token } = req.query;
   let missingFields = [];
   if (!id || id === "") missingFields.push("Service ID");
   if (!branch_id || branch_id === "") missingFields.push("Branch ID");
@@ -1095,6 +1099,7 @@ exports.getServiceById = (req, res) => {
 
   BranchCommon.isBranchTokenValid(
     _token,
+    customer_id,
     sub_user_id || null,
     branch_id,
     (tokenErr, tokenResult) => {
@@ -1145,7 +1150,7 @@ exports.getServiceById = (req, res) => {
 };
 
 exports.annexureDataByServiceId = (req, res) => {
-  const { service_id, application_id, branch_id, sub_user_id, _token } = req.query;
+  const { service_id, application_id, branch_id, customer_id, sub_user_id, _token } = req.query;
 
   let missingFields = [];
   if (
@@ -1192,6 +1197,7 @@ exports.annexureDataByServiceId = (req, res) => {
 
   BranchCommon.isBranchTokenValid(
     _token,
+    customer_id,
     sub_user_id || null,
     branch_id,
     (tokenErr, tokenResult) => {

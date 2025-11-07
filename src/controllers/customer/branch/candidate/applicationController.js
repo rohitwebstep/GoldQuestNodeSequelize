@@ -95,6 +95,7 @@ exports.create = (req, res) => {
 
     BranchCommon.isBranchTokenValid(
       _token,
+      customer_id,
       sub_user_id || null,
       branch_id,
       (err, result) => {
@@ -506,7 +507,7 @@ exports.bulkCreate = (req, res) => {
     }
 
     console.log("Validating branch token...");
-    BranchCommon.isBranchTokenValid(_token, sub_user_id || null, branch_id, (err, result) => {
+    BranchCommon.isBranchTokenValid(_token, customer_id, sub_user_id || null, branch_id, (err, result) => {
       if (err) {
         console.error("Error checking token validity:", err);
         return res.status(500).json({ status: false, message: err.message });
@@ -1332,6 +1333,7 @@ exports.list = (req, res) => {
     // Verify branch token
     BranchCommon.isBranchTokenValid(
       _token,
+      customer_id,
       sub_user_id || null,
       branch_id,
       (err, result) => {
@@ -1393,7 +1395,7 @@ exports.list = (req, res) => {
 };
 
 exports.cefApplicationByID = (req, res) => {
-  const { application_id, branch_id, sub_user_id, _token } = req.query;
+  const { application_id, branch_id, customer_id, sub_user_id, _token } = req.query;
 
   let missingFields = [];
   if (
@@ -1436,6 +1438,7 @@ exports.cefApplicationByID = (req, res) => {
 
     BranchCommon.isBranchTokenValid(
       _token,
+      customer_id,
       sub_user_id || null,
       branch_id,
       (err, result) => {
@@ -1578,7 +1581,7 @@ exports.cefApplicationByID = (req, res) => {
 };
 
 exports.davApplicationByID = (req, res) => {
-  const { application_id, branch_id, sub_user_id, _token } = req.query;
+  const { application_id, branch_id, customer_id, sub_user_id, _token } = req.query;
 
   let missingFields = [];
   if (
@@ -1621,6 +1624,7 @@ exports.davApplicationByID = (req, res) => {
 
     BranchCommon.isBranchTokenValid(
       _token,
+      customer_id,
       sub_user_id || null,
       branch_id,
       (err, result) => {
@@ -1743,7 +1747,7 @@ exports.davApplicationByID = (req, res) => {
 };
 
 exports.gapCheck = (req, res) => {
-  const { application_id, branch_id, sub_user_id, _token } = req.query;
+  const { application_id, branch_id, customer_id, sub_user_id, _token } = req.query;
 
   let missingFields = [];
   if (
@@ -1786,6 +1790,7 @@ exports.gapCheck = (req, res) => {
 
     BranchCommon.isBranchTokenValid(
       _token,
+      customer_id,
       sub_user_id || null,
       branch_id,
       (err, result) => {
@@ -1951,6 +1956,7 @@ exports.gapCheck = (req, res) => {
 exports.update = (req, res) => {
   const {
     branch_id,
+    customer_id,
     sub_user_id,
     candidate_application_id,
     _token,
@@ -1998,6 +2004,7 @@ exports.update = (req, res) => {
 
     BranchCommon.isBranchTokenValid(
       _token,
+      customer_id,
       sub_user_id || null,
       branch_id,
       (err, result) => {
@@ -2175,7 +2182,7 @@ exports.update = (req, res) => {
 };
 
 exports.delete = (req, res) => {
-  const { id, branch_id, sub_user_id, _token } = req.query;
+  const { id, branch_id, customer_id, sub_user_id, _token } = req.query;
 
   // Validate required fields
   const missingFields = [];
@@ -2204,6 +2211,7 @@ exports.delete = (req, res) => {
     // Validate branch token
     BranchCommon.isBranchTokenValid(
       _token,
+      customer_id,
       sub_user_id || null,
       branch_id,
       (err, tokenValidationResult) => {

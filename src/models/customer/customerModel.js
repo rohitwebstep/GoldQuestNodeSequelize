@@ -96,23 +96,26 @@ const Customer = {
 
   create: async (customerData, callback) => {
     try {
-      const sanitizeValue = (value) => (value === undefined || value === "" ? null : value); // Helper function to handle empty values
+      const sanitizeValue = (value) =>
+        value === undefined || value === "" ? null : value; // Helper to handle empty values
 
       const sqlCustomers = `
-        INSERT INTO \`customers\` (
-          \`client_unique_id\`, 
-          \`director_email\`, 
-          \`name\`, 
-          \`additional_login\`, 
-          \`username\`, 
-          \`profile_picture\`, 
-          \`emails\`, 
-          \`mobile\`, 
-          \`services\`, 
-          \`admin_id\`, 
-          \`is_custom_bgv\`
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `;
+      INSERT INTO \`customers\` (
+        \`client_unique_id\`, 
+        \`director_email\`, 
+        \`name\`, 
+        \`additional_login\`, 
+        \`username\`, 
+        \`password\`,
+        \`raw_password\`,
+        \`profile_picture\`, 
+        \`emails\`, 
+        \`mobile\`, 
+        \`services\`, 
+        \`admin_id\`, 
+        \`is_custom_bgv\`
+      ) VALUES (?, ?, ?, ?, ?, MD5(?), ?, ?, ?, ?, ?, ?, ?)
+    `;
 
       const valuesCustomers = [
         sanitizeValue(customerData.client_unique_id),
@@ -120,6 +123,8 @@ const Customer = {
         sanitizeValue(customerData.name),
         sanitizeValue(customerData.additional_login),
         sanitizeValue(customerData.username),
+        sanitizeValue(customerData.password),
+        sanitizeValue(customerData.password), // raw password
         sanitizeValue(customerData.profile_picture),
         sanitizeValue(customerData.emails_json),
         sanitizeValue(customerData.mobile_number),
@@ -128,14 +133,14 @@ const Customer = {
         sanitizeValue(customerData.custom_bgv),
       ];
 
-      const results = await sequelize.query(sqlCustomers, {
+      const [result] = await sequelize.query(sqlCustomers, {
         replacements: valuesCustomers,
         type: QueryTypes.INSERT,
       });
 
-      callback(null, { status: true, insertId: results[0] });
+      callback(null, { status: true, insertId: result });
     } catch (err) {
-      console.error("Database insertion error for customers:", err);
+      console.error("Database insertion error (customers):", err);
       callback(
         {
           status: false,
@@ -174,7 +179,9 @@ const Customer = {
           \`name\` = ?,
           \`director_email\` = ?,
           \`additional_login\` = ?, 
-          \`username\` = ?, 
+          \`username\` = ?,
+          \`password\` = MD5(?), 
+          \`raw_password\` = ?, 
           \`profile_picture\` = ?, 
           \`emails\` = ?, 
           \`mobile\` = ?, 
@@ -189,6 +196,8 @@ const Customer = {
         customerData.director_email,
         customerData.additional_login,
         customerData.username,
+        customerData.password,
+        customerData.password,
         customerData.profile_picture,
         customerData.emails_json,
         customerData.mobile,

@@ -152,6 +152,7 @@ exports.create = (req, res) => {
     emails,
     address,
     username,
+    password,
     branches = [],
     state_code,
     client_code,
@@ -204,6 +205,7 @@ exports.create = (req, res) => {
   ) {
     additional_login_int = 1;
     requiredFields.username = username;
+    requiredFields.password = password;
   }
 
   let custom_template_string = "no";
@@ -353,6 +355,10 @@ exports.create = (req, res) => {
                 username:
                   additional_login && additional_login.toLowerCase() === "yes"
                     ? username
+                    : null,
+                password:
+                  additional_login && additional_login.toLowerCase() === "yes"
+                    ? password
                     : null,
                 custom_bgv: custom_bgv || 0,
               },
@@ -1293,6 +1299,7 @@ exports.update = (req, res) => {
     emails,
     address,
     username,
+    password,
     tat_days,
     services,
     state_code,
@@ -1344,6 +1351,7 @@ exports.update = (req, res) => {
   ) {
     additional_login_int = 1;
     requiredFields.username = username;
+    requiredFields.password = password;
   }
 
   let custom_template_string = "no";
@@ -1596,6 +1604,10 @@ exports.update = (req, res) => {
                       username:
                         additional_login_int && additional_login_int === 1
                           ? username
+                          : null,
+                      password:
+                        additional_login_int && additional_login_int === 1
+                          ? password
                           : null,
                       custom_bgv: is_custom_bgv || 0,
                     },
@@ -2136,6 +2148,7 @@ exports.customerBasicInfoWithBranchAuth = (req, res) => {
   // Verify admin token
   BranchCommon.isBranchTokenValid(
     branch_token,
+    customer_id,
     sub_user_id || null,
     branch_id,
     (err, result) => {

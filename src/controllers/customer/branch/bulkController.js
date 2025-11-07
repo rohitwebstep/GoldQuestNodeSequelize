@@ -76,6 +76,7 @@ exports.create = async (req, res) => {
 
       BranchCommon.isBranchTokenValid(
         token,
+        customerId,
         subUserId || null,
         branchId,
         async (err, result) => {
@@ -271,7 +272,7 @@ exports.create = async (req, res) => {
 };
 
 exports.delete = (req, res) => {
-  const { id, sub_user_id, branch_id, _token } = req.query;
+  const { id, sub_user_id, customer_id, branch_id, _token } = req.query;
 
   // Validate required fields
   const missingFields = [];
@@ -301,6 +302,7 @@ exports.delete = (req, res) => {
     // Validate branch token
     BranchCommon.isBranchTokenValid(
       _token,
+      customer_id,
       sub_user_id || null,
       branch_id,
       (err, tokenValidationResult) => {
@@ -409,6 +411,7 @@ exports.list = (req, res) => {
 
     BranchCommon.isBranchTokenValid(
       _token,
+      customer_id,
       sub_user_id || null,
       branch_id,
       async (err, result) => {

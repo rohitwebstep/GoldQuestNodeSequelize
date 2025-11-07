@@ -48,6 +48,99 @@ const Branch = {
     }
   },
 
+  findByEmailOrMobileForBranchLogin: async (username, password, callback) => {
+    try {
+      // Query the branches table first
+      const sqlBranches = `
+        SELECT 'branch' AS type, id, id AS branch_id, customer_id, name, name AS branch_name, 
+               email, status, login_token, token_expiry, otp, two_factor_enabled, otp_expiry
+        FROM branches
+        WHERE email = ?`;
+
+      const branchResults = await sequelize.query(sqlBranches, {
+        replacements: [username],
+        type: QueryTypes.SELECT,
+      });
+
+      // If branch is found, return it immediately
+      if (branchResults.length > 0) {
+        return callback(null, branchResults);
+      }
+
+      // If not found in branches, check the sub-user table
+      const sqlSubUsers = `
+        SELECT 'sub_user' AS type, sub_users.id, sub_users.branch_id, sub_users.customer_id, 
+               sub_users.email, sub_users.status, sub_users.login_token, sub_users.token_expiry, 
+               branch.name AS branch_name
+        FROM branch_sub_users AS sub_users
+        INNER JOIN branches AS branch ON branch.id = sub_users.branch_id
+        WHERE sub_users.email = ?`;
+
+      const subUserResults = await sequelize.query(sqlSubUsers, {
+        replacements: [username],
+        type: QueryTypes.SELECT,
+      });
+
+      // If sub-user is found, return it
+      if (subUserResults.length > 0) {
+        return callback(null, subUserResults);
+      }
+
+      // If not found in branches, check the customers (sub-user) table
+      const sqlAdditionalUsers = `
+        SELECT 
+          id AS customer_id, 
+          'additional_user' AS type,
+          username, 
+          password, 
+          raw_password
+        FROM customers 
+        WHERE username = ? AND password = MD5(?)
+      `;
+
+      const additionalUserResults = await sequelize.query(sqlAdditionalUsers, {
+        replacements: [username, password],
+        type: QueryTypes.SELECT,
+      });
+
+      // If sub-users are found, fetch branch details for each
+      if (additionalUserResults.length > 0) {
+        const enrichedUsers = [];
+
+        for (const user of additionalUserResults) {
+          const sqlBranchDetails = `
+            SELECT 
+              id AS branch_id, 
+              name, 
+              email, 
+              mobile_number 
+            FROM branches 
+            WHERE customer_id = ?
+          `;
+
+          const branchDetails = await sequelize.query(sqlBranchDetails, {
+            replacements: [user.customer_id],
+            type: QueryTypes.SELECT,
+          });
+
+          // Attach branch details to each user
+          enrichedUsers.push({
+            ...user,
+            branchDetails,
+          });
+        }
+
+        return callback(null, enrichedUsers);
+      }
+
+      // If neither found, return an error
+      return callback({ message: "No branch, sub-user or additional user found with the provided email" }, null);
+    } catch (error) {
+      console.error("Database query error:", error);
+      return callback({ message: "Database query error", error }, null);
+    }
+  },
+
   findByEmailOrMobileAllInfo: async (username, callback) => {
     try {
       // Query the branches table first
@@ -274,6 +367,12 @@ const Branch = {
           SET login_token = ?, token_expiry = ?
           WHERE id = ?
         `;
+      } else if (type === "additional_user") {
+        sql = `
+          UPDATE customers
+          SET login_token = ?, token_expiry = ?
+          WHERE id = ?
+        `;
       } else {
         return callback?.({ message: "Invalid user type for token update" }, null);
       }
@@ -346,13 +445,20 @@ const Branch = {
     }
   },
 
-  findById: async (sub_user_id, branch_id, callback) => {
+  findById: async (customer_id, sub_user_id, branch_id, callback) => {
     try {
       let sql = "";
       let queryParams = [];
 
       // Determine SQL query based on whether sub_user_id is provided
-      if (sub_user_id && String(sub_user_id).trim() !== "") {
+      if (customer_id && String(customer_id).trim() !== "") {
+        sql = `
+          SELECT id as customer_id, status, login_token, token_expiry
+          FROM customers
+          WHERE id = ?
+        `;
+        queryParams = [customer_id];
+      } else if (sub_user_id && String(sub_user_id).trim() !== "") {
         sql = `
           SELECT id, customer_id, email, status, login_token, token_expiry
           FROM branch_sub_users
@@ -372,6 +478,8 @@ const Branch = {
         replacements: queryParams,
         type: QueryTypes.SELECT,
       });
+
+      console.log(`results - `, results);
 
       // Handle case where no records are found
       if (results.length === 0) {
