@@ -15,7 +15,7 @@ const {
 } = require("../../../mailer/customer/branch/ticket/ticketChat");
 
 exports.list = (req, res) => {
-  const { branch_id, customer_id, sub_user_id, _token } = req.query;
+  const { branch_id, additional_customer_id, sub_user_id, _token } = req.query;
 
   // Validate required fields
   const missingFields = [];
@@ -62,7 +62,7 @@ exports.list = (req, res) => {
       // Validate branch token
       BranchCommon.isBranchTokenValid(
         _token,
-        customer_id,
+        additional_customer_id,
         subUserID || null,
         branchID,
         (tokenErr, tokenResult) => {
@@ -108,7 +108,7 @@ exports.list = (req, res) => {
 };
 
 exports.view = (req, res) => {
-  const { ticket_number, branch_id, customer_id, sub_user_id, _token } = req.query;
+  const { ticket_number, branch_id, additional_customer_id, sub_user_id, _token } = req.query;
 
   // Validate required fields
   const missingFields = [];
@@ -155,7 +155,7 @@ exports.view = (req, res) => {
       // Validate branch token
       BranchCommon.isBranchTokenValid(
         _token,
-        customer_id,
+        additional_customer_id,
         subUserID || null,
         branchID,
         (tokenErr, tokenResult) => {
@@ -205,7 +205,7 @@ exports.view = (req, res) => {
 };
 
 exports.chat = (req, res) => {
-  const { ticket_number, branch_id, customer_id, sub_user_id, _token, message } = req.body;
+  const { ticket_number, branch_id, additional_customer_id, sub_user_id, _token, message } = req.body;
 
   // Validate required fields
   const missingFields = [];
@@ -276,7 +276,7 @@ exports.chat = (req, res) => {
             // Validate branch token
             BranchCommon.isBranchTokenValid(
               _token,
-              customer_id,
+              additional_customer_id,
               subUserID || null,
               branchID,
               (tokenErr, tokenResult) => {
@@ -406,7 +406,7 @@ exports.chat = (req, res) => {
 };
 
 exports.create = (req, res) => {
-  const { branch_id, customer_id, sub_user_id, _token, title, description } = req.body;
+  const { branch_id, additional_customer_id, sub_user_id, _token, title, description } = req.body;
 
   // Validate required fields
   const missingFields = [];
@@ -477,7 +477,7 @@ exports.create = (req, res) => {
             // Validate branch token
             BranchCommon.isBranchTokenValid(
               _token,
-              customer_id,
+              additional_customer_id,
               subUserID || null,
               branchID,
               (tokenErr, tokenResult) => {
@@ -605,7 +605,7 @@ exports.create = (req, res) => {
 };
 
 exports.upload = (req, res) => {
-  const { customer_id, sub_user_id, branch_id, _token } = req.query;
+  const { additional_customer_id, sub_user_id, branch_id, _token } = req.query;
 
   // Validate required fields
   const missingFields = [];
@@ -622,7 +622,7 @@ exports.upload = (req, res) => {
   // Verify the branch token
   BranchCommon.isBranchTokenValid(
     _token,
-    customer_id,
+    additional_customer_id,
     sub_user_id || null,
     branch_id,
     (tokenErr, tokenResult) => {
@@ -674,7 +674,7 @@ exports.upload = (req, res) => {
 };
 
 exports.delete = (req, res) => {
-  const { ticket_number, branch_id, customer_id, sub_user_id, _token } = req.query;
+  const { ticket_number, branch_id, additional_customer_id, sub_user_id, _token } = req.query;
   // Validate required fields
   const missingFields = [];
   if (!branch_id) missingFields.push("Branch ID");
@@ -743,7 +743,7 @@ exports.delete = (req, res) => {
             // Validate branch token
             BranchCommon.isBranchTokenValid(
               _token,
-              customer_id,
+              additional_customer_id,
               subUserID || null,
               branchID,
               (tokenErr, tokenResult) => {

@@ -8,7 +8,7 @@ const {
 
 // Controller to create a new service
 exports.create = (req, res) => {
-  const { email, password, customer_id, sub_user_id, branch_id, _token } = req.body;
+  const { email, password, additional_customer_id, customer_id, sub_user_id, branch_id, _token } = req.body;
 
   // Validate missing fields
   let missingFields = [];
@@ -39,7 +39,7 @@ exports.create = (req, res) => {
     // Validate the token for the branch
     BranchCommon.isBranchTokenValid(
       _token,
-      customer_id,
+      additional_customer_id,
       sub_user_id || null,
       branch_id,
       async (err, result) => {
@@ -144,7 +144,7 @@ exports.create = (req, res) => {
 
 // Controller to list all services
 exports.list = (req, res) => {
-  const { customer_id, sub_user_id, branch_id, _token } = req.query;
+  const { additional_customer_id, sub_user_id, branch_id, _token } = req.query;
 
   // Validate missing fields
   let missingFields = [];
@@ -170,7 +170,7 @@ exports.list = (req, res) => {
     // Validate the token for the branch
     BranchCommon.isBranchTokenValid(
       _token,
-      customer_id,
+      additional_customer_id,
       sub_user_id || null,
       branch_id,
       async (err, result) => {
@@ -228,7 +228,7 @@ exports.list = (req, res) => {
 
 // Controller to update a service
 exports.updateEmail = (req, res) => {
-  const { id, email, customer_id, sub_user_id, branch_id, _token } = req.body;
+  const { id, email, additional_customer_id, sub_user_id, branch_id, _token } = req.body;
   // Validate missing fields
   let missingFields = [];
   if (!id || id === "") missingFields.push("Sub User ID");
@@ -258,7 +258,7 @@ exports.updateEmail = (req, res) => {
     // Validate the token for the branch
     BranchCommon.isBranchTokenValid(
       _token,
-      customer_id,
+      additional_customer_id,
       sub_user_id || null,
       branch_id,
       async (err, result) => {
@@ -357,7 +357,7 @@ exports.updateEmail = (req, res) => {
 
 // Controller to update a service
 exports.updatePassword = (req, res) => {
-  const { id, password, customer_id, sub_user_id, branch_id, _token } = req.body;
+  const { id, password, additional_customer_id, sub_user_id, branch_id, _token } = req.body;
   // Validate missing fields
   let missingFields = [];
   if (!id || id === "") missingFields.push("Sub User ID");
@@ -387,7 +387,7 @@ exports.updatePassword = (req, res) => {
     // Validate the token for the branch
     BranchCommon.isBranchTokenValid(
       _token,
-      customer_id,
+      additional_customer_id,
       sub_user_id || null,
       branch_id,
       async (err, result) => {
@@ -486,7 +486,7 @@ exports.updatePassword = (req, res) => {
 
 // Controller to delete a service
 exports.delete = (req, res) => {
-  const { id, customer_id, sub_user_id, branch_id, _token } = req.query;
+  const { id, additional_customer_id, sub_user_id, branch_id, _token } = req.query;
 
   let missingFields = [];
   if (!id || id === "") missingFields.push("Sub User ID");
@@ -512,7 +512,7 @@ exports.delete = (req, res) => {
     // Validate the token for the branch
     BranchCommon.isBranchTokenValid(
       _token,
-      customer_id,
+      additional_customer_id,
       sub_user_id || null,
       branch_id,
       async (err, result) => {

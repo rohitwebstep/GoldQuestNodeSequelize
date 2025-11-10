@@ -272,7 +272,7 @@ exports.chat = (req, res) => {
 };
 
 exports.upload = (req, res) => {
-  const { sub_user_id, customer_id, branch_id, _token } = req.query;
+  const { sub_user_id, additional_customer_id, branch_id, _token } = req.query;
 
   // Validate required fields
   const missingFields = [];
@@ -289,7 +289,7 @@ exports.upload = (req, res) => {
   // Verify the branch token
   BranchCommon.isBranchTokenValid(
     _token,
-    customer_id,
+    additional_customer_id,
     sub_user_id || null,
     branch_id,
     (tokenErr, tokenResult) => {

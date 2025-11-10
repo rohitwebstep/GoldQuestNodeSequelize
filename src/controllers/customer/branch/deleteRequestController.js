@@ -23,7 +23,7 @@ const clientApplication = require("../../../models/customer/branch/clientApplica
 
 // Controller to list all services
 exports.list = (req, res) => {
-    const { branch_id, customer_id, sub_user_id, _token } = req.query;
+    const { branch_id, additional_customer_id, sub_user_id, _token } = req.query;
 
     let missingFields = [];
     if (!branch_id || branch_id === "") missingFields.push("Branch ID");
@@ -88,7 +88,7 @@ exports.list = (req, res) => {
                 // Step 2: Verify the branch token
                 BranchCommon.isBranchTokenValid(
                     _token,
-                    customer_id,
+                    additional_customer_id,
                     sub_user_id || null,
                     branch_id,
                     (tokenErr, tokenResult) => {
@@ -132,7 +132,7 @@ exports.list = (req, res) => {
 
 // Controller to update delete request status
 exports.updateStatus = (req, res) => {
-    const { request_id, status, branch_id, customer_id, sub_user_id, _token } = req.body;
+    const { request_id, status, branch_id, additional_customer_id, sub_user_id, _token } = req.body;
 
     // Validate required fields
     let missingFields = [];
@@ -194,7 +194,7 @@ exports.updateStatus = (req, res) => {
                 }
 
                 // Step 3: Validate Branch Token
-                BranchCommon.isBranchTokenValid(_token, customer_id, sub_user_id || null, branch_id, (tokenErr, tokenResult) => {
+                BranchCommon.isBranchTokenValid(_token, additional_customer_id, sub_user_id || null, branch_id, (tokenErr, tokenResult) => {
                     if (tokenErr) {
                         console.error("Error checking token validity:", tokenErr);
                         return res.status(500).json({

@@ -8,7 +8,7 @@ const reportCaseStatus = require("../../../models/customer/branch/reportCaseStat
 const Customer = require("../../../models/customer/customerModel");
 
 exports.list = (req, res) => {
-  const { filter_status, branch_id, _token, customer_id, sub_user_id, status } = req.query;
+  const { filter_status, branch_id, _token, additional_customer_id, sub_user_id, status } = req.query;
 
   let missingFields = [];
   if (
@@ -46,7 +46,7 @@ exports.list = (req, res) => {
     // Step 3: Verify the branch token
     BranchCommon.isBranchTokenValid(
       _token,
-      customer_id,
+      additional_customer_id,
       sub_user_id || null,
       branch_id,
       (tokenErr, tokenResult) => {
@@ -162,7 +162,7 @@ exports.list = (req, res) => {
 };
 
 exports.reportFormJsonByServiceID = (req, res) => {
-  const { service_id, branch_id, customer_id, sub_user_id, _token } = req.query;
+  const { service_id, branch_id, additional_customer_id, sub_user_id, _token } = req.query;
 
   let missingFields = [];
   if (
@@ -207,7 +207,7 @@ exports.reportFormJsonByServiceID = (req, res) => {
     // Step 3: Verify the branch token
     BranchCommon.isBranchTokenValid(
       _token,
-      customer_id,
+      additional_customer_id,
       sub_user_id || null,
       branch_id,
       (tokenErr, tokenResult) => {
@@ -264,7 +264,7 @@ exports.reportFormJsonByServiceID = (req, res) => {
 };
 
 exports.annexureData = (req, res) => {
-  const { application_id, db_table, branch_id, customer_id, sub_user_id, _token } = req.query;
+  const { application_id, db_table, branch_id, additional_customer_id, sub_user_id, _token } = req.query;
 
   let missingFields = [];
   if (
@@ -318,7 +318,7 @@ exports.annexureData = (req, res) => {
     // Step 3: Verify the branch token
     BranchCommon.isBranchTokenValid(
       _token,
-      customer_id,
+      additional_customer_id,
       sub_user_id || null,
       branch_id,
       (tokenErr, tokenResult) => {
@@ -375,7 +375,7 @@ exports.annexureData = (req, res) => {
 };
 
 exports.annexureDataByServiceIds = (req, res) => {
-  const { service_ids, application_id, customer_id, sub_user_id, branch_id, _token } = req.query;
+  const { service_ids, application_id, additional_customer_id, sub_user_id, branch_id, _token } = req.query;
   let missingFields = [];
   if (!service_ids || service_ids === "" || service_ids === "undefined") {
     missingFields.push("Service ID");
@@ -413,7 +413,7 @@ exports.annexureDataByServiceIds = (req, res) => {
     }
     BranchCommon.isBranchTokenValid(
       _token,
-      customer_id,
+      additional_customer_id,
       subUserId || null,
       branch_id,
       (tokenErr, tokenResult) => {

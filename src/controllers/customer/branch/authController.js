@@ -169,7 +169,7 @@ exports.login = (req, res) => {
       return res.status(500).json({
         status: false,
         message: "Login options found for additional user",
-        result,
+        loginOptions: result,
       });
     }
 
@@ -734,7 +734,7 @@ exports.verifyTwoFactor = (req, res) => {
 };
 
 exports.updatePassword = (req, res) => {
-  const { new_password, branch_id, customer_id, sub_user_id, _token } = req.body;
+  const { new_password, branch_id, additional_customer_id, sub_user_id, _token } = req.body;
 
   // Validate required fields
   const missingFields = [];
@@ -777,7 +777,7 @@ exports.updatePassword = (req, res) => {
   // Validate branch token
   Common.isBranchTokenValid(
     _token,
-    customer_id,
+    additional_customer_id,
     sub_user_id || null,
     branch_id,
     (err, result) => {
@@ -835,7 +835,7 @@ exports.updatePassword = (req, res) => {
 
 // Branch logout handler
 exports.logout = (req, res) => {
-  const { branch_id, customer_id, sub_user_id, _token } = req.query;
+  const { branch_id, additional_customer_id, sub_user_id, _token } = req.query;
 
   // Validate required fields and create a custom message
   let missingFields = [];
@@ -851,7 +851,7 @@ exports.logout = (req, res) => {
   // Validate the branch token
   Common.isBranchTokenValid(
     _token,
-    customer_id,
+    additional_customer_id,
     sub_user_id || null,
     branch_id,
     (err, result) => {
@@ -885,7 +885,7 @@ exports.logout = (req, res) => {
 
 // Branch login validation handler
 exports.validateLogin = (req, res) => {
-  const { sub_user_id, branch_id, customer_id, _token } = req.body;
+  const { sub_user_id, branch_id, additional_customer_id, customer_id, _token } = req.body;
   const missingFields = [];
 
   // Validate required fields
@@ -930,7 +930,7 @@ exports.validateLogin = (req, res) => {
     }
 
     // Check if the existing token is still valid
-    Common.isBranchTokenValid(_token, customer_id, sub_user_id || "", branch_id, (err, result) => {
+    Common.isBranchTokenValid(_token, additional_customer_id, sub_user_id || "", branch_id, (err, result) => {
       if (err) {
         console.error("Error checking token validity:", err);
         return res.status(500).json({ status: false, message: "Error validating token." });

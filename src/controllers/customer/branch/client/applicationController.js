@@ -39,6 +39,7 @@ exports.convertToClient = (req, res) => {
     branch_id,
     sub_user_id,
     _token,
+    additional_customer_id,
     customer_id,
     candidate_application_id,
   } = req.body;
@@ -76,7 +77,7 @@ exports.convertToClient = (req, res) => {
     // Validate branch token
     BranchCommon.isBranchTokenValid(
       _token,
-      customer_id,
+      additional_customer_id,
       sub_user_id || null,
       branch_id,
       (err, result) => {
@@ -511,6 +512,7 @@ exports.create = (req, res) => {
     branch_id,
     sub_user_id,
     _token,
+    additional_customer_id,
     customer_id,
     name,
     employee_id,
@@ -559,7 +561,7 @@ exports.create = (req, res) => {
     // Validate branch token
     BranchCommon.isBranchTokenValid(
       _token,
-      customer_id,
+      additional_customer_id,
       sub_user_id || null,
       branch_id,
       (err, result) => {
@@ -873,6 +875,7 @@ exports.bulkCreate = (req, res) => {
     sub_user_id,
     branch_id,
     _token,
+    additional_customer_id,
     customer_id,
     applications,
     services,
@@ -906,7 +909,7 @@ exports.bulkCreate = (req, res) => {
     // Validate branch token
     BranchCommon.isBranchTokenValid(
       _token,
-      customer_id,
+      additional_customer_id,
       sub_user_id || null,
       branch_id,
       (err, result) => {
@@ -1332,7 +1335,7 @@ function sendNotificationEmails(
 
 // Controller to list all clientApplications
 exports.list = (req, res) => {
-  const { branch_id, sub_user_id, _token, customer_id } = req.query;
+  const { branch_id, sub_user_id, _token, additional_customer_id, customer_id } = req.query;
   let missingFields = [];
   if (!branch_id) missingFields.push("Branch ID");
   if (!_token) missingFields.push("Token");
@@ -1357,7 +1360,7 @@ exports.list = (req, res) => {
 
     BranchCommon.isBranchTokenValid(
       _token,
-      customer_id,
+      additional_customer_id,
       sub_user_id || null,
       branch_id,
       (err, tokenResult) => {
@@ -1417,7 +1420,7 @@ exports.list = (req, res) => {
 exports.update = (req, res) => {
   const {
     branch_id,
-    customer_id,
+    additional_customer_id,
     sub_user_id,
     _token,
     client_application_id,
@@ -1465,7 +1468,7 @@ exports.update = (req, res) => {
 
     BranchCommon.isBranchTokenValid(
       _token,
-      customer_id,
+      additional_customer_id,
       sub_user_id || null,
       branch_id,
       (err, result) => {
@@ -1655,7 +1658,7 @@ exports.update = (req, res) => {
 };
 
 exports.addToStopCheck = (req, res) => {
-  const { branch_id, customer_id, sub_user_id, _token, client_application_id } = req.body;
+  const { branch_id, additional_customer_id, sub_user_id, _token, client_application_id } = req.body;
 
   // Step 1: Validate Required Fields
   const requiredFields = { branch_id, _token, client_application_id };
@@ -1679,7 +1682,7 @@ exports.addToStopCheck = (req, res) => {
       });
     }
 
-    BranchCommon.isBranchTokenValid(_token, customer_id, sub_user_id || null, branch_id, (err, result) => {
+    BranchCommon.isBranchTokenValid(_token, additional_customer_id, sub_user_id || null, branch_id, (err, result) => {
       if (err) {
         console.error("Token validation error:", err);
         return res.status(500).json({
@@ -1841,7 +1844,7 @@ exports.upload = async (req, res) => {
 
     const {
       branch_id: branchId,
-      customer_id,
+      additional_customer_id,
       sub_user_id,
       _token: token,
       customer_code: customerCode,
@@ -1898,7 +1901,7 @@ exports.upload = async (req, res) => {
 
       BranchCommon.isBranchTokenValid(
         token,
-        customer_id,
+        additional_customer_id,
         sub_user_id || null,
         branchId,
         async (err, result) => {
@@ -2303,7 +2306,7 @@ exports.upload = async (req, res) => {
 };
 
 exports.delete = (req, res) => {
-  const { id, branch_id, customer_id, sub_user_id, _token } = req.query;
+  const { id, branch_id, additional_customer_id, sub_user_id, _token } = req.query;
 
   // Validate required fields
   const missingFields = [];
@@ -2332,7 +2335,7 @@ exports.delete = (req, res) => {
     // Validate branch token
     BranchCommon.isBranchTokenValid(
       _token,
-      customer_id,
+      additional_customer_id,
       sub_user_id || null,
       branch_id,
       (err, tokenValidationResult) => {
