@@ -60,7 +60,6 @@ exports.login = (req, res) => {
       });
     }
 
-    console.log(`result - `, result);
     const record = result[0];
 
     if (record.type === 'additional_user' && result.length > 0) {
@@ -68,8 +67,6 @@ exports.login = (req, res) => {
         const matchedBranch = record.branchDetails.find(
           (branch) => Number(branch.branch_id) === Number(branch_id)
         );
-
-        console.log("matchedBranch - ", matchedBranch);
 
         if (matchedBranch) {
           // Check if parent customer is active
@@ -900,7 +897,7 @@ exports.validateLogin = (req, res) => {
   }
 
   // Fetch branch by ID
-  BranchAuth.findById(customer_id, sub_user_id || "", branch_id, (err, branch) => {
+  BranchAuth.findById(additional_customer_id, sub_user_id || "", branch_id, (err, branch) => {
     if (err) {
       console.error("Database error:", err);
       return res.status(500).json({ status: false, message: err.message });

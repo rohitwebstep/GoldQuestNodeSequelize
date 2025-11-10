@@ -51,7 +51,7 @@ const common = {
       const { login_token: currentToken, token_expiry } = results[0];
       const tokenExpiry = new Date(token_expiry);
       const currentTime = new Date();
-
+      
       // Check if provided token matches stored token
       if (_token !== currentToken) {
         return callback?.({ status: false, message: `Invalid token provided for ${currentRole}` }, null);
