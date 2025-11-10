@@ -66,7 +66,7 @@ exports.login = (req, res) => {
     if (record.type === 'additional_user' && result.length > 0) {
       if (branch_id && record.branchDetails && record.branchDetails.length > 0) {
         const matchedBranch = record.branchDetails.find(
-          (branch) => branch.branch_id === branch_id
+          (branch) => Number(branch.branch_id) === Number(branch_id)
         );
 
         console.log("matchedBranch - ", matchedBranch);
