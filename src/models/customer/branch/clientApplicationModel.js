@@ -161,9 +161,21 @@ const clientApplication = {
 
       // Inject service statuses into each table row dynamically
       const tableData = finalClientApps.map(({ tableRow, services }) => {
-        const serviceStatus = serviceHeadings.map(
-          h => services?.find(s => s.heading === h)?.status || ''
-        );
+        const serviceStatus = serviceHeadings.map(h => {
+          let status = services?.find(s => s.heading === h)?.status || '';
+
+          // ✅ Replace special characters with a single space
+          status = status.replace(/[^a-zA-Z0-9]/g, ' ');
+
+          // ✅ Replace multiple spaces (including double spaces) with one
+          status = status.replace(/\s+/g, ' ');
+
+          // ✅ Convert to uppercase
+          status = status.trim().toUpperCase();
+
+          return status;
+        });
+
         const [slNo, appId, clientCode, createdAt, ...rest] = tableRow;
         return [slNo, appId, clientCode, createdAt, ...serviceStatus, ...rest];
       });
