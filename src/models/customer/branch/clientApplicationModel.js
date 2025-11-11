@@ -325,12 +325,18 @@ const clientApplication = {
         });
       });
 
+      // ✅ Calculate expired_at (+364 days from today)
+      const now = new Date();
+      const expired_at = new Date(now);
+      expired_at.setDate(expired_at.getDate() + 364);
+      const formattedExpiredAt = expired_at.toISOString().slice(0, 19).replace("T", " ");
+
       // Construct SQL query dynamically
       let sql = `
         INSERT INTO client_applications (
           application_id, name, employee_id, single_point_of_contact,
           batch_number, sub_client, location, branch_id, services,
-          package, customer_id, purpose_of_application, nationality
+          package, customer_id, purpose_of_application, nationality, expired_at
       `;
 
       let values = [
@@ -346,7 +352,8 @@ const clientApplication = {
         packageIds ?? '',
         customer_id ?? '',
         purpose_of_application ?? '',
-        nationality ?? ''
+        nationality ?? '',
+        formattedExpiredAt
       ];
 
       // Ensure attach_documents is included properly
