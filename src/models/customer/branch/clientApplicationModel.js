@@ -86,121 +86,105 @@ async function getClientApplicationServiceStatus(clientAppId, serviceId) {
 const clientApplication = {
   weeklyReports: async (callback) => {
     try {
-      // Step 1: Fetch all service titles (no console loop)
-      const servicesSQL = `
-      SELECT title FROM services
-    `;
-      const servicesResult = await sequelize.query(servicesSQL, {
-        type: QueryTypes.SELECT,
-      });
+      // Fetch services + completed applications in parallel
+      const [servicesResult, clientApplicationResult] = await Promise.all([
+        sequelize.query(`SELECT title FROM services`, { type: QueryTypes.SELECT }),
+        sequelize.query(`
+        SELECT ca.*, cmt.overall_status, cmt.report_date, 
+               cmt.first_insufficiency_marks, cmt.first_insuff_date, cmt.first_insuff_reopened_date, 
+               cmt.second_insufficiency_marks, cmt.second_insuff_date, cmt.second_insuff_reopened_date, 
+               cmt.third_insufficiency_marks, cmt.third_insuff_date, cmt.third_insuff_reopened_date, 
+               cmt.delay_reason, customer.client_unique_id
+        FROM client_applications AS ca
+        INNER JOIN cmt_applications AS cmt ON cmt.client_application_id = ca.id
+        INNER JOIN customers AS customer ON customer.id = ca.customer_id
+        WHERE cmt.overall_status = 'completed'
+          AND cmt.report_date IS NOT NULL
+          AND cmt.report_date != ''
+      `, { type: QueryTypes.SELECT })
+      ]);
 
-      // Optional: log how many services were found (no listing)
+      if (!clientApplicationResult.length)
+        return callback(new Error("No client applications found"), null);
+
       console.log(`🛠️ Total Services Found: ${servicesResult.length}`);
 
-      // Step 2: Fetch completed client applications with non-empty report_date
-      const clientApplicationsSQL = `
-      SELECT ca.*, cmt.overall_status, cmt.report_date, cmt.first_insufficiency_marks, cmt.first_insuff_date, cmt.first_insuff_reopened_date, cmt.second_insufficiency_marks, cmt.second_insuff_date, cmt.second_insuff_reopened_date, cmt.third_insufficiency_marks, cmt.third_insuff_date, cmt.third_insuff_reopened_date, cmt.delay_reason, customer.client_unique_id
-      FROM client_applications AS ca
-      INNER JOIN cmt_applications AS cmt 
-        ON cmt.client_application_id = ca.id
-      INNER JOIN customers AS customer 
-        ON customer.id = ca.customer_id
-      WHERE cmt.overall_status = 'completed'
-        AND cmt.report_date IS NOT NULL
-        AND cmt.report_date != ''
-      LIMIT 1
-    `;
+      let count = 1;
+      const finalClientApps = await Promise.all(
+        clientApplicationResult.map(async (app) => {
+          const serviceIds = app.services ? app.services.split(",").map(s => s.trim()) : [];
+          const appServices = (await Promise.all(
+            serviceIds.map(id => getClientApplicationServiceStatus(app.id, id))
+          )).filter(s => s && s.status);
 
-      const clientApplicationResult = await sequelize.query(clientApplicationsSQL, {
-        type: QueryTypes.SELECT,
-      });
-
-      // Step 3: Check if any result found
-      if (!clientApplicationResult || clientApplicationResult.length === 0) {
-        return callback(new Error("No client applications found"), null);
-      }
-
-      // Step 4: Loop through client applications and log details
-      console.log("\n📋 Completed Client Applications:");
-
-      let finalClientApps = [];
-
-      for (const [index, app] of clientApplicationResult.entries()) {
-        let appServices = [];
-
-        // ✅ Check if services column exists and split it
-        if (app.services) {
-          const serviceIds = app.services.split(',').map(id => id.trim());
-
-          for (const serviceId of serviceIds) {
-            if (serviceId) {
-              const serviceStatus = await getClientApplicationServiceStatus(app.id, serviceId);
-              console.log("getClientApplicationServiceStatus - ", serviceStatus);
-
-              // ✅ Push only valid service status objects
-              if (serviceStatus && serviceStatus.status) {
-                appServices.push(serviceStatus);
-              }
-            }
-          }
-        }
-
-        // ✅ Format and prepare final application object
-        const rawApp = {
-          appId: app.application_id,
-          clientCode: app.client_unique_id,
-          createdAt: app.created_at
+          const createdAt = app.created_at
             ? (() => {
-              const d = new Date(app.created_at);
-              const day = String(d.getDate()).padStart(2, '0');
-              const month = String(d.getMonth() + 1).padStart(2, '0');
-              const year = d.getFullYear();
+              const date = new Date(app.created_at);
+              const day = String(date.getDate()).padStart(2, '0');
+              const month = String(date.getMonth() + 1).padStart(2, '0');
+              const year = date.getFullYear();
               return `${day}-${month}-${year}`;
             })()
-            : null,
-          overallStatus: app.overall_status,
-          reportDate: app.report_date,
-          firstInsufficiencyMarks: app.first_insufficiency_marks,
-          firstInsuffDate: app.first_insuff_date,
-          firstInsuffReopenedDate: app.first_insuff_reopened_date,
-          secondInsufficiencyMarks: app.second_insufficiency_marks,
-          secondInsuffDate: app.second_insuff_date,
-          secondInsuffReopenedDate: app.second_insuff_reopened_date,
-          thirdInsufficiencyMarks: app.third_insufficiency_marks,
-          thirdInsuffDate: app.third_insuff_date,
-          thirdInsuffReopenedDate: app.third_insuff_reopened_date,
-          delayReason: app.delay_reason,
-          services: appServices
-        };
+            : '';
 
-        // ✅ Push to final array
-        finalClientApps.push(rawApp);
+          // Return both metadata and table-ready data in one object
+          return {
+            meta: app,
+            createdAt,
+            services: appServices,
+            tableRow: [
+              count++,
+              app.application_id || '',
+              app.client_unique_id || '',
+              createdAt,
+              app.overall_status || '',
+              app.report_date || '',
+              app.first_insufficiency_marks || '',
+              app.first_insuff_date || '',
+              app.first_insuff_reopened_date || '',
+              app.second_insufficiency_marks || '',
+              app.second_insuff_date || '',
+              app.second_insuff_reopened_date || '',
+              app.third_insufficiency_marks || '',
+              app.third_insuff_date || '',
+              app.third_insuff_reopened_date || '',
+              app.delay_reason || ''
+            ]
+          };
+        })
+      );
 
-        console.log("rawApp -", rawApp);
-      }
-
-      console.log("\n✅ Final Client Applications:", finalClientApps);
+      // Build dynamic service headings
       const serviceHeadings = [
-        ...new Set(
-          finalClientApps.flatMap(app =>
-            (app.services || []).map(service => service.heading).filter(Boolean)
-          )
-        )
+        ...new Set(finalClientApps.flatMap(a => (a.services || []).map(s => s.heading).filter(Boolean)))
       ];
 
-      console.log("🧩 Unique Service Headings:", serviceHeadings);
+      // Inject service statuses into each table row dynamically
+      const tableData = finalClientApps.map(({ tableRow, services }) => {
+        const serviceStatus = serviceHeadings.map(
+          h => services?.find(s => s.heading === h)?.status || ''
+        );
+        const [slNo, appId, clientCode, createdAt, ...rest] = tableRow;
+        return [slNo, appId, clientCode, createdAt, ...serviceStatus, ...rest];
+      });
 
-      const tableHeadings = ['SL NO', 'APPLICATION ID', 'CLIENT CODE', 'DATE/TIME', ...serviceHeadings, 'OVERALL STATUS', 'REPORT DATE', 'FIRST LEVEL INSUFFICIENCY REMARKS', 'FIRST INSUFF DATE', 'FIRST INSUFF CLEARED', 'SECOND LEVEL INSUFFICIENCY REMARKS', 'SECOND INSUFF DATE', 'SECOND INSUFF CLEARED', 'THIRD LEVEL INSUFFICIENCY REMARKS', 'THIRD INSUFF DATE', 'THIRD INSUFF CLEARED', 'REMARKS AND REASON FOR THE DELAY'];
+      const tableHeadings = [
+        'SL NO', 'APPLICATION ID', 'CLIENT CODE', 'DATE/TIME',
+        ...serviceHeadings,
+        'OVERALL STATUS', 'REPORT DATE',
+        'FIRST LEVEL INSUFFICIENCY REMARKS', 'FIRST INSUFF DATE', 'FIRST INSUFF CLEARED',
+        'SECOND LEVEL INSUFFICIENCY REMARKS', 'SECOND INSUFF DATE', 'SECOND INSUFF CLEARED',
+        'THIRD LEVEL INSUFFICIENCY REMARKS', 'THIRD INSUFF DATE', 'THIRD INSUFF CLEARED',
+        'REMARKS AND REASON FOR THE DELAY'
+      ];
 
-      // Step 5: Return result data
-      callback(null, { clientApplications: finalClientApps, tableHeadings, serviceHeadings });
+      callback(null, { tableHeadings, tableData });
 
-    } catch (error) {
-      console.error("Database query error:", error);
-      callback(error, null);
+    } catch (err) {
+      console.error("Database query error:", err);
+      callback(err, null);
     }
   },
-
 
   generateApplicationID: async (branch_id, callback) => {
     try {

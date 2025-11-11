@@ -10,60 +10,47 @@ const fs = require("fs");
 const path = require("path");
 const { createMail } = require("../../mailer/admin/createMail");
 const { upload, saveImage, saveImages } = require("../../utils/cloudImageSave");
-const { weeklyReport } = require("../../utils/weeklyReport");
-
-function formatDateForFile(date = new Date()) {
-  const d = new Date(date);
-  const day = String(d.getDate()).padStart(2, "0");
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  const year = d.getFullYear();
-  return `${day}-${month}-${year}`;
-}
+const { weeklyReportMail } = require("../../mailer/admin/weeklyReportMail");
 
 exports.weeklyReports = async (req, res) => {
   try {
-    clientApplication.weeklyReports(async (err, result) => {
-      if (err) {
-        console.error("Database error:", err);
-        return res.status(500).json({
-          status: false,
-          message: err.message,
-        });
-      }
-
-      // ✅ Generate formatted date string
-      const currentDate = formatDateForFile();
-      const pdfTargetDirectory = `uploads/admin/weekly-report/${currentDate}`;
-      const pdfFileName = `weekly-report-${currentDate}.pdf`;
-
-      try {
-        // ✅ Generate and save PDF
-        const pdfPath = await weeklyReport(pdfFileName, pdfTargetDirectory);
-
-        console.log("✅ Weekly PDF Generated at:", pdfPath);
-
-        // ✅ Send successful response
-        return res.json({
-          status: true,
-          message: "Weekly report generated successfully",
-          report_path: pdfPath,
-          data_count: result.length,
-        });
-      } catch (pdfErr) {
-        console.error("PDF generation error:", pdfErr);
-        return res.status(500).json({
-          status: false,
-          message: "Failed to generate weekly report",
-          error: pdfErr.message,
-        });
-      }
+    // Fetch weekly report data
+    const { tableHeadings, tableData } = await new Promise((resolve, reject) => {
+      clientApplication.weeklyReports((err, result) => {
+        if (err) return reject(err);
+        resolve(result);
+      });
     });
-  } catch (outerErr) {
-    console.error("Unexpected error:", outerErr);
-    res.status(500).json({
+
+    // Optional: Log preview of table data
+    if (Array.isArray(tableData) && tableData.length > 0) {
+      console.table(tableData.slice(0, 5));
+    } else {
+      console.log("No table data available for weekly report.");
+    }
+
+    const toArr = [{ name: 'Rohit Webstep', email: 'rohitwebstep@gmail.com' }];
+
+    // Send report email
+    try {
+      await weeklyReportMail('admin', "weekly-report", tableHeadings, tableData, toArr);
+      return res.status(201).json({
+        status: true,
+        message: "Weekly report generated and email sent successfully",
+      });
+    } catch (emailError) {
+      console.error("Error sending weekly report email:", emailError);
+      return res.status(201).json({
+        status: true,
+        message: "Weekly report generated successfully, but email failed to send",
+      });
+    }
+  } catch (err) {
+    console.error("Error generating weekly report:", err);
+    return res.status(500).json({
       status: false,
-      message: "Internal server error",
-      error: outerErr.message,
+      message: "Failed to generate weekly report",
+      error: err.message,
     });
   }
 };
