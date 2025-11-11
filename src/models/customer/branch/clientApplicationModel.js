@@ -127,6 +127,14 @@ const clientApplication = {
             })()
             : '';
 
+          // ✅ Clean up and normalize overall_status
+          let overallStatus = app.overall_status || "";
+          overallStatus = overallStatus
+            .replace(/[^a-zA-Z0-9]/g, " ") // replace all special characters with space
+            .replace(/\s+/g, " ") // normalize multiple spaces
+            .trim()
+            .toUpperCase(); // convert to uppercase
+
           // Return both metadata and table-ready data in one object
           return {
             meta: app,
@@ -137,7 +145,7 @@ const clientApplication = {
               app.application_id || '',
               app.client_unique_id || '',
               createdAt,
-              app.overall_status || '',
+              overallStatus || '',
               app.report_date || '',
               app.first_insufficiency_marks || '',
               app.first_insuff_date || '',
