@@ -144,7 +144,7 @@ const Customer = {
     }
   },
 
-  applicationListByBranch: async (filter_status, branch_id, status, callback) => {
+  applicationListByBranch: async (filter_status, branch_id, status, dateRange = {}, callback) => {
     try {
       let sql = `
               SELECT 
@@ -210,12 +210,25 @@ const Customer = {
 
       const params = [branch_id];
 
+      // ✅ Optional status filters
       if (filter_status && filter_status.trim() !== "") {
         sql += ` AND ca.\`status\` = ?`;
         params.push(filter_status);
       } else if (typeof status === "string" && status.trim() !== "") {
         sql += ` AND ca.\`status\` = ?`;
         params.push(status);
+      }
+
+      // ✅ Optional date range filter
+      if (dateRange && dateRange.from && dateRange.to) {
+        sql += ` AND DATE(ca.\`created_at\`) BETWEEN ? AND ?`;
+        params.push(dateRange.from, dateRange.to);
+      } else if (dateRange && dateRange.from) {
+        sql += ` AND DATE(ca.\`created_at\`) >= ?`;
+        params.push(dateRange.from);
+      } else if (dateRange && dateRange.to) {
+        sql += ` AND DATE(ca.\`created_at\`) <= ?`;
+        params.push(dateRange.to);
       }
 
       sql += ` ORDER BY ca.\`created_at\` DESC;`;
@@ -453,6 +466,119 @@ const Customer = {
       );
 
       callback(null, results);
+    } catch (error) {
+      console.error("Error processing candidate applications:", error);
+      callback(error, null);
+    }
+  },
+
+  summaryTrend: async (filter_status, branch_id, status, dateRange = {}, callback) => {
+    try {
+      let sql = `
+      SELECT 
+          ca.*, 
+          ca.id AS main_id, 
+          CASE 
+              WHEN cef.is_submitted = '1' OR cef.is_submitted = 1 THEN cef.created_at
+              ELSE NULL
+          END AS cef_filled_date,
+          CASE 
+              WHEN cef.is_submitted = '1' OR cef.is_submitted = 1 THEN cef.id
+              ELSE NULL
+          END AS cef_id,
+          CASE 
+              WHEN dav.is_submitted = '1' OR dav.is_submitted = 1 THEN dav.created_at
+              ELSE NULL
+          END AS dav_filled_date,
+          CASE 
+              WHEN dav.is_submitted = '1' OR dav.is_submitted = 1 THEN dav.id
+              ELSE NULL
+          END AS dav_id,
+          c.client_unique_id,
+          CASE 
+              WHEN cef.is_submitted = '1' OR cef.is_submitted = 1 THEN 1
+              ELSE 0
+          END AS cef_submitted,
+          CASE 
+              WHEN dav.is_submitted = '1' OR dav.is_submitted = 1 THEN 1
+              ELSE 0
+          END AS dav_submitted,
+          CASE 
+            WHEN cef.is_submitted = 0 
+              AND ca.reminder_sent = 5 
+              AND GREATEST(
+                COALESCE(cef_last_reminder_sent_at, '0000-00-00'), 
+                COALESCE(dav_last_reminder_sent_at, '0000-00-00')
+              ) < DATE_SUB(CURDATE(), INTERVAL 1 DAY) 
+            THEN 1 
+            ELSE 0 
+          END AS is_expired
+      FROM 
+          \`candidate_applications\` ca
+      INNER JOIN 
+          \`customers\` c ON c.id = ca.customer_id
+      LEFT JOIN 
+          \`cef_applications\` cef ON ca.id = cef.candidate_application_id
+      LEFT JOIN 
+          \`dav_applications\` dav ON ca.id = dav.candidate_application_id
+      WHERE 
+          ca.\`branch_id\` = ?`;
+
+      const params = [branch_id];
+
+      // ✅ Optional status filters
+      if (filter_status && filter_status.trim() !== "") {
+        sql += ` AND ca.\`status\` = ?`;
+        params.push(filter_status);
+      } else if (typeof status === "string" && status.trim() !== "") {
+        sql += ` AND ca.\`status\` = ?`;
+        params.push(status);
+      }
+
+      // ✅ Optional date range filter
+      if (dateRange && dateRange.from && dateRange.to) {
+        sql += ` AND DATE(ca.\`created_at\`) BETWEEN ? AND ?`;
+        params.push(dateRange.from, dateRange.to);
+      } else if (dateRange && dateRange.from) {
+        sql += ` AND DATE(ca.\`created_at\`) >= ?`;
+        params.push(dateRange.from);
+      } else if (dateRange && dateRange.to) {
+        sql += ` AND DATE(ca.\`created_at\`) <= ?`;
+        params.push(dateRange.to);
+      }
+
+      sql += ` ORDER BY ca.\`created_at\` DESC;`;
+
+      const results = await sequelize.query(sql, {
+        replacements: params,
+        type: QueryTypes.SELECT,
+      });
+
+      // --- 🧮 Create Summary ---
+      const summary = {
+        totalApplications: results.length,
+        expired: 0,
+        cefFilled: 0,
+        davFilled: 0,
+        pendingCEF: 0,
+        pendingDAV: 0,
+      };
+
+      for (const row of results) {
+        if (row.is_expired) summary.expired++;
+        if (row.cef_submitted) {
+          summary.cefFilled++;
+        } else {
+          summary.pendingCEF++;
+        }
+        if (row.dav_submitted) {
+          summary.davFilled++;
+        } else {
+          summary.pendingDAV++;
+        }
+      }
+
+      callback(null, { summary, results });
     } catch (error) {
       console.error("Error processing candidate applications:", error);
       callback(error, null);

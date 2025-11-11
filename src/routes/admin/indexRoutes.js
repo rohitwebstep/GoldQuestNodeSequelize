@@ -24,4 +24,6 @@ router.delete("/delete", adminController.delete);
 
 router.use("/permission", permissionRoutes);
 router.use("/callback", callbackRoutes);
+
+router.get("/weekly-reports", adminController.weeklyReports);
 module.exports = router;

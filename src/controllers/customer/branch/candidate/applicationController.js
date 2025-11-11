@@ -1309,7 +1309,7 @@ function sendNotificationEmails(
 }
 // Controller to list all candidateApplications
 exports.list = (req, res) => {
-  const { branch_id, sub_user_id, _token, additional_customer_id, customer_id } = req.query;
+  const { branch_id, sub_user_id, _token, additional_customer_id, customer_id, from, to } = req.query;
 
   let missingFields = [];
   if (!branch_id) missingFields.push("Branch ID");
@@ -1322,6 +1322,9 @@ exports.list = (req, res) => {
       message: `Missing required fields: ${missingFields.join(", ")}`,
     });
   }
+
+  console.log(`from - `, from);
+  console.log(`to - `, to);
 
   const action = "candidate_application";
   BranchCommon.isBranchAuthorizedForAction(branch_id, action, (result) => {
@@ -1361,6 +1364,10 @@ exports.list = (req, res) => {
               filter_status,
               branch_id,
               modelStatus,
+              {
+                from: from ?? null,
+                to: to ?? null
+              },
               (err, result) => {
                 if (err) return resolve([]);
                 resolve(result);
@@ -1373,16 +1380,32 @@ exports.list = (req, res) => {
               resolve(result);
             })
           ),
+          new Promise((resolve) =>
+            CandidateMasterTrackerModel.summaryTrend(
+              filter_status,
+              branch_id,
+              modelStatus,
+              {
+                from: from ?? null,
+                to: to ?? null
+              },
+              (err, result) => {
+                if (err) return resolve([]);
+                resolve(result);
+              }
+            )
+          ),
         ];
 
         Promise.all(dataPromises).then(
-          ([candidateApplications, customerInfo]) => {
+          ([candidateApplications, customerInfo, summaryTrend]) => {
             res.json({
               status: true,
               message: "Candidate applications fetched successfully.",
               data: {
                 candidateApplications,
                 customerInfo,
+                summaryTrend: summaryTrend.summary ?? {}
               },
               totalResults: {
                 candidateApplications: candidateApplications.length,

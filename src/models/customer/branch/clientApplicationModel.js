@@ -1,7 +1,207 @@
 const { sequelize } = require("../../../config/db");
 const { QueryTypes } = require("sequelize");
 
+async function getClientApplicationServiceStatus(clientAppId, serviceId) {
+  let finalStatus = null;
+  let dbTable = null;
+  let heading = null;
+
+  try {
+    // Step 1: Fetch service by ID
+    const serviceSQL = `
+      SELECT * 
+      FROM services
+      WHERE id = ?
+      LIMIT 1
+    `;
+    const [serviceResult] = await sequelize.query(serviceSQL, {
+      type: QueryTypes.SELECT,
+      replacements: [serviceId],
+    });
+
+    if (!serviceResult) {
+      console.log(`❌ Service not found for ID: ${serviceId}`);
+      return;
+    }
+
+    heading = serviceResult.title;
+
+    // Step 2: Fetch report form by service_id
+    const reportFormSQL = `
+      SELECT * 
+      FROM report_forms 
+      WHERE service_id = ?
+      LIMIT 1
+    `;
+    const [reportFormResult] = await sequelize.query(reportFormSQL, {
+      type: QueryTypes.SELECT,
+      replacements: [serviceId],
+    });
+
+    if (!reportFormResult) {
+      console.log(`⚠️ No report form found for service ID: ${serviceId}`);
+      return;
+    }
+
+    // Step 3: Log report_form JSON data
+    try {
+      const jsonData = JSON.parse(reportFormResult.json);
+
+      // ✅ Check if db_table exists and is not null or empty
+      if (jsonData.db_table && jsonData.db_table.trim() !== '') {
+        dbTable = jsonData.db_table.trim();
+
+        // Step 4: Build SQL to fetch single entry for this client_application_id
+        const dbTableSQL = `
+      SELECT id, status 
+      FROM ${dbTable}
+      WHERE client_application_id = ?
+      LIMIT 1
+    `;
+
+        // Step 5: Execute the query safely using replacements
+        const [dbEntry] = await sequelize.query(dbTableSQL, {
+          type: QueryTypes.SELECT,
+          replacements: [clientAppId],
+        });
+
+        // Step 6: Log fetched entry
+        if (dbEntry) {
+          console.log(`✅ Entry found in ${dbTable}:`);
+          console.log(`➡️ Entry ID: ${dbEntry.id}`);
+          finalStatus = dbEntry.status;
+        }
+      }
+    } catch (jsonError) {
+      console.error("❌ Error parsing report_form JSON:", jsonError.message);
+      console.log("Raw JSON:", reportFormResult.json);
+    }
+  } catch (error) {
+    console.error("🚨 Database query error:", error);
+  }
+
+  return { status: finalStatus, dbTable, heading };
+}
+
 const clientApplication = {
+  weeklyReports: async (callback) => {
+    try {
+      // Step 1: Fetch all service titles (no console loop)
+      const servicesSQL = `
+      SELECT title FROM services
+    `;
+      const servicesResult = await sequelize.query(servicesSQL, {
+        type: QueryTypes.SELECT,
+      });
+
+      // Optional: log how many services were found (no listing)
+      console.log(`🛠️ Total Services Found: ${servicesResult.length}`);
+
+      // Step 2: Fetch completed client applications with non-empty report_date
+      const clientApplicationsSQL = `
+      SELECT ca.*, cmt.overall_status, cmt.report_date, cmt.first_insufficiency_marks, cmt.first_insuff_date, cmt.first_insuff_reopened_date, cmt.second_insufficiency_marks, cmt.second_insuff_date, cmt.second_insuff_reopened_date, cmt.third_insufficiency_marks, cmt.third_insuff_date, cmt.third_insuff_reopened_date, cmt.delay_reason, customer.client_unique_id
+      FROM client_applications AS ca
+      INNER JOIN cmt_applications AS cmt 
+        ON cmt.client_application_id = ca.id
+      INNER JOIN customers AS customer 
+        ON customer.id = ca.customer_id
+      WHERE cmt.overall_status = 'completed'
+        AND cmt.report_date IS NOT NULL
+        AND cmt.report_date != ''
+      LIMIT 1
+    `;
+
+      const clientApplicationResult = await sequelize.query(clientApplicationsSQL, {
+        type: QueryTypes.SELECT,
+      });
+
+      // Step 3: Check if any result found
+      if (!clientApplicationResult || clientApplicationResult.length === 0) {
+        return callback(new Error("No client applications found"), null);
+      }
+
+      // Step 4: Loop through client applications and log details
+      console.log("\n📋 Completed Client Applications:");
+
+      let finalClientApps = [];
+
+      for (const [index, app] of clientApplicationResult.entries()) {
+        let appServices = [];
+
+        // ✅ Check if services column exists and split it
+        if (app.services) {
+          const serviceIds = app.services.split(',').map(id => id.trim());
+
+          for (const serviceId of serviceIds) {
+            if (serviceId) {
+              const serviceStatus = await getClientApplicationServiceStatus(app.id, serviceId);
+              console.log("getClientApplicationServiceStatus - ", serviceStatus);
+
+              // ✅ Push only valid service status objects
+              if (serviceStatus && serviceStatus.status) {
+                appServices.push(serviceStatus);
+              }
+            }
+          }
+        }
+
+        // ✅ Format and prepare final application object
+        const rawApp = {
+          appId: app.application_id,
+          clientCode: app.client_unique_id,
+          createdAt: app.created_at
+            ? (() => {
+              const d = new Date(app.created_at);
+              const day = String(d.getDate()).padStart(2, '0');
+              const month = String(d.getMonth() + 1).padStart(2, '0');
+              const year = d.getFullYear();
+              return `${day}-${month}-${year}`;
+            })()
+            : null,
+          overallStatus: app.overall_status,
+          reportDate: app.report_date,
+          firstInsufficiencyMarks: app.first_insufficiency_marks,
+          firstInsuffDate: app.first_insuff_date,
+          firstInsuffReopenedDate: app.first_insuff_reopened_date,
+          secondInsufficiencyMarks: app.second_insufficiency_marks,
+          secondInsuffDate: app.second_insuff_date,
+          secondInsuffReopenedDate: app.second_insuff_reopened_date,
+          thirdInsufficiencyMarks: app.third_insufficiency_marks,
+          thirdInsuffDate: app.third_insuff_date,
+          thirdInsuffReopenedDate: app.third_insuff_reopened_date,
+          delayReason: app.delay_reason,
+          services: appServices
+        };
+
+        // ✅ Push to final array
+        finalClientApps.push(rawApp);
+
+        console.log("rawApp -", rawApp);
+      }
+
+      console.log("\n✅ Final Client Applications:", finalClientApps);
+      const serviceHeadings = [
+        ...new Set(
+          finalClientApps.flatMap(app =>
+            (app.services || []).map(service => service.heading).filter(Boolean)
+          )
+        )
+      ];
+
+      console.log("🧩 Unique Service Headings:", serviceHeadings);
+
+      const tableHeadings = ['SL NO', 'APPLICATION ID', 'CLIENT CODE', 'DATE/TIME', ...serviceHeadings, 'OVERALL STATUS', 'REPORT DATE', 'FIRST LEVEL INSUFFICIENCY REMARKS', 'FIRST INSUFF DATE', 'FIRST INSUFF CLEARED', 'SECOND LEVEL INSUFFICIENCY REMARKS', 'SECOND INSUFF DATE', 'SECOND INSUFF CLEARED', 'THIRD LEVEL INSUFFICIENCY REMARKS', 'THIRD INSUFF DATE', 'THIRD INSUFF CLEARED', 'REMARKS AND REASON FOR THE DELAY'];
+
+      // Step 5: Return result data
+      callback(null, { clientApplications: finalClientApps, tableHeadings, serviceHeadings });
+
+    } catch (error) {
+      console.error("Database query error:", error);
+      callback(error, null);
+    }
+  },
+
+
   generateApplicationID: async (branch_id, callback) => {
     try {
       // Step 1: Fetch customer_id from branches using branch_id
@@ -466,7 +666,7 @@ const clientApplication = {
       callback(error, null);
     }
   },
-  
+
   updateStatus: async (status, client_application_id, callback) => {
     try {
       // If status is empty or null, set it to 'wip'

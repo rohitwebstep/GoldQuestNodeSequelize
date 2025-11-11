@@ -4,12 +4,69 @@ const Common = require("../../models/admin/commonModel");
 const Service = require("../../models/admin/serviceModel");
 const Package = require("../../models/admin/packageModel");
 const Permission = require("../../models/admin/permissionModel");
-
-const { createMail } = require("../../mailer/admin/createMail");
+const clientApplication = require("../../models/customer/branch/clientApplicationModel");
 
 const fs = require("fs");
 const path = require("path");
+const { createMail } = require("../../mailer/admin/createMail");
 const { upload, saveImage, saveImages } = require("../../utils/cloudImageSave");
+const { weeklyReport } = require("../../utils/weeklyReport");
+
+function formatDateForFile(date = new Date()) {
+  const d = new Date(date);
+  const day = String(d.getDate()).padStart(2, "0");
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const year = d.getFullYear();
+  return `${day}-${month}-${year}`;
+}
+
+exports.weeklyReports = async (req, res) => {
+  try {
+    clientApplication.weeklyReports(async (err, result) => {
+      if (err) {
+        console.error("Database error:", err);
+        return res.status(500).json({
+          status: false,
+          message: err.message,
+        });
+      }
+
+      // ✅ Generate formatted date string
+      const currentDate = formatDateForFile();
+      const pdfTargetDirectory = `uploads/admin/weekly-report/${currentDate}`;
+      const pdfFileName = `weekly-report-${currentDate}.pdf`;
+
+      try {
+        // ✅ Generate and save PDF
+        const pdfPath = await weeklyReport(pdfFileName, pdfTargetDirectory);
+
+        console.log("✅ Weekly PDF Generated at:", pdfPath);
+
+        // ✅ Send successful response
+        return res.json({
+          status: true,
+          message: "Weekly report generated successfully",
+          report_path: pdfPath,
+          data_count: result.length,
+        });
+      } catch (pdfErr) {
+        console.error("PDF generation error:", pdfErr);
+        return res.status(500).json({
+          status: false,
+          message: "Failed to generate weekly report",
+          error: pdfErr.message,
+        });
+      }
+    });
+  } catch (outerErr) {
+    console.error("Unexpected error:", outerErr);
+    res.status(500).json({
+      status: false,
+      message: "Internal server error",
+      error: outerErr.message,
+    });
+  }
+};
 
 exports.list = (req, res) => {
   const { admin_id, _token } = req.query;

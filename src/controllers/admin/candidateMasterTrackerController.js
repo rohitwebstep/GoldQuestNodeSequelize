@@ -307,6 +307,10 @@ exports.applicationListByBranch = (req, res) => {
             filter_status,
             branch_id,
             status,
+            {
+              from: from ?? null,
+              to: to ?? null
+            },
             (err, result) => {
               if (err) return resolve([]);
               resolve(result);

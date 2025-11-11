@@ -64,9 +64,18 @@ exports.login = (req, res) => {
 
     if (record.type === 'additional_user' && result.length > 0) {
       if (branch_id && record.branchDetails && record.branchDetails.length > 0) {
-        const matchedBranch = record.branchDetails.find(
-          (branch) => Number(branch.branch_id) === Number(branch_id)
-        );
+
+        // 🔹 Map through all records and their branchDetails to find a match
+        let matchedBranch = null;
+
+        result.forEach((rec) => {
+          const found = rec.branchDetails?.find(
+            (branch) => Number(branch.branch_id) === Number(branch_id)
+          );
+          if (found) {
+            matchedBranch = found;
+          }
+        });
 
         if (matchedBranch) {
           // Check if parent customer is active
