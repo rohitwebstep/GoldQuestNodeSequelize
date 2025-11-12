@@ -117,7 +117,7 @@ const Service = {
         status: true,
         message: "Customer and allocated services fetched successfully.",
         data: {
-          customer,
+          // customer,
           services: servicesDetails,
         },
       });
