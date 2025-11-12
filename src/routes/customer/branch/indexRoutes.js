@@ -10,6 +10,7 @@ const bulkRoutes = require("./bulkRoutes");
 const reportCaseStatusRoutes = require("./reportCaseStatusRoutes");
 const candidateRoutes = require("./candidateRoutes");
 const deleteRequestRoutes = require("./deleteRequestRoutes");
+const apiRoutes = require("./apiRoutes");
 
 // Basic routes
 router.post("/login", authController.login);
@@ -20,6 +21,7 @@ router.post("/forgot-password-request", authController.forgotPasswordRequest);
 router.post("/forgot-password", authController.forgotPassword);
 
 router.get("/", profileController.index);
+router.get("/access-token", profileController.accessToken);
 router.post("/verify-branch-login", authController.validateLogin);
 router.get("/list", profileController.list);
 router.get(
@@ -53,4 +55,5 @@ router.use("/sub-user", subUserRoutes);
 router.use("/report-case-status", reportCaseStatusRoutes);
 router.use("/candidate-application", candidateRoutes);
 router.use("/delete-request", deleteRequestRoutes);
+router.use("/api", apiRoutes);
 module.exports = router;

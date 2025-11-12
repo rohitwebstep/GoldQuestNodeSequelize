@@ -301,6 +301,9 @@ exports.applicationListByBranch = (req, res) => {
         let status = null;
       }
 
+      let from = null;
+      let to = null;
+
       const dataPromises = [
         new Promise((resolve) =>
           CandidateMasterTrackerModel.applicationListByBranch(

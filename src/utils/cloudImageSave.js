@@ -3,6 +3,7 @@ const path = require("path");
 const multer = require("multer");
 const ftp = require("basic-ftp");
 const App = require("../models/appModel");
+const crypto = require("crypto");
 
 // Function to fetch FTP client info
 async function getFTPClientInfo() {
@@ -100,6 +101,47 @@ const upload = multer({
   limits: { fileSize: 512 * 1024 * 1024 }, // 512 MB limit
   fileFilter,
 });
+
+const saveBase64Image = async (base64String, targetDir) => {
+  return new Promise(async (resolve, reject) => {
+    try {
+      // Ensure target directory exists
+      if (!fs.existsSync(targetDir)) {
+        fs.mkdirSync(targetDir, { recursive: true });
+      }
+
+      // Extract file extension from base64 string (e.g., data:image/png;base64,...)
+      const matches = base64String.match(/^data:(image\/[a-zA-Z]+);base64,(.+)$/);
+      if (!matches || matches.length !== 3) {
+        return reject(new Error("Invalid base64 image format."));
+      }
+
+      const ext = matches[1].split("/")[1];
+      const data = matches[2];
+      const buffer = Buffer.from(data, "base64");
+
+      // Generate unique filename
+      const filename = `img_${crypto.randomBytes(8).toString("hex")}.${ext}`;
+      const filePath = path.join(targetDir, filename);
+
+      // Write file locally
+      fs.writeFileSync(filePath, buffer);
+
+      // ✅ Optional: Upload to FTP if needed
+      try {
+        await uploadToFtp(filePath);
+        fs.unlinkSync(filePath); // remove local copy after upload
+      } catch (err) {
+        console.error("FTP upload failed:", err);
+      }
+
+      resolve(filePath);
+    } catch (err) {
+      reject(err);
+    }
+  });
+};
+
 // Function to save a single image and upload it to FTP
 const saveImage = async (file, targetDir) => {
   return new Promise(async (resolve, reject) => {
@@ -433,6 +475,7 @@ module.exports = {
     { name: "zip", maxCount: 5 },
   ]),
   saveZip,
+  saveBase64Image,
   saveImage,
   saveImages,
   savePdf,
