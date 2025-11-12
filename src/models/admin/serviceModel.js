@@ -115,7 +115,7 @@ const Service = {
 
       return callback(null, {
         status: true,
-        message: "Customer and allocated services fetched successfully.",
+        message: "Customer allocated services fetched successfully.",
         data: {
           // customer,
           services: servicesDetails,

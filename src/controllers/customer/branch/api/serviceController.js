@@ -101,9 +101,12 @@ exports.list = (req, res) => {
                 });
             }
 
-            return res.status(401).json({
-                status: false,
-                result
+            return res.status(200).json({
+                status: true,
+                message: result.message,
+                data: {
+                    services: result.services
+                }
             });
         });
     });
