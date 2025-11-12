@@ -93,7 +93,90 @@ exports.index = (req, res) => {
   });
 };
 
-exports.accessToken = (req, res) => {
+exports.getAccessToken = (req, res) => {
+  const { branch_id, additional_customer_id, sub_user_id, _token } = req.query;
+
+  // Validate required fields
+  const missingFields = [];
+  if (!branch_id) missingFields.push("Branch ID");
+  if (!_token) missingFields.push("Token");
+
+  if (missingFields.length > 0) {
+    return res.status(400).json({
+      status: false,
+      message: `Missing required fields: ${missingFields.join(", ")}`,
+    });
+  }
+
+  const action = "sub_user";
+  // Step 1: Check if the branch is authorized for the action
+  BranchCommon.isBranchAuthorizedForAction(branch_id, action, (authResult) => {
+    if (!authResult.status) {
+      return res.status(403).json({
+        status: false,
+        message: authResult.message,
+      });
+    }
+
+    // Step 2: Verify the branch token
+    BranchCommon.isBranchTokenValid(
+      _token,
+      additional_customer_id,
+      sub_user_id || null,
+      branch_id,
+      (tokenErr, tokenResult) => {
+        if (tokenErr) {
+          console.error("Error checking token validity:", tokenErr);
+          return res.status(500).json({
+            status: false,
+            message: tokenErr,
+          });
+        }
+
+        if (!tokenResult.status) {
+          return res.status(401).json({
+            status: false,
+            message: tokenResult.message,
+          });
+        }
+
+        const newToken = tokenResult.newToken;
+
+        // Step 3: Fetch client applications from database
+        Branch.getAccessToken(branch_id, (dbErr, result) => {
+          if (dbErr) {
+            console.error("Database error:", dbErr);
+            return res.status(500).json({
+              status: false,
+              message: "An error occurred while generating the access token.",
+              token: newToken,
+            });
+          }
+
+          console.log(`result - `, result);
+
+          if (!result?.status) {
+            return res.status(400).json({
+              status: false,
+              message: "Failed to generate branch access token.",
+              token: newToken,
+            });
+          }
+
+          // Token successfully generated
+          return res.status(200).json({
+            status: true,
+            message: "Access token generated successfully.",
+            access_token: result.access_token,
+            token: newToken,
+          });
+        });
+      }
+    );
+  });
+};
+
+exports.generateAccessToken = (req, res) => {
   const { branch_id, additional_customer_id, sub_user_id, _token } = req.query;
 
   // Validate required fields

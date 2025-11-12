@@ -42,17 +42,47 @@ const Branch = {
     }
   },
 
+  getAccessToken: async (branch_id, callback) => {
+    try {
+      // ✅ SQL to fetch access tokens
+      const selectSql = "SELECT `api_access_token_raw`, `api_access_token` FROM `branches` WHERE `id` = ?";
+      console.log(`Fetching token for branch_id:`, branch_id);
+
+      // ✅ Perform SELECT query
+      const [rows] = await sequelize.query(selectSql, {
+        replacements: [branch_id],
+        type: QueryTypes.SELECT,
+      });
+
+      if (rows && rows.length > 0) {
+        // Return the raw access token
+        return callback(null, {
+          status: true,
+          access_token: rows[0].api_access_token_raw,
+        });
+      } else {
+        return callback(null, {
+          status: false,
+          message: "No branch found or token not available.",
+        });
+      }
+    } catch (error) {
+      console.error("Error fetching access token:", error);
+      return callback({ message: "Database query failed", error }, null);
+    }
+  },
+
   generateAccessToken: async (branch_id, callback) => {
     try {
       const { rawToken, hashedToken } = generateBranchAccessToken();
 
       // ✅ Correct SQL syntax
-      const updateSql = "UPDATE `branches` SET `api_access_token` = ? WHERE `id` = ?";
+      const updateSql = "UPDATE `branches` SET `api_access_token_raw` = ?, `api_access_token` = ? WHERE `id` = ?";
       console.log(`branch_id - `, branch_id);
 
       // ✅ Perform update query
       const updateRes = await sequelize.query(updateSql, {
-        replacements: [hashedToken, branch_id],
+        replacements: [rawToken, hashedToken, branch_id],
         type: QueryTypes.UPDATE,
       });
 
