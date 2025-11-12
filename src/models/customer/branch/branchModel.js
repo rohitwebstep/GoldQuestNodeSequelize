@@ -49,10 +49,12 @@ const Branch = {
       console.log(`Fetching token for branch_id:`, branch_id);
 
       // ✅ Perform SELECT query
-      const [rows] = await sequelize.query(selectSql, {
+      const rows = await sequelize.query(selectSql, {
         replacements: [branch_id],
         type: QueryTypes.SELECT,
       });
+
+      console.log(`rows - `, rows);
 
       if (rows && rows.length > 0) {
         // Return the raw access token
