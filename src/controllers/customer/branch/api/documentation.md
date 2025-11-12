@@ -1,7 +1,7 @@
-# 🌐 Branch Background Verification (BGV) API Documentation
+# 🌐 GoldQuest Background Verification (BGV) API Documentation
 
 > **Version:** 1.0  
-> **Base URL:** `http://localhost:5000/branch/api/`  
+> **Base URL:** `http://api.goldquestglobal.in/branch/api/`  
 > **Authentication:** Access Token (query/body parameter)
 
 ---
@@ -41,7 +41,7 @@ GET /branch/api/services
 
 ### **Example Request**
 ```javascript
-fetch("http://localhost:5000/branch/api/services?access_token=2716fc00ba3179fc4f592d84c0b7f1bd.dc9ddff93c8084eb30f4b50c73293b13", {
+fetch("http://api.goldquestglobal.in/branch/api/services?access_token=2716fc00ba3179fc4f592d84c0b7f1bd.dc9ddff93c8084eb30f4b50c73293b13", {
   method: "GET",
   redirect: "follow"
 })
@@ -54,12 +54,27 @@ fetch("http://localhost:5000/branch/api/services?access_token=2716fc00ba3179fc4f
 
 ```json
 {
-  "status": "success",
-  "services": [
-    { "id": 1, "name": "Employment Verification" },
-    { "id": 2, "name": "Address Verification" },
-    { "id": 3, "name": "Criminal Record Check" }
-  ]
+    "status": true,
+    "message": "Customer allocated services fetched successfully.",
+    "data": {
+        "services": [
+            {
+                "id": 1,
+                "title": "LATEST EMPLOYMENT-1",
+                "group": "Employment"
+            },
+            {
+                "id": 2,
+                "title": "EX-EMPLOYMENT-2",
+                "group": "Employment"
+            },
+            {
+                "id": 3,
+                "title": "PREVIOUS EMPLOYMENT-3",
+                "group": "Employment"
+            }
+        ]
+    }
 }
 ```
 
@@ -93,7 +108,6 @@ POST /branch/api/candidate-application/create
 | `mobile_number`            | string | ✅        | Candidate’s contact number      |
 | `email`                    | string | ✅        | Candidate’s email ID            |
 | `services`                 | string | ✅        | Comma-separated service IDs     |
-| `candidate_application_id` | string | ❌        | Leave blank to auto-generate    |
 | `nationality`              | string | ✅        | Candidate’s nationality         |
 | `purpose_of_application`   | string | ✅        | e.g., “NORMAL BGV (EMPLOYMENT)” |
 
@@ -104,18 +118,17 @@ const myHeaders = new Headers();
 myHeaders.append("Content-Type", "application/json");
 
 const raw = JSON.stringify({
-  "access_token": "<ACCESS_TOKEN>",
-  "name": "John Doe",
-  "employee_id": "EMP12345",
-  "mobile_number": "8888888888",
-  "email": "johndoe@example.com",
-  "services": "1,2,3,4,5,7,8,9",
-  "candidate_application_id": "",
-  "nationality": "Indian",
-  "purpose_of_application": "NORMAL BGV(EMPLOYMENT)"
+    "access_token": "<ACCESS_TOKEN>",
+    "name": "John Doe",
+    "employee_id": "EMP12345",
+    "mobile_number": "8888888888",
+    "email": "johndoe@example.com",
+    "services": "1,2,3,4,5,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,35,37,65,66,67,68,69,74,75,76,77,78,79",
+    "nationality": "Indian",
+    "purpose_of_application": "NORMAL BGV(EMPLOYMENT)"
 });
 
-fetch("http://localhost:5000/branch/api/candidate-application/create", {
+fetch("http://api.goldquestglobal.in/branch/api/candidate-application/create", {
   method: "POST",
   headers: myHeaders,
   body: raw,
@@ -130,8 +143,7 @@ fetch("http://localhost:5000/branch/api/candidate-application/create", {
 
 ```json
 {
-  "status": "success",
-  "application_id": "BGV12345",
+  "status": true,
   "message": "Candidate link generated and sent successfully."
 }
 ```
@@ -195,7 +207,7 @@ const raw = JSON.stringify({
   "photo": "data:image/png;base64,iVBORw0KGgoAAAANSUh..."
 });
 
-fetch("http://localhost:5000/branch/api/client-application/create", {
+fetch("http://api.goldquestglobal.in/branch/api/client-application/create", {
   method: "POST",
   headers: myHeaders,
   body: raw,
@@ -211,8 +223,7 @@ fetch("http://localhost:5000/branch/api/client-application/create", {
 ```json
 {
   "status": "success",
-  "application_id": "CLTBGV67890",
-  "message": "Client BGV application created successfully."
+  "message": "Client application created successfully."
 }
 ```
 
@@ -239,16 +250,3 @@ Creates a complete BGV application by directly submitting client-uploaded data a
 | `401` | `Invalid access token`    | The provided token is missing or invalid |
 | `400` | `Missing required fields` | Some required inputs are not provided    |
 | `500` | `Server error`            | Something went wrong on the backend      |
-
----
-
-## 📞 Support
-
-For API access, integration support, or reporting issues, contact:
-
-**Branch BGV Technical Support**
-📧 [support@branchbgv.com](mailto:support@branchbgv.com)
-📞 +91-9876543210
-🌐 [www.branchbgv.com](http://www.branchbgv.com)
-
-Would you like me to generate the **PDF file** version of this Markdown now?

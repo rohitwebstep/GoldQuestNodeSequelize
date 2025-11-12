@@ -105,7 +105,7 @@ exports.list = (req, res) => {
                 status: true,
                 message: result.message,
                 data: {
-                    services: result.services
+                    services: result.data.services
                 }
             });
         });
