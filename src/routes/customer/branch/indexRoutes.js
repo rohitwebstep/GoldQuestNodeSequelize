@@ -22,7 +22,7 @@ router.post("/forgot-password", authController.forgotPassword);
 
 router.get("/", profileController.index);
 router.get("/access-token/generate", profileController.generateAccessToken);
-router.get("/access-token", profileController.accessToken);
+router.get("/access-token", profileController.getAccessToken);
 router.post("/verify-branch-login", authController.validateLogin);
 router.get("/list", profileController.list);
 router.get(
