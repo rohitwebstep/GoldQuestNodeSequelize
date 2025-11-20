@@ -151,7 +151,7 @@ const Customer = {
                   ca.*, 
                   ca.id AS main_id, 
                   CASE 
-                      WHEN cef.is_submitted = '1' OR cef.is_submitted = 1 THEN cef.created_at
+                      WHEN cef.is_submitted IN (0, 1, '0', '1') THEN cef.created_at
                       ELSE NULL
                   END AS cef_filled_date,
                   cef.is_employment_gap,
@@ -162,26 +162,26 @@ const Customer = {
                   cef.permanent_pin_code,
                   cef.created_at,
                   CASE 
-                      WHEN cef.is_submitted = '1' OR cef.is_submitted = 1 THEN cef.id
+                      WHEN cef.is_submitted IN (0, 1, '0', '1') THEN cef.id
                       ELSE NULL
                   END AS cef_id,
                   CASE 
-                      WHEN dav.is_submitted = '1' OR dav.is_submitted = 1 THEN dav.created_at
+                      WHEN dav.is_submitted IN (0, 1, '0', '1') THEN dav.created_at
                       ELSE NULL
                   END AS dav_filled_date,
                   CASE 
-                      WHEN dav.is_submitted = '1' OR dav.is_submitted = 1 THEN dav.id
+                      WHEN dav.is_submitted IN (0, 1, '0', '1') THEN dav.id
                       ELSE NULL
                   END AS dav_id,
                   c.client_unique_id,
                   CASE 
-                      WHEN cef.is_submitted = '1' OR cef.is_submitted = 1 THEN 1
-                      WHEN cef.is_submitted = '0' OR cef.is_submitted = 0 THEN 0
+                      WHEN cef.is_submitted IN (1, '1') THEN 1
+                      WHEN cef.is_submitted IN (0, '0') THEN 0
                       ELSE 0
                   END AS cef_submitted,
                   CASE 
-                      WHEN dav.is_submitted = '1' OR dav.is_submitted = 1 THEN 1
-                      WHEN dav.is_submitted = '0' OR dav.is_submitted = 0 THEN 0
+                      WHEN dav.is_submitted IN (1, '1') THEN 1
+                      WHEN dav.is_submitted IN (0, '0') THEN 0
                       ELSE 0
                   END AS dav_submitted,
                   CASE 
