@@ -484,16 +484,20 @@ const Admin = {
     }
   },
 
-  updateToken: async (id, token, tokenExpiry, callback) => {
+  updateToken: async (id, token, tokenExpiry, useSecondaryLogin, callback) => {
+    // Choose which fields to update
+    const fieldToken = useSecondaryLogin ? "second_login_token" : "login_token";
+    const fieldExpiry = useSecondaryLogin ? "second_token_expiry" : "token_expiry";
+
     const sql = `
-      UPDATE admins
-      SET login_token = ?, token_expiry = ?
-      WHERE id = ?
-    `;
+    UPDATE admins
+    SET ${fieldToken} = ?, ${fieldExpiry} = ?
+    WHERE id = ?
+  `;
 
     try {
       const [results] = await sequelize.query(sql, {
-        replacements: [token, tokenExpiry, id], // Using ? placeholders
+        replacements: [token, tokenExpiry, id],
         type: QueryTypes.UPDATE,
       });
 
@@ -504,7 +508,7 @@ const Admin = {
         );
       }
 
-      callback(null, { message: "Token updated successfully" });
+      return callback(null, { message: "Token updated successfully" });
     } catch (err) {
       console.error("Database update error:", err);
       return callback({ message: "Database update error", error: err }, null);

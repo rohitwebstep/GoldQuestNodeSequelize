@@ -88,7 +88,9 @@ exports.login = (req, res) => {
 
       const currentTime = getCurrentTime();
       const tokenExpiry = new Date(admin.token_expiry);
-      /*
+
+      let useSecondaryLogin = false;
+
       if (admin.login_token && tokenExpiry > currentTime) {
 
         // Parse the tokenExpiry and currentTime to Date objects
@@ -116,12 +118,15 @@ exports.login = (req, res) => {
 
         Common.adminLoginLog(admin.id, "login", "0", "Another admin logged in", () => { });
 
+        useSecondaryLogin = true;
+
+        /*
         return res.status(400).json({
           status: false,
           message: `Another admin is currently logged in. You can log in after ${timeRemainingMessage} if no activity is done by the current user.`,
         });
+        */
       }
-      */
 
       if (admin.two_factor_enabled && admin.two_factor_enabled == 1) {
         const isMobile = /^\d{10}$/.test(username);
@@ -131,9 +136,8 @@ exports.login = (req, res) => {
         const otpExpiry = getOTPExpiry();
 
         if (isEmail) {
-
           // Update the token in the database
-          Admin.updateToken(admin.id, null, null, (err) => {
+          Admin.updateToken(admin.id, null, null, useSecondaryLogin, (err) => {
             if (err) {
               Common.adminLoginLog(
                 admin.id,
@@ -189,7 +193,7 @@ exports.login = (req, res) => {
         const newTokenExpiry = getTokenExpiry();
 
         // Update the token in the database
-        Admin.updateToken(admin.id, token, newTokenExpiry, (err) => {
+        Admin.updateToken(admin.id, token, newTokenExpiry, useSecondaryLogin, (err) => {
           if (err) {
             Common.adminLoginLog(
               admin.id,
@@ -284,7 +288,8 @@ exports.verifyTwoFactor = (req, res) => {
     const currentTime = getCurrentTime();
     const tokenExpiry = new Date(admin.token_expiry);
 
-    /*
+    let useSecondaryLogin = false;
+
     if (admin.login_token && tokenExpiry > currentTime) {
 
       // Parse the tokenExpiry and currentTime to Date objects
@@ -318,12 +323,15 @@ exports.verifyTwoFactor = (req, res) => {
         () => { }
       );
 
+      useSecondaryLogin = true;
+
+      /*
       return res.status(400).json({
         status: false,
         message: `Another admin is currently logged in. You can log in after ${timeRemainingMessage} if no activity is done by the current user.`,
       });
+      */
     }
-    */
 
     if (admin.two_factor_enabled !== 1) {
       return res.status(400).json({
@@ -362,7 +370,7 @@ exports.verifyTwoFactor = (req, res) => {
           message: "Failed to update OTP. Please try again later.",
         });
       }
-      Admin.updateToken(admin.id, token, newTokenExpiry, (err) => {
+      Admin.updateToken(admin.id, token, newTokenExpiry, useSecondaryLogin, (err) => {
         if (err) {
           console.error("Error updating token:", err);
           Common.adminLoginLog(admin.id, "login", "0", "Error updating token", () => { });
@@ -517,6 +525,8 @@ exports.validateLogin = (req, res) => {
       });
     }
 
+    /*
+
     // Validate the token
     if (admin.login_token !== _token) {
       return res
@@ -533,6 +543,7 @@ exports.validateLogin = (req, res) => {
         message: "Your session has expired. Please log in again to continue."
       });
     }
+    */
 
     // Check admin status
     if (admin.status === 0) {

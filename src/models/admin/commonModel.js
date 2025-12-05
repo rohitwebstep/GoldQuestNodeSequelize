@@ -22,14 +22,14 @@ const common = {
    */
   isAdminTokenValid: async (_token, admin_id, callback) => {
     const sql = `
-      SELECT login_token, token_expiry
-      FROM admins
-      WHERE id = ?
-    `;
+    SELECT login_token, token_expiry, second_login_token, second_token_expiry
+    FROM admins
+    WHERE id = ?
+  `;
 
     try {
       const results = await sequelize.query(sql, {
-        replacements: [admin_id], // Secure ? placeholder
+        replacements: [admin_id],
         type: QueryTypes.SELECT,
       });
 
@@ -37,41 +37,60 @@ const common = {
         return callback({ status: false, message: "Admin not found" }, null);
       }
 
-      const currentToken = results[0].login_token;
-      const tokenExpiry = new Date(results[0].token_expiry);
-      const currentTime = new Date();
+      const admin = results[0];
+      const now = new Date();
 
-      if (_token !== currentToken) {
+      // Determine which token group is being used
+      let isPrimary = false;
+      let isSecondary = false;
+
+      if (_token === admin.login_token) isPrimary = true;
+      if (_token === admin.second_login_token) isSecondary = true;
+
+      if (!isPrimary && !isSecondary) {
         return callback(
           { status: false, message: "Invalid token provided" },
           null
         );
       }
 
-      if (tokenExpiry > currentTime) {
-        return callback(null, { status: true, message: "Token is valid" });
-      } else {
-        // Generate new token & expiry
-        const newToken = generateToken();
-        const newTokenExpiry = getTokenExpiry();
+      // Select the correct expiry field
+      const tokenExpiry = new Date(
+        isPrimary ? admin.token_expiry : admin.second_token_expiry
+      );
 
-        const updateSql = `
-          UPDATE admins
-          SET login_token = ?, token_expiry = ?
-          WHERE id = ?
-        `;
-
-        await sequelize.query(updateSql, {
-          replacements: [newToken, newTokenExpiry, admin_id],
-          type: QueryTypes.UPDATE,
-        });
-
+      // Token is still valid
+      if (tokenExpiry > now) {
         return callback(null, {
           status: true,
-          message: "Token was expired and has been refreshed",
-          newToken,
+          message: "Token is valid",
+          tokenType: isPrimary ? "primary" : "secondary",
         });
       }
+
+      // Token expired → refresh same group
+      const newToken = generateToken();
+      const newTokenExpiry = getTokenExpiry();
+
+      const updateSql = `
+      UPDATE admins
+      SET ${isPrimary ? "login_token" : "second_login_token"} = ?,
+          ${isPrimary ? "token_expiry" : "second_token_expiry"} = ?
+      WHERE id = ?
+    `;
+
+      await sequelize.query(updateSql, {
+        replacements: [newToken, newTokenExpiry, admin_id],
+        type: QueryTypes.UPDATE,
+      });
+
+      return callback(null, {
+        status: true,
+        message: "Token expired and was refreshed",
+        newToken,
+        tokenType: isPrimary ? "primary" : "secondary",
+      });
+
     } catch (err) {
       console.error("Database query error:", err);
       return callback(
