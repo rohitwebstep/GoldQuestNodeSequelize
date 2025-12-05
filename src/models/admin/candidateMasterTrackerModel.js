@@ -273,7 +273,7 @@ const Customer = {
           candidateApp.dav_exist = servicesIds.includes(String(digitalAddressID)) ? 1 : 0;
 
           // Fetch DAV details
-          if (candidateApp.dav_submitted === 1) {
+          if (candidateApp.dav_submitted === 0 || candidateApp.dav_submitted === 1) {
             const checkDavSql = `
                           SELECT identity_proof, home_photo, locality
                           FROM \`dav_applications\`
@@ -305,7 +305,7 @@ const Customer = {
           }
 
           // Fetch CEF details
-          if (candidateApp.cef_submitted === 1) {
+          if (candidateApp.cef_submitted === 0 || candidateApp.cef_submitted === 1) {
             const checkCefSql = `
                           SELECT signature, resume_file, govt_id, pan_card_image, aadhar_card_image, passport_photo
                           FROM \`cef_applications\`
@@ -389,12 +389,11 @@ const Customer = {
                 const tableQueries = await Promise.all(
                   Object.entries(dbTableFileInputs).map(async ([dbTable, fileInputNames]) => {
                     if (fileInputNames.length === 0) {
-                      console.log(`Skipping table ${dbTable} as fileInputNames is empty 1.`);
-                      return;
+                      console.log(`Skipping table ${dbTable} as fileInputNames is empty.`);
+                      return null;
                     }
 
                     try {
-                      // Fetch existing columns in the table
                       const describeQuery = `DESCRIBE cef_${dbTable}`;
                       const existingColumns = await sequelize.query(describeQuery, {
                         type: QueryTypes.SELECT,
@@ -405,17 +404,15 @@ const Customer = {
 
                       if (validColumns.length === 0) {
                         console.log(`Skipping table ${dbTable} as no valid columns exist.`);
-                        return;
+                        return null;
                       }
 
-                      // Fetch relevant data
                       const selectQuery = `SELECT ${validColumns.join(", ")} FROM cef_${dbTable} WHERE candidate_application_id = ?`;
                       const rows = await sequelize.query(selectQuery, {
                         replacements: [candidateApp.main_id],
                         type: QueryTypes.SELECT,
                       });
 
-                      // Map column names to labels
                       const updatedRows = rows.map((row) => {
                         const updatedRow = {};
                         Object.entries(row).forEach(([key, value]) => {
@@ -426,27 +423,23 @@ const Customer = {
                         return updatedRow;
                       });
 
-                      if (
-                        updatedRows.length > 0 &&
-                        updatedRows.some((row, index) => {
-                          const isValid = Object.keys(row).length > 0 && Object.values(row).some(value => value !== undefined && value !== null && value !== '');
-                          return isValid;
-                        })
-                      ) {
+                      const validRows = updatedRows.filter((row) => {
+                        return Object.keys(row).length > 0 &&
+                          Object.values(row).some(
+                            v => v !== undefined && v !== null && v !== ""
+                          );
+                      });
 
-                        // Filter the rows based on the condition that both the index and value are not empty
-                        const validRows = updatedRows.filter((row, index) => {
-                          const isValid = Object.keys(row).length > 0 &&
-                            Object.values(row).some(value => value !== undefined && value !== null && value !== '');
-                          return isValid;
-                        });
-
-
+                      if (validRows.length > 0) {
                         servicesResult.cef[dbTableWithHeadings[dbTable]] = validRows;
+                        return validRows; // ← IMPORTANT
                       }
 
-                    } catch (error) {
-                      console.error(`Error processing table ${dbTable}:`, error);
+                      return null;
+
+                    } catch (err) {
+                      console.error(`Error processing ${dbTable}:`, err);
+                      return null;
                     }
                   })
                 );
@@ -690,7 +683,7 @@ const Customer = {
           candidateApp.dav_exist = servicesIds.includes(String(digitalAddressID)) ? 1 : 0;
 
           // Fetch DAV details
-          if (candidateApp.dav_submitted === 1) {
+          if (candidateApp.dav_submitted === 0 || candidateApp.dav_submitted === 1) {
             const checkDavSql = `
                           SELECT identity_proof, home_photo, locality
                           FROM \`dav_applications\`
@@ -722,7 +715,7 @@ const Customer = {
           }
 
           // Fetch CEF details
-          if (candidateApp.cef_submitted === 1) {
+          if (candidateApp.cef_submitted === 0 || candidateApp.cef_submitted === 1) {
             const checkCefSql = `
                           SELECT signature, resume_file, govt_id, pan_card_image, aadhar_card_image, passport_photo
                           FROM \`cef_applications\`
@@ -806,12 +799,11 @@ const Customer = {
                 const tableQueries = await Promise.all(
                   Object.entries(dbTableFileInputs).map(async ([dbTable, fileInputNames]) => {
                     if (fileInputNames.length === 0) {
-                      console.log(`Skipping table ${dbTable} as fileInputNames is empty 2.`);
-                      return;
+                      console.log(`Skipping table ${dbTable} as fileInputNames is empty.`);
+                      return null;
                     }
 
                     try {
-                      // Fetch existing columns in the table
                       const describeQuery = `DESCRIBE cef_${dbTable}`;
                       const existingColumns = await sequelize.query(describeQuery, {
                         type: QueryTypes.SELECT,
@@ -822,17 +814,15 @@ const Customer = {
 
                       if (validColumns.length === 0) {
                         console.log(`Skipping table ${dbTable} as no valid columns exist.`);
-                        return;
+                        return null;
                       }
 
-                      // Fetch relevant data
                       const selectQuery = `SELECT ${validColumns.join(", ")} FROM cef_${dbTable} WHERE candidate_application_id = ?`;
                       const rows = await sequelize.query(selectQuery, {
                         replacements: [candidateApp.main_id],
                         type: QueryTypes.SELECT,
                       });
 
-                      // Map column names to labels
                       const updatedRows = rows.map((row) => {
                         const updatedRow = {};
                         Object.entries(row).forEach(([key, value]) => {
@@ -843,26 +833,23 @@ const Customer = {
                         return updatedRow;
                       });
 
-                      if (
-                        updatedRows.length > 0 &&
-                        updatedRows.some((row, index) => {
-                          const isValid = Object.keys(row).length > 0 && Object.values(row).some(value => value !== undefined && value !== null && value !== '');
-                          return isValid;
-                        })
-                      ) {
+                      const validRows = updatedRows.filter((row) => {
+                        return Object.keys(row).length > 0 &&
+                          Object.values(row).some(
+                            v => v !== undefined && v !== null && v !== ""
+                          );
+                      });
 
-                        // Filter the rows based on the condition that both the index and value are not empty
-                        const validRows = updatedRows.filter((row, index) => {
-                          const isValid = Object.keys(row).length > 0 &&
-                            Object.values(row).some(value => value !== undefined && value !== null && value !== '');
-                          return isValid;
-                        });
-
-
+                      if (validRows.length > 0) {
                         servicesResult.cef[dbTableWithHeadings[dbTable]] = validRows;
+                        return validRows; // ← IMPORTANT
                       }
-                    } catch (error) {
-                      console.error(`Error processing table ${dbTable}:`, error);
+
+                      return null;
+
+                    } catch (err) {
+                      console.error(`Error processing ${dbTable}:`, err);
+                      return null;
                     }
                   })
                 );
