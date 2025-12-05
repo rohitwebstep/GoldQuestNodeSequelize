@@ -1,5 +1,4 @@
 const cron = require("node-cron");
-const CEF = require("../models/customer/branch/cefModel");
 const cefController = require("../controllers/customer/branch/candidate/cefController");
 
 // Log to indicate that the cron job script has started

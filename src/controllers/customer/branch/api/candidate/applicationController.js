@@ -26,8 +26,6 @@ const {
   davMail,
 } = require("../../../../../mailer/customer/branch/candidate/davMail");
 
-const CEF = require("../../../../../models/customer/branch/cefModel");
-
 exports.create = (req, res) => {
   const {
     access_token,

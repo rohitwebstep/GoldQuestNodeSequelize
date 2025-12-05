@@ -360,6 +360,7 @@ const cef = {
     candidate_application_id,
     branch_id,
     customer_id,
+    submitStatus,
     callback
   ) => {
     const fields = Object.keys(personal_information);
@@ -394,6 +395,7 @@ const cef = {
             candidate_application_id,
             branch_id,
             customer_id,
+            submitStatus,
             callback
           );
         })
@@ -409,6 +411,7 @@ const cef = {
         candidate_application_id,
         branch_id,
         customer_id,
+        submitStatus,
         callback
       );
     }
@@ -423,6 +426,7 @@ const cef = {
     candidate_application_id,
     branch_id,
     customer_id,
+    is_submitted,
     callback
   ) => {
     try {
@@ -439,6 +443,7 @@ const cef = {
         // Entry exists, so update it
         personal_information.branch_id = branch_id;
         personal_information.customer_id = customer_id;
+        personal_information.is_submitted = is_submitted;
 
         // Filter out undefined, null, or empty values and avoid updating primary keys
         const filteredInformation = Object.fromEntries(

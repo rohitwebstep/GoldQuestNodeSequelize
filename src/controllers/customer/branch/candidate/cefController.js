@@ -646,6 +646,7 @@ exports.submit = (req, res) => {
                 application_id,
                 branch_id,
                 customer_id,
+                submitStatus,
                 (err, cefResult) => {
                   if (err) {
                     console.error(
