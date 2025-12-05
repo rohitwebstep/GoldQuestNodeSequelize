@@ -4,6 +4,7 @@ const clientController = require("../../../controllers/customer/branch/client/ap
 
 // Basic routes
 router.post("/create", clientController.create);
+router.get("/create-listing", clientController.createListing);
 router.post("/bulk-create", clientController.bulkCreate);
 router.post("/upload", clientController.upload);
 router.get("/list", clientController.list);

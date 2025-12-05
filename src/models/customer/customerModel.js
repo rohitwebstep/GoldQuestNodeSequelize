@@ -355,20 +355,114 @@ const Customer = {
       // Process service titles asynchronously
       const updateServiceTitles = async (customerData) => {
         try {
-          const servicesData = JSON.parse(customerData.services || "[]");
-
-          for (const group of servicesData) {
-            const serviceSql = `SELECT title FROM services WHERE id = ?`;
-            const [row] = await sequelize.query(serviceSql, {
-              replacements: [group.serviceId],
-              type: QueryTypes.SELECT,
-            });
-
-            if (row && row.title) {
-              group.serviceTitle = row.title;
+          // Parse services JSON if present
+          let servicesData = [];
+          if (customerData.services) {
+            try {
+              servicesData = JSON.parse(customerData.services);
+            } catch (parseError) {
+              console.error("Error parsing services JSON:", parseError);
+              return callback(parseError, null);
             }
           }
 
+          // Fetch all service titles in parallel (if there are any services)
+          if (Array.isArray(servicesData) && servicesData.length > 0) {
+            // -------------------------------------------------------
+            // 1) Extract all serviceIds
+            // -------------------------------------------------------
+            const serviceIds = servicesData
+              .map(s => s.serviceId)
+              .filter(id => id);
+
+            // -------------------------------------------------------
+            // 2) Extract all packageIds from nested object structure
+            // -------------------------------------------------------
+            const packageIds = [];
+
+            for (const group of servicesData) {
+              if (group.packages && typeof group.packages === "object") {
+                for (const pkgId of Object.keys(group.packages)) {
+                  if (!isNaN(pkgId)) packageIds.push(Number(pkgId));
+                }
+              }
+            }
+
+            // Remove duplicates
+            const uniquePackageIds = [...new Set(packageIds)];
+
+            // -------------------------------------------------------
+            // 3) Fetch service titles in ONE query
+            // -------------------------------------------------------
+            let serviceMap = {};
+            if (serviceIds.length > 0) {
+              const serviceSql = `SELECT id, title FROM services WHERE id IN (:ids)`;
+
+              const serviceRows = await sequelize.query(serviceSql, {
+                type: QueryTypes.SELECT,
+                replacements: { ids: serviceIds }
+              });
+
+              serviceRows.forEach(row => {
+                serviceMap[row.id] = row.title;
+              });
+            }
+
+            // -------------------------------------------------------
+            // 4) Fetch package titles in ONE query
+            // -------------------------------------------------------
+            let packageMap = {};
+            if (uniquePackageIds.length > 0) {
+              const pkgSql = `SELECT id, title FROM packages WHERE id IN (:ids)`;
+
+              const pkgRows = await sequelize.query(pkgSql, {
+                type: QueryTypes.SELECT,
+                replacements: { ids: uniquePackageIds }
+              });
+
+              pkgRows.forEach(row => {
+                packageMap[row.id] = row.title;
+              });
+            }
+
+            // -------------------------------------------------------
+            // 5) Build final cleaned serviceData
+            // -------------------------------------------------------
+            servicesData = servicesData
+              .map(group => {
+                const serviceTitle = serviceMap[group.serviceId];
+
+                // Remove missing service
+                if (!serviceTitle) {
+                  console.log(`⚠️ Service ID ${group.serviceId} not found — removing.`);
+                  return null;
+                }
+
+                // Update service title
+                group.serviceTitle = serviceTitle;
+
+                // Process package titles
+                const newPackages = {};
+                if (group.packages && typeof group.packages === "object") {
+                  for (const pkgId of Object.keys(group.packages)) {
+                    const numId = Number(pkgId);
+                    const pkgTitle = packageMap[numId];
+
+                    if (pkgTitle) {
+                      newPackages[pkgId] = pkgTitle;
+                    } else {
+                      console.log(`⚠️ Package ID ${pkgId} not found — removing.`);
+                    }
+                  }
+                }
+
+                group.packages = newPackages; // filtered + updated
+                return group;
+              })
+              .filter(Boolean); // remove null
+          }
+
+          // Attach updated service titles to customer data
           customerData.services = JSON.stringify(servicesData);
         } catch (err) {
           console.error(
@@ -480,30 +574,98 @@ const Customer = {
 
       // Fetch all service titles in parallel (if there are any services)
       if (Array.isArray(servicesData) && servicesData.length > 0) {
-        const updatedServices = [];
+        // -------------------------------------------------------
+        // 1) Extract all serviceIds
+        // -------------------------------------------------------
+        const serviceIds = servicesData
+          .map(s => s.serviceId)
+          .filter(id => id);
+
+        // -------------------------------------------------------
+        // 2) Extract all packageIds from nested object structure
+        // -------------------------------------------------------
+        const packageIds = [];
 
         for (const group of servicesData) {
-          if (group.serviceId) {
-            const serviceSql = `SELECT title FROM services WHERE id = ? LIMIT 1`;
-            const [serviceResult] = await sequelize.query(serviceSql, {
-              type: QueryTypes.SELECT,
-              replacements: [group.serviceId],
-            });
-
-            // ✅ If service exists, add it to the new array
-            if (serviceResult && serviceResult.title) {
-              group.serviceTitle = serviceResult.title;
-              updatedServices.push(group);
-            } else {
-              console.log(
-                `⚠️ Service ID ${group.serviceId} not found — removing from list.`
-              );
+          if (group.packages && typeof group.packages === "object") {
+            for (const pkgId of Object.keys(group.packages)) {
+              if (!isNaN(pkgId)) packageIds.push(Number(pkgId));
             }
           }
         }
 
-        // ✅ Replace original array with filtered one
-        servicesData = updatedServices;
+        // Remove duplicates
+        const uniquePackageIds = [...new Set(packageIds)];
+
+        // -------------------------------------------------------
+        // 3) Fetch service titles in ONE query
+        // -------------------------------------------------------
+        let serviceMap = {};
+        if (serviceIds.length > 0) {
+          const serviceSql = `SELECT id, title FROM services WHERE id IN (:ids)`;
+
+          const serviceRows = await sequelize.query(serviceSql, {
+            type: QueryTypes.SELECT,
+            replacements: { ids: serviceIds }
+          });
+
+          serviceRows.forEach(row => {
+            serviceMap[row.id] = row.title;
+          });
+        }
+
+        // -------------------------------------------------------
+        // 4) Fetch package titles in ONE query
+        // -------------------------------------------------------
+        let packageMap = {};
+        if (uniquePackageIds.length > 0) {
+          const pkgSql = `SELECT id, title FROM packages WHERE id IN (:ids)`;
+
+          const pkgRows = await sequelize.query(pkgSql, {
+            type: QueryTypes.SELECT,
+            replacements: { ids: uniquePackageIds }
+          });
+
+          pkgRows.forEach(row => {
+            packageMap[row.id] = row.title;
+          });
+        }
+
+        // -------------------------------------------------------
+        // 5) Build final cleaned serviceData
+        // -------------------------------------------------------
+        servicesData = servicesData
+          .map(group => {
+            const serviceTitle = serviceMap[group.serviceId];
+
+            // Remove missing service
+            if (!serviceTitle) {
+              console.log(`⚠️ Service ID ${group.serviceId} not found — removing.`);
+              return null;
+            }
+
+            // Update service title
+            group.serviceTitle = serviceTitle;
+
+            // Process package titles
+            const newPackages = {};
+            if (group.packages && typeof group.packages === "object") {
+              for (const pkgId of Object.keys(group.packages)) {
+                const numId = Number(pkgId);
+                const pkgTitle = packageMap[numId];
+
+                if (pkgTitle) {
+                  newPackages[pkgId] = pkgTitle;
+                } else {
+                  console.log(`⚠️ Package ID ${pkgId} not found — removing.`);
+                }
+              }
+            }
+
+            group.packages = newPackages; // filtered + updated
+            return group;
+          })
+          .filter(Boolean); // remove null
       }
 
       // Attach updated service titles to customer data

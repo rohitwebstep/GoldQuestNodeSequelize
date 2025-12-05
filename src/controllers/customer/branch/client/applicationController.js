@@ -1333,6 +1333,76 @@ function sendNotificationEmails(
   });
 }
 
+exports.createListing = (req, res) => {
+  const { branch_id, sub_user_id, _token, additional_customer_id, customer_id } = req.query;
+  let missingFields = [];
+  if (!branch_id) missingFields.push("Branch ID");
+  if (!_token) missingFields.push("Token");
+  if (!customer_id) missingFields.push("Customer ID");
+
+  if (missingFields.length > 0) {
+    return res.status(400).json({
+      status: false,
+      message: `Missing required fields: ${missingFields.join(", ")}`,
+    });
+  }
+
+  const action = "client_application";
+
+  BranchCommon.isBranchAuthorizedForAction(branch_id, action, (result) => {
+    if (!result.status) {
+      return res.status(403).json({
+        status: false,
+        message: result.message,
+      });
+    }
+
+    BranchCommon.isBranchTokenValid(
+      _token,
+      additional_customer_id,
+      sub_user_id || null,
+      branch_id,
+      (err, tokenResult) => {
+        if (err) {
+          console.error("Error checking token validity:", err);
+          return res.status(500).json({ status: false, message: err.message });
+        }
+
+        if (!tokenResult.status) {
+          return res
+            .status(401)
+            .json({ status: false, message: tokenResult.message });
+        }
+
+        const newToken = tokenResult.newToken;
+
+        const dataPromises = [
+          new Promise((resolve) =>
+            Customer.basicInfoByID(customer_id, (err, result) => {
+              if (err) {
+                console.error("Error fetching customer info:", err);
+                return resolve([]);
+              }
+              resolve(result);
+            })
+          ),
+        ];
+
+        Promise.all(dataPromises).then(([customerInfo]) => {
+          res.json({
+            status: true,
+            message: "Client applications fetched successfully.",
+            data: {
+              customerInfo,
+            },
+            token: newToken,
+          });
+        });
+      }
+    );
+  });
+};
+
 // Controller to list all clientApplications
 exports.list = (req, res) => {
   const { branch_id, sub_user_id, _token, additional_customer_id, customer_id } = req.query;
